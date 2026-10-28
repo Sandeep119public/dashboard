@@ -1,6 +1,6 @@
-/* Offline shell + chart-library cache for GitHub Pages. */
+/* Network-first app shell, cache-first chart library, offline fallback. */
 const CACHE_PREFIX = 'btc-mechanics-';
-const CACHE_NAME = 'btc-mechanics-shell-v1';
+const CACHE_NAME = 'btc-mechanics-shell-v2';
 const ROOT = self.registration.scope;
 const SHELL = [
   new URL('./', ROOT).href,
@@ -9,8 +9,15 @@ const SHELL = [
   new URL('./manifest.webmanifest', ROOT).href,
   new URL('./icon.svg', ROOT).href
 ];
-const PLOTLY_URL = 'https://cdn.plot.ly/plotly-3.3.1.min.js';
-
+const isAppDocument = request => request.mode === 'navigate'
+  || request.destination === 'document'
+  || /\/(?:index\.html|BTCUSD_Market_Mechanics_Lab_Fixed\.html)$/.test(new URL(request.url).pathname);
+const cacheIfSuccessful = async (cache, request, response) => {
+  if (response && response.ok) {
+    try { await cache.put(request, response.clone()); } catch (_) {}
+  }
+  return response;
+};
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
@@ -18,12 +25,11 @@ self.addEventListener('install', event => {
       try {
         const response = await fetch(url, {cache: 'reload'});
         if (response && response.ok) await cache.put(url, response.clone());
-      } catch (_) { /* The shell remains usable online even if one optional asset fails. */ }
+      } catch (_) {}
     }));
     self.skipWaiting();
   })());
 });
-
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
@@ -31,19 +37,35 @@ self.addEventListener('activate', event => {
     await self.clients.claim();
   })());
 });
-
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   const isPlotly = url.origin === 'https://cdn.plot.ly' && url.pathname.endsWith('/plotly-3.3.1.min.js');
   if (url.origin !== self.location.origin && !isPlotly) return;
-
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
+    if (isAppDocument(request)) {
+      /* Network-first prevents an installed app from getting trapped on old HTML. */
+      try {
+        const fresh = await fetch(request);
+        if (fresh && fresh.ok) {
+          const key = request.mode === 'navigate' ? request.url : request;
+          try { await cache.put(key, fresh.clone()); } catch (_) {}
+        }
+        return fresh;
+      } catch (error) {
+        const keys = [request, request.url, new URL('./index.html', ROOT).href, new URL('./BTCUSD_Market_Mechanics_Lab_Fixed.html', ROOT).href];
+        for (const key of keys) {
+          const fallback = await cache.match(key);
+          if (fallback) return fallback;
+        }
+        throw error;
+      }
+    }
+    /* Keep the large Plotly library cache-first so offline reloads can draw charts. */
     const cached = await cache.match(request);
     if (cached) return cached;
-
     try {
       const response = await fetch(request);
       if (response && (response.ok || response.type === 'opaque')) {
@@ -51,12 +73,8 @@ self.addEventListener('fetch', event => {
       }
       return response;
     } catch (error) {
-      if (request.mode === 'navigate') {
-        const fallback = await cache.match(new URL('./index.html', ROOT).href);
-        if (fallback) return fallback;
-        const dashboard = await cache.match(new URL('./BTCUSD_Market_Mechanics_Lab_Fixed.html', ROOT).href);
-        if (dashboard) return dashboard;
-      }
+      const fallback = await cache.match(request);
+      if (fallback) return fallback;
       throw error;
     }
   })());
