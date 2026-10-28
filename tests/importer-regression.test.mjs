@@ -7,6 +7,10 @@ const start = html.indexOf('async function zipCsvEntries(file){');
 const end = html.indexOf('async function zipEntryStream(file,entry){', start);
 assert.ok(start >= 0 && end > start, 'ZIP directory parser must remain available for regression tests');
 const zipCsvEntries = new Function(`${html.slice(start, end)}; return zipCsvEntries;`)();
+const rowsStart = html.indexOf('class PackedTradeRows {');
+const rowsEnd = html.indexOf('function aggregateDay(', rowsStart);
+assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'packed trade buffer must remain available for regression tests');
+const PackedTradeRows = new Function(`${html.slice(rowsStart, rowsEnd)}; return PackedTradeRows;`)();
 
 function makeZip({ name = 'trades.csv', data = 'timestamp,price,size,buyer_role,product_symbol\\n2026-08-01 00:00:00,60000,1,taker,BTCUSD\\n' } = {}) {
   const filename = Buffer.from(name);
@@ -77,4 +81,24 @@ test('rejects ZIP64 sentinel values with a useful error', async () => {
 test('rejects an archive with a missing end-of-central-directory record', async () => {
   const bytes = makeZip().subarray(0, -22);
   await assert.rejects(zipCsvEntries(asFile(bytes)), /Could not read ZIP directory/);
+});
+
+test('sorts unordered trade rows without separating timestamp and trade fields', () => {
+  const rows = new PackedTradeRows(2);
+  rows.push(30, 300, 3, 1);
+  rows.push(10, 100, 1, 0);
+  rows.push(20, 200, 2, 1);
+  rows.sortByTimestamp();
+  assert.deepEqual(Array.from({ length: rows.length }, (_, i) => [
+    rows.get(i, 0), rows.get(i, 1), rows.get(i, 2), rows.get(i, 3)
+  ]), [[10, 100, 1, 0], [20, 200, 2, 1], [30, 300, 3, 1]]);
+});
+
+test('grows the packed trade buffer while preserving existing rows', () => {
+  const rows = new PackedTradeRows(1);
+  for (let i = 0; i < 17000; i++) rows.push(i, 60000 + i, 1, i % 2);
+  assert.equal(rows.length, 17000);
+  assert.equal(rows.get(0, 1), 60000);
+  assert.equal(rows.get(16999, 1), 76999);
+  assert.equal(rows.get(16999, 3), 1);
 });
