@@ -16,7 +16,7 @@ The importer was validated against `futures-trades-monthly-BTCUSD-2026-08.csv.zi
 
 ## Code structure
 
-The browser app keeps its existing single-page UI but separates reusable logic into native ES modules: `src/ingestion/zip-reader.js` owns ZIP directory validation and CSV-entry streaming, while `src/data/packed-trade-rows.js` owns the packed four-column trade buffer. The page imports these modules explicitly, and the service worker precaches them for offline use. Import orchestration, day aggregation, chart rendering, and UI state remain in the main page for now, so this is an incremental refactor rather than a full rewrite.
+The browser app keeps its existing single-page UI but separates reusable logic into native ES modules: `src/ingestion/zip-reader.js` owns ZIP directory validation and CSV-entry streaming, while `src/data/packed-trade-rows.js` owns the packed four-column trade buffer and `src/data/day-aggregator.js` builds daily OHLCV, profiles, histograms, metrics, and large-trade follow-through events. The page imports these modules explicitly, and the service worker precaches them for offline use. Import orchestration, day aggregation, chart rendering, and UI state remain in the main page for now, so this is an incremental refactor rather than a full rewrite.
 
 ## Accuracy notes
 
