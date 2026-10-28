@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#080d18" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="manifest" href="./manifest.webmanifest" />
+<link rel="icon" type="image/svg+xml" href="./icon.svg" />
 <title>BTCUSD Market Mechanics Lab · Accuracy-Fixed Edition</title>
 <style>
 :root{--bg:#080d18;--panel:#0f1727;--panel2:#121d30;--border:#24334a;--text:#e8eef7;--muted:#91a3bb;--buy:#48d6ad;--sell:#ff7e87;--gold:#f3c969;--blue:#88b8ff;--purple:#aa9cff;--grid:#1b2a40}
@@ -200,6 +206,12 @@ html{scroll-behavior:smooth}
  .mobile-action-bar .mobile-action-label{font-size:9px}
 }
 
+
+/* Import cancellation and install affordance */
+#importCancel{width:100%}
+#installApp[hidden],[hidden]{display:none!important}
+@media(max-width:760px){.import-control #cancelImport{width:100%;min-height:44px;margin-top:5px}.stamp #installApp{min-height:44px}}
+
 </style>
 </head>
 <body>
@@ -210,7 +222,7 @@ html{scroll-behavior:smooth}
       <h1>BTCUSD <span style="color:var(--buy)">Market Mechanics Lab</span> <span class="tag">Deep Audit</span></h1>
       <div class="sub">Explore executed flow, price location, trade size, session regimes and flow-to-return response across dates. Arrange charts to fit your question, scrub a linked time cursor, replay the tape, and save reusable data and view presets. This is a trade-print microscope, not an order-book reconstruction.</div>
     </div>
-    <div class="stamp"><strong id="stampDate">2026-09-01</strong><span id="stampRows">314,107 trade prints · one day</span></div>
+    <div class="stamp"><strong id="stampDate">2026-09-01</strong><span id="stampRows">314,107 trade prints · one day</span><button class="btn subtle" id="installApp" type="button" hidden style="margin-top:9px;width:100%">Install app</button></div>
   </header>
 
   <section class="guided-home" aria-label="Guided exploration">
@@ -252,7 +264,7 @@ html{scroll-behavior:smooth}
   <section class="controls" aria-label="Dashboard controls">
     <div class="control date-control"><label for="startDate">Start date</label><input id="startDate" type="date" value="2026-09-01" /></div>
     <div class="control date-control"><label for="endDate">End date</label><input id="endDate" type="date" value="2026-09-01" /></div>
-    <div class="control import-control"><label for="tradeFiles">Add trade files (.CSV / .ZIP)</label><input id="tradeFiles" type="file" multiple accept=".csv,.zip,text/csv,application/zip" /></div>
+    <div class="control import-control"><label for="tradeFiles">Add trade files (.CSV / .ZIP)</label><input id="tradeFiles" type="file" multiple accept=".csv,.zip,text/csv,application/zip" /><button class="btn subtle" id="cancelImport" type="button" hidden>Cancel import</button></div>
     <div class="control"><label for="tf">Bar interval</label><select id="tf"><option value="10s">10 seconds</option><option value="1m" selected>1 minute</option><option value="5m">5 minutes</option><option value="15m">15 minutes</option><option value="1h">1 hour</option></select></div>
     <div class="control advanced-control"><label for="start">From time</label><input id="start" type="time" value="00:00" step="60" /></div>
     <div class="control advanced-control"><label for="end">To time</label><input id="end" type="time" value="23:59" step="60" /></div>
@@ -424,7 +436,7 @@ const HIST_BUCKETS = [9,24,49,99,219,671,999,1999,Infinity];
 let focusIndices=[], focusTimeSec=null, replayHandle=null, draggedPanel=null, focusLineTimer=null, pendingFocusLineTime=null;
 // Performance caches are invalidated whenever combined data is rebuilt.
 const MAX_RENDER_POINTS=3200; let subsetCache=new Map(), leadPrefixSource=null, leadPrefixD=null, leadPrefixV=null;
-let refreshTimer=null, refreshRequestId=0;
+let refreshTimer=null, refreshRequestId=0, importRunning=false, importCancelRequested=false;
 const dateEpoch = date => {const a=String(date).slice(0,10).split('-').map(Number);return Date.UTC(a[0],a[1]-1,a[2]);};
 const dateOffset = date => (dateEpoch(date)-BASE)/1000;
 const isoDate = ms => new Date(ms).toISOString().slice(0,10);
@@ -509,24 +521,39 @@ function parseTradeTimestamp(stamp){
  let offset=0;if(zone&&zone!=='Z'){const z=/^([+-])(\d{2}):?(\d{2})$/.exec(zone);if(!z)throw new Error('Invalid timezone offset in "'+stamp+'".');const zh=Number(z[2]),zm=Number(z[3]);if(zh>14||zm>59||(zh===14&&zm!==0))throw new Error('Invalid timezone offset in "'+stamp+'".');offset=(zh*3600+zm*60)*(z[1]==='+'?1:-1);}
  const absolute=midnight/1000+h*3600+min*60+s+frac-offset,dayStart=Math.floor(absolute/86400)*86400;return {date:isoDate(dayStart*1000),sec:absolute-dayStart};
 }
-function aggregateDay(date, rows){
- rows.sort((a,b)=>a[0]-b[0]);
- const bars={};for(const tf of Object.keys(BAR_STEPS)){const step=BAR_STEPS[tf],map=new Map();for(const row of rows){const [sec,price,size,role]=row;const t=Math.floor(sec/step)*step;let a=map.get(t);if(!a){a={t,o:price,h:price,l:price,c:price,v:0,n:0,b:0,s:0,d:0,pv:0};map.set(t,a);}a.h=Math.max(a.h,price);a.l=Math.min(a.l,price);a.c=price;a.v+=size;a.pv+=price*size;a.n++;if(role===1)a.b+=size;else a.s+=size;a.d=a.b-a.s;}const vals=[...map.values()].sort((a,b)=>a.t-b.t);const obj={t:[],o:[],h:[],l:[],c:[],v:[],n:[],b:[],s:[],d:[],pv:[]};for(const a of vals)for(const k of Object.keys(obj))obj[k].push(a[k]);bars[tf]=obj;}
- const prof=new Map(),hist=new Array(1440*9).fill(0),active=new Set(),sizes=[];let total=0,buy=0,sell=0,high=-Infinity,low=Infinity;
- for(const [sec,price,size,role] of rows){const minute=Math.floor(sec/60),p=Math.floor(price/5),key=minute+'|'+p;let a=prof.get(key);if(!a){a={m:minute,p,v:0,d:0};prof.set(key,a);}a.v+=size;a.d+=role===1?size:-size;hist[minute*9+histBucket(size)]++;active.add(Math.floor(sec));sizes.push(size);total+=size;high=Math.max(high,price);low=Math.min(low,price);if(role===1)buy+=size;else sell+=size;}
- const sortedSizes=sizes.slice().sort((a,b)=>a-b),quant=q=>sortedSizes.length?sortedSizes[Math.min(sortedSizes.length-1,Math.floor((sortedSizes.length-1)*q))]:0;
+function selectKthInPlace(a,k){
+ let left=0,right=a.length-1;
+ while(left<right){
+  const mid=left+((right-left)>>1),x=a[left],y=a[mid],z=a[right];
+  const pivot=x<y?(y<z?y:(x<z?z:x)):(x<z?x:(y<z?z:y));
+  let lt=left,i=left,gt=right;
+  while(i<=gt){
+   if(a[i]<pivot){const t=a[lt];a[lt]=a[i];a[i]=t;lt++;i++;}
+   else if(a[i]>pivot){const t=a[i];a[i]=a[gt];a[gt]=t;gt--;}
+   else i++;
+  }
+  if(k<lt)right=lt-1;else if(k>gt)left=gt+1;else return a[k];
+ }
+ return a[left];
+}
+function aggregateDay(date, rows, alreadyOrdered=false){
+ if(!alreadyOrdered)rows.sort((a,b)=>a[0]-b[0]);
+ const bars={};for(const tf of Object.keys(BAR_STEPS)){const step=BAR_STEPS[tf],map=new Map();for(const row of rows){const [sec,price,size,role]=row;const t=Math.floor(sec/step)*step;let a=map.get(t);if(!a){a={t,o:price,h:price,l:price,c:price,v:0,n:0,b:0,s:0,d:0,pv:0};map.set(t,a);}a.h=Math.max(a.h,price);a.l=Math.min(a.l,price);a.c=price;a.v+=size;a.pv+=price*size;a.n++;if(role===1)a.b+=size;else a.s+=size;a.d=a.b-a.s;}const vals=[...map.values()];if(!alreadyOrdered)vals.sort((a,b)=>a.t-b.t);const obj={t:[],o:[],h:[],l:[],c:[],v:[],n:[],b:[],s:[],d:[],pv:[]};for(const a of vals)for(const k of Object.keys(obj))obj[k].push(a[k]);bars[tf]=obj;}
+ const prof=new Map(),hist=new Array(1440*9).fill(0),active=new Set(),sizes=[];let total=0,buy=0,sell=0,high=-Infinity,low=Infinity,maxSize=0;
+ for(const [sec,price,size,role] of rows){const minute=Math.floor(sec/60),p=Math.floor(price/5),key=minute+'|'+p;let a=prof.get(key);if(!a){a={m:minute,p,v:0,d:0};prof.set(key,a);}a.v+=size;a.d+=role===1?size:-size;hist[minute*9+histBucket(size)]++;active.add(Math.floor(sec));sizes.push(size);maxSize=Math.max(maxSize,size);total+=size;high=Math.max(high,price);low=Math.min(low,price);if(role===1)buy+=size;else sell+=size;}
+ const quant=q=>sizes.length?selectKthInPlace(sizes,Math.min(sizes.length-1,Math.floor((sizes.length-1)*q))):0;
  const first=rows.length?rows[0][1]:0,last=rows.length?rows[rows.length-1][1]:0;
  const profile={m:[],p:[],v:[],d:[]};for(const a of prof.values())for(const k of Object.keys(profile))profile[k].push(a[k]);
  const events={t:[],p:[],s:[],r:[],r1:[],r5:[],r15:[]};const horizon=[60,300,900];
  const lowerBound=(target,lo)=>{let hi=rows.length;while(lo<hi){const mid=(lo+hi)>>1;if(rows[mid][0]<target)lo=mid+1;else hi=mid;}return lo;};
  for(let i=0;i<rows.length;i++){const [sec,price,size,role]=rows[i];if(size<220)continue;events.t.push(sec);events.p.push(price);events.s.push(size);events.r.push(role);for(let j=0;j<horizon.length;j++){const target=sec+horizon[j],ix=lowerBound(target,i+1),k=['r1','r5','r15'][j],valid=ix<rows.length&&rows[ix][0]-target<=30;events[k].push(valid?(rows[ix][1]/price-1)*100:null);}}
  const minuteBars=bars['1m'];let prev=null,prevTime=null,flow=[],rets=[];for(let i=0;i<minuteBars.t.length;i++){if(prev!==null&&prev!==0&&minuteBars.t[i]>prevTime&&minuteBars.t[i]-prevTime===60){flow.push(minuteBars.d[i]);rets.push((minuteBars.c[i]/prev-1)*100);}prev=minuteBars.c[i];prevTime=minuteBars.t[i];}const n=flow.length,mf=flow.reduce((a,v)=>a+v,0)/Math.max(1,n),mr=rets.reduce((a,v)=>a+v,0)/Math.max(1,n);let cv=0,vf=0,vr=0;for(let i=0;i<n;i++){let a=flow[i]-mf,b=rets[i]-mr;cv+=a*b;vf+=a*a;vr+=b*b;}
- const delta=buy-sell;const metrics={date,row_count:rows.length,start_price:first,end_price:last,return_pct:first?(last/first-1)*100:0,low:low===-Infinity?0:low,high:high===-Infinity?0:high,range_pct:low>0?(high/low-1)*100:0,total_size:total,buy_size:buy,sell_size:sell,delta,imbalance_pct:total?delta/total*100:0,median_size:quant(.5),p90:quant(.9),p95:quant(.95),p99:quant(.99),max_size:sortedSizes.length?sortedSizes[sortedSizes.length-1]:0,active_seconds_pct:active.size/86400*100,minute_flow_return_corr:flow.length>=3&&vf&&vr?cv/Math.sqrt(vf*vr):null};
+ const delta=buy-sell;const metrics={date,row_count:rows.length,start_price:first,end_price:last,return_pct:first?(last/first-1)*100:0,low:low===-Infinity?0:low,high:high===-Infinity?0:high,range_pct:low>0?(high/low-1)*100:0,total_size:total,buy_size:buy,sell_size:sell,delta,imbalance_pct:total?delta/total*100:0,median_size:quant(.5),p90:quant(.9),p95:quant(.95),p99:quant(.99),max_size:maxSize,active_seconds_pct:active.size/86400*100,minute_flow_return_corr:flow.length>=3&&vf&&vr?cv/Math.sqrt(vf*vr):null};
  return {metrics,bars,profile,hist,hist_labels:DATA.hist_labels,events};
 }
 function createCsvDayParser(){
- const result=new Map();let lineNo=0,header=null,idx={},currentDate=null,rows=[],rowCount=0;
- const flush=()=>{if(currentDate!==null&&rows.length){result.set(currentDate,aggregateDay(currentDate,rows));rows=[];}};
+ const result=new Map();let lineNo=0,header=null,idx={},currentDate=null,rows=[],rowCount=0,ordered=true,lastSec=-Infinity;
+ const flush=()=>{if(currentDate!==null&&rows.length){result.set(currentDate,aggregateDay(currentDate,rows,ordered));rows=[];ordered=true;lastSec=-Infinity;}};
  const pushLine=rawLine=>{
   const line=String(rawLine).replace(/\r$/,'');if(!line.trim())return;lineNo++;
   const a=line.indexOf('"')<0?line.split(','):parseCsvRow(line);
@@ -542,7 +569,7 @@ function createCsvDayParser(){
   const role=roleText==='taker'?1:0;
   if(currentDate===null)currentDate=date;
   if(date!==currentDate){flush();if(result.has(date))throw new Error('Rows in '+date+' are not contiguous after timestamp normalization. Please import chronologically sorted trade CSVs.');currentDate=date;}
-  rows.push([sec,price,size,role]);rowCount++;
+  if(sec<lastSec)ordered=false;lastSec=sec;rows.push([sec,price,size,role]);rowCount++;
  };
  return {pushLine,finish(){flush();if(!result.size)throw new Error('No valid trade rows were found in this file.');return result;},get rowCount(){return rowCount;},get currentDate(){return currentDate;},get lineNo(){return lineNo;}};
 }
@@ -555,15 +582,15 @@ const yieldToUi=()=>new Promise(resolve=>setTimeout(resolve,0));
 async function parseCsvStreamByDay(readable,sourceName,onProgress){
  const parser=createCsvDayParser(),reader=readable.getReader(),decoder=new TextDecoder();let pending='',lastYieldRows=0,done=false;
  try{
-  while(!done){const item=await reader.read();done=item.done;if(item.value)pending+=decoder.decode(item.value,{stream:!done});else if(done)pending+=decoder.decode();
+  while(!done){if(importCancelRequested)throw new Error('Import cancelled by user.');const item=await reader.read();done=item.done;if(item.value)pending+=decoder.decode(item.value,{stream:!done});else if(done)pending+=decoder.decode();
    let lineStart=0,lf;
    while((lf=pending.indexOf('\n',lineStart))!==-1){parser.pushLine(pending.slice(lineStart,lf));lineStart=lf+1;
-    if(parser.rowCount-lastYieldRows>=25000){lastYieldRows=parser.rowCount;if(onProgress)onProgress(parser.rowCount,parser.currentDate,sourceName);await yieldToUi();}
+    if(parser.rowCount-lastYieldRows>=25000){lastYieldRows=parser.rowCount;if(onProgress)onProgress(parser.rowCount,parser.currentDate,sourceName);await yieldToUi();if(importCancelRequested)throw new Error('Import cancelled by user.');}
    }
    pending=pending.slice(lineStart);
    if(done&&pending.length){parser.pushLine(pending);pending='';}
   }
-  return parser.finish();
+  if(importCancelRequested)throw new Error('Import cancelled by user.');return parser.finish();
  }catch(err){try{await reader.cancel(err);}catch(_){}throw err;}finally{try{reader.releaseLock();}catch(_){}}
 }
 async function zipCsvEntries(file){
@@ -600,23 +627,30 @@ async function zipEntryStream(file,entry){
  else if(entry.method!==0)throw new Error('ZIP compression method '+entry.method+' is not supported for '+entry.name+'.');
  return stream;
 }
+function syncImportControls(){
+ const cancel=$('cancelImport');if(cancel){cancel.hidden=!importRunning;cancel.disabled=importCancelRequested;cancel.textContent=importCancelRequested?'Cancelling…':'Cancel import';}
+ const mobile=document.querySelector('[data-mobile-action="import"]');
+ if(mobile){const icon=mobile.querySelector('.mobile-action-icon'),label=mobile.querySelector('.mobile-action-label');mobile.setAttribute('aria-label',importRunning?'Cancel current import':'Import trade CSV or ZIP');mobile.dataset.importState=importRunning?'running':'idle';if(icon)icon.textContent=importRunning?'×':'＋';if(label)label.textContent=importCancelRequested?'Cancelling…':(importRunning?'Cancel':'Import');mobile.disabled=importCancelRequested;}
+}
+function requestImportCancel(){if(!importRunning||importCancelRequested)return;importCancelRequested=true;syncImportControls();$('status').textContent='Cancellation requested. The importer will stop at the next safe parsing boundary; existing loaded data will be kept.';}
 async function importTradeFiles(files,sourceInputId='tradeFiles'){
  const input=$(sourceInputId);if(!files.length)return;files=files.filter(f=>/\.(csv|zip)$/i.test(f.name));if(!files.length){$('status').textContent='No .CSV or .ZIP trade files were found in that selection.';input.value='';return;}
- input.disabled=true;$('dataStatus').textContent='Streaming trade data and building multi-day bars. Monthly ZIP files are processed one day at a time to limit memory use.';$('status').textContent='';
+ input.disabled=true;importRunning=true;importCancelRequested=false;syncImportControls();$('dataStatus').textContent='Streaming trade data and building multi-day bars. Monthly ZIP files are processed one day at a time to limit memory use.';$('status').textContent='';
  try{
   const incoming=new Map();
   const progress=(rows,date,name)=>{$('status').textContent='Reading '+name+': '+nfmt(rows)+' trades processed'+(date?' · current date '+date:'')+'. Data is streamed; the full decompressed CSV is not kept in memory.';};
   const acceptDays=days=>{for(const [date,obj] of days){if(incoming.has(date))throw new Error('More than one selected file contains '+date+'. Select a monthly archive by itself, or avoid overlapping CSV/ZIP files in one batch.');incoming.set(date,obj);}};
   for(const file of files){
+   if(importCancelRequested)throw new Error('Import cancelled by user.');
    if(file.name.toLowerCase().endsWith('.zip')){
-    const entries=await zipCsvEntries(file);for(const entry of entries){$('dataStatus').textContent='Streaming '+file.name+' → '+entry.name+' ('+nfmt(entry.uncompSize)+' uncompressed bytes). Large monthly archives may take a few minutes; progress updates appear below.';const stream=await zipEntryStream(file,entry);const days=await parseCsvStreamByDay(stream,entry.name,progress);acceptDays(days);}
+    const entries=await zipCsvEntries(file);for(const entry of entries){if(importCancelRequested)throw new Error('Import cancelled by user.');$('dataStatus').textContent='Streaming '+file.name+' → '+entry.name+' ('+nfmt(entry.uncompSize)+' uncompressed bytes). Large monthly archives may take a few minutes; progress updates appear below.';const stream=await zipEntryStream(file,entry);const days=await parseCsvStreamByDay(stream,entry.name,progress);acceptDays(days);}
    }else{
     $('dataStatus').textContent='Streaming '+file.name+' without loading the complete CSV into memory.';const days=await parseCsvStreamByDay(file.stream(),file.name,progress);acceptDays(days);
    }
   }
-  for(const [date,obj] of incoming)DAYS.set(date,obj);rebuildCombined();updateDateBounds(true);refresh();$('status').textContent='Import complete: '+nfmt(M.row_count)+' total trade prints loaded across '+DAYS.size+' day(s).';$('dataStatus').textContent='Imported '+incoming.size+' date'+(incoming.size===1?'':'s')+' from '+files.length+' file'+(files.length===1?'':'s')+'. '+DAYS.size+' day(s) and '+nfmt(M.row_count)+' prints are now loaded. Monthly ZIPs are streamed and aggregated one date at a time. Matching dates were replaced, not double-counted. Unzoned timestamps are assumed UTC; explicit offsets are normalized to UTC.';
- }catch(err){$('status').textContent='Import failed: '+(err&&err.message?err.message:String(err));$('dataStatus').textContent='Import failed; current loaded data was kept. If this archive uses ZIP64 or unsupported compression, extract the CSV and import it directly in current Chrome/Edge.';}
- finally{input.disabled=false;input.value='';}
+  if(importCancelRequested)throw new Error('Import cancelled by user.');for(const [date,obj] of incoming)DAYS.set(date,obj);rebuildCombined();updateDateBounds(true);refresh();$('status').textContent='Import complete: '+nfmt(M.row_count)+' total trade prints loaded across '+DAYS.size+' day(s).';$('dataStatus').textContent='Imported '+incoming.size+' date'+(incoming.size===1?'':'s')+' from '+files.length+' file'+(files.length===1?'':'s')+'. '+DAYS.size+' day(s) and '+nfmt(M.row_count)+' prints are now loaded. Monthly ZIPs are streamed and aggregated one date at a time. Matching dates were replaced, not double-counted. Unzoned timestamps are assumed UTC; explicit offsets are normalized to UTC.';
+ }catch(err){if(err&&err.message==='Import cancelled by user.'){$('status').textContent='Import cancelled. Existing loaded data was preserved.';$('dataStatus').textContent='Import cancelled before committing the new batch; previously loaded dates remain available.';}else{$('status').textContent='Import failed: '+(err&&err.message?err.message:String(err));$('dataStatus').textContent='Import failed; current loaded data was kept. If this archive uses ZIP64 or unsupported compression, extract the CSV and import it directly in current Chrome/Edge.';}}
+ finally{importRunning=false;importCancelRequested=false;input.disabled=false;input.value='';syncImportControls();}
 }
 const C = {bg:'#0f1727',paper:'#0f1727',text:'#dce7f5',muted:'#91a3bb',grid:'#203047',buy:'#48d6ad',sell:'#ff7e87',gold:'#f3c969',blue:'#88b8ff',purple:'#aa9cff'};
 const nfmt = (v, digs=0) => Number(v).toLocaleString('en-US',{maximumFractionDigits:digs,minimumFractionDigits:0});
@@ -1003,6 +1037,7 @@ function performRefresh(){
  (async()=>{for(const [,draw] of visibleJobs){if(requestId!==refreshRequestId)return;await new Promise(resolve=>requestAnimationFrame(resolve));if(requestId!==refreshRequestId)return;await draw();}if(requestId!==refreshRequestId)return;if(focusIndices.length){const k=Number($('timeFocus').value||0);updateFocusAtIndex(k);}})().catch(err=>{if(requestId===refreshRequestId){$('status').textContent='A chart could not render: '+String(err);console.error(err);}});
 }
 function refresh(){if(refreshTimer!==null)clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{refreshTimer=null;performRefresh();},65);}
+$('cancelImport').addEventListener('click',requestImportCancel);
 $('tf').addEventListener('change',refresh);$('start').addEventListener('change',()=>{document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('end').addEventListener('change',()=>{document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('startDate').addEventListener('change',()=>{if($('startDate').value>$('endDate').value)$('endDate').value=$('startDate').value;document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('endDate').addEventListener('change',()=>{if($('endDate').value<$('startDate').value)$('startDate').value=$('endDate').value;document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('threshold').addEventListener('input',refresh);$('profileBin').addEventListener('change',refresh);$('smooth').addEventListener('change',refresh);$('flowLookback').addEventListener('change',refresh);$('tradeFiles').addEventListener('change',e=>importTradeFiles([...e.target.files]));
 document.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',()=>setQuickRange(b.dataset.range)));
 $('importFolder').addEventListener('click',()=>$('tradeFolder').click());$('tradeFolder').addEventListener('change',e=>importTradeFiles([...e.target.files],'tradeFolder'));$('exportBars').addEventListener('click',exportSelectedBars);$('exportEvents').addEventListener('click',exportLargeTrades);$('saveWorkspace').addEventListener('click',saveWorkspace);$('loadWorkspace').addEventListener('click',()=>$('workspaceFile').click());$('workspaceFile').addEventListener('change',async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{$('status').textContent='Loading workspace…';await loadWorkspaceFile(f);}catch(err){$('status').textContent='Workspace import failed: '+String(err);}finally{e.target.value='';}});
@@ -1013,7 +1048,7 @@ function initMobileQuickActions(){
  const scrollToTarget=el=>{if(!el)return;const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;el.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});};
  bar.querySelectorAll('[data-mobile-action]').forEach(button=>button.addEventListener('click',()=>{
   const action=button.dataset.mobileAction;
-  if(action==='import'){$('tradeFiles').click();return;}
+  if(action==='import'){if(importRunning){requestImportCancel();return;}$('tradeFiles').click();return;}
   if(action==='charts'){
    let card=document.querySelector('.chartcard:not(.panel-hidden) .plot');
    if(!card){applyQuestionPreset('price-flow',true);card=document.querySelector('.chartcard:not(.panel-hidden) .plot');}
@@ -1041,5 +1076,19 @@ if(window.visualViewport)window.visualViewport.addEventListener('resize',schedul
 initMobileQuickActions();updateDateBounds(true);rebuildCombined();initInteractiveStudio();initGuidedExperience();setQuickRange('all');
 })();
 </script>
+
+<script>
+(function(){
+ let pendingInstall=null;
+ const btn=document.getElementById('installApp');
+ window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();pendingInstall=event;if(btn)btn.hidden=false;});
+ if(btn)btn.addEventListener('click',async()=>{if(!pendingInstall)return;pendingInstall.prompt();try{await pendingInstall.userChoice;}catch(_){}pendingInstall=null;btn.hidden=true;});
+ window.addEventListener('appinstalled',()=>{pendingInstall=null;if(btn)btn.hidden=true;});
+ if('serviceWorker' in navigator&&location.protocol==='https:'){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{}));
+ }
+})();
+</script>
+
 </body>
 </html>
