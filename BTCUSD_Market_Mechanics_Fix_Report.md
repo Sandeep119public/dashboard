@@ -63,3 +63,5 @@ The daily aggregation path now stores transient trade records in a packed four-c
 - Bumped the service-worker shell cache and precached both modules for offline app-shell loading.
 - Updated regression tests to import the production modules directly instead of extracting function/class source strings from the HTML.
 - This is the first modularization slice; orchestration, aggregation, chart rendering, and UI state remain in the main HTML pending separate tested extractions.
+
+- Extracted day-level OHLCV/profile/metrics/event aggregation into `src/data/day-aggregator.js`; the module accepts bar-step and histogram-label configuration and has a focused OHLCV/signed-flow regression test.
