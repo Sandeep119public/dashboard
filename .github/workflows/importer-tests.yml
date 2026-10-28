@@ -6,11 +6,13 @@ on:
     paths:
       - 'BTCUSD_Market_Mechanics_Lab_Fixed.html'
       - 'tests/**'
+      - 'src/**'
       - '.github/workflows/importer-tests.yml'
   pull_request:
     paths:
       - 'BTCUSD_Market_Mechanics_Lab_Fixed.html'
       - 'tests/**'
+      - 'src/**'
       - '.github/workflows/importer-tests.yml'
 
 jobs:
