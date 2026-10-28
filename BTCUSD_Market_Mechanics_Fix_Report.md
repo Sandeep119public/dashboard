@@ -23,3 +23,20 @@ This report accompanies the fixed standalone dashboard. It summarizes corrected 
 The dataset does not establish the exact buyer-role semantic without a source schema, the timezone is not encoded in every timestamp, and the size field's contract multiplier/unit is not confirmed. There are no order-book updates, so resting liquidity, cancellations, spread dynamics and queue position cannot be directly observed. The embedded data includes September 1, 2026 only; users must import additional daily files for multi-day analysis.
 
 Statistical association between contemporaneous signed flow and returns is descriptive and should not be interpreted as predictive trading edge without out-of-sample validation.
+
+
+## Monthly ZIP validation
+
+Added streaming ZIP and CSV parsing for large monthly archives. The importer reads the ZIP end-of-central-directory and entry metadata without copying the entire archive into memory, streams DEFLATE decompression, parses rows incrementally, and aggregates each UTC-normalized date as it reaches the day boundary. The common unquoted CSV line is parsed through a fast native split path; quoted rows retain the quote-aware parser. Progress updates are shown throughout.
+
+Validation with the August sample archive:
+- Compressed ZIP: 66,245,295 bytes.
+- CSV member: 391,774,302 uncompressed bytes.
+- Trade rows (excluding header): 7,440,458.
+- Dates: 2026-08-01 through 2026-08-31, all 31 calendar days.
+- First day: 114,708 rows.
+- Last day: 291,474 rows.
+- Import completed in about 48 seconds in the deterministic Node/Web Streams runtime test, with observed RSS around 555 MB at peak. Browser speed and peak memory vary by device.
+- After import, the dashboard reported 31 loaded days and 7,440,458 trade prints.
+
+This validates the streaming parser against the supplied archive and row counts. A full browser visual regression was not performed in this environment. The app still cannot infer unprovided order-book data, timestamp timezone semantics, or the exact contract multiplier.
