@@ -53,3 +53,13 @@ The daily aggregation path now stores transient trade records in a packed four-c
 - Each CSV entry's local filename must match its central-directory filename.
 - Compressed payloads must remain before the central directory and within the uploaded file, preventing malformed offsets from reading directory bytes as CSV data.
 - Added regression cases for valid comments containing a false ZIP signature, stored-entry streaming, local filename mismatches, and directory/payload bounds.
+
+
+## Separation of concerns and modularity (2026-10-28)
+
+- Extracted ZIP directory validation and entry streaming into `src/ingestion/zip-reader.js`, a standalone ES module with no UI dependencies.
+- Extracted `PackedTradeRows` into `src/data/packed-trade-rows.js`, allowing direct unit tests and reuse by future data-processing workers.
+- Switched the main dashboard script to a native ES module and exposed the embedded initial data as `window.DATA` to bridge the existing inline data bootstrap safely.
+- Bumped the service-worker shell cache and precached both modules for offline app-shell loading.
+- Updated regression tests to import the production modules directly instead of extracting function/class source strings from the HTML.
+- This is the first modularization slice; orchestration, aggregation, chart rendering, and UI state remain in the main HTML pending separate tested extractions.
