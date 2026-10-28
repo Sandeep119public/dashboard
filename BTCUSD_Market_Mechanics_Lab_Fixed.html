@@ -638,18 +638,22 @@ async function zipCsvEntries(file){
  const disk=tailView.getUint16(eocd+4,true),dirDisk=tailView.getUint16(eocd+6,true),diskCount=tailView.getUint16(eocd+8,true),count=tailView.getUint16(eocd+10,true),dirSize=tailView.getUint32(eocd+12,true),dirOffset=tailView.getUint32(eocd+16,true);
  if(disk!==0||dirDisk!==0||diskCount!==count)throw new Error('Multi-disk ZIP archives are not supported.');
  if(count===0xffff||dirSize===0xffffffff||dirOffset===0xffffffff)throw new Error('ZIP64 archives are not supported by this browser importer. Extract the CSV and import it directly instead.');
- if(dirOffset+dirSize>file.size)throw new Error('ZIP directory points outside the uploaded file.');
+ const directoryEnd=dirOffset+dirSize,eocdOffset=tailStart+eocd;
+ if(directoryEnd>file.size||directoryEnd>eocdOffset)throw new Error('ZIP directory points outside the uploaded file or overlaps its end record.');
  const out=[];let off=dirOffset;
  for(let n=0;n<count;n++){
+  if(off+46>directoryEnd)throw new Error('ZIP directory entry exceeds the declared directory size in '+file.name+'.');
   const fixedBytes=new Uint8Array(await file.slice(off,off+46).arrayBuffer());if(fixedBytes.length!==46)throw new Error('Truncated ZIP directory entry in '+file.name+'.');
   const h=new DataView(fixedBytes.buffer,fixedBytes.byteOffset,fixedBytes.byteLength);if(h.getUint32(0,true)!==0x02014b50)throw new Error('Invalid ZIP directory entry in '+file.name+'.');
   const flags=h.getUint16(8,true),method=h.getUint16(10,true),compSize=h.getUint32(20,true),uncompSize=h.getUint32(24,true),nameLen=h.getUint16(28,true),extraLen=h.getUint16(30,true),commentLen=h.getUint16(32,true),localOff=h.getUint32(42,true);
-  const nameBytes=await file.slice(off+46,off+46+nameLen).arrayBuffer(),name=new TextDecoder().decode(nameBytes);off+=46+nameLen+extraLen+commentLen;
+  const entryEnd=off+46+nameLen+extraLen+commentLen;if(entryEnd>directoryEnd)throw new Error('ZIP directory entry lengths exceed the declared directory size in '+file.name+'.');
+  const nameBytes=await file.slice(off+46,off+46+nameLen).arrayBuffer(),name=new TextDecoder().decode(nameBytes);off=entryEnd;
   if(name.endsWith('/')||!name.toLowerCase().endsWith('.csv'))continue;
   if(flags&1)throw new Error('Encrypted ZIP entries are not supported ('+name+').');
   if(compSize===0xffffffff||uncompSize===0xffffffff||localOff===0xffffffff)throw new Error('ZIP64 CSV entry is not supported ('+name+').');
   out.push({name,method,flags,compSize,uncompSize,localOff});
  }
+ if(off>directoryEnd)throw new Error('ZIP directory entries exceed the declared directory size in '+file.name+'.');
  if(!out.length)throw new Error('No .csv file found inside '+file.name+'.');
  return out;
 }
