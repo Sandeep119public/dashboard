@@ -16,7 +16,7 @@ const rowsEnd = html.indexOf('function aggregateDay(', rowsStart);
 assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'packed trade buffer must remain available for regression tests');
 const PackedTradeRows = new Function(`${html.slice(rowsStart, rowsEnd)}; return PackedTradeRows;`)();
 
-function makeZip({ name = 'trades.csv', localName = name, comment = Buffer.alloc(0), data = 'timestamp,price,size,buyer_role,product_symbol\\n2026-08-01 00:00:00,60000,1,taker,BTCUSD\\n' } = {}) {
+function makeZip({ name = 'trades.csv', localName = name, comment = Buffer.alloc(0), data = 'timestamp,price,size,buyer_role,product_symbol\n2026-08-01 00:00:00,60000,1,taker,BTCUSD\n' } = {}) {
   const filename = Buffer.from(name);
   const localFilename = Buffer.from(localName);
   const payload = Buffer.from(data);
