@@ -1,13 +1,15 @@
 /* Network-first app shell, cache-first chart library, offline fallback. */
 const CACHE_PREFIX = 'btc-mechanics-';
-const CACHE_NAME = 'btc-mechanics-shell-v5';
+const CACHE_NAME = 'btc-mechanics-shell-v6';
 const ROOT = self.registration.scope;
 const SHELL = [
   new URL('./', ROOT).href,
   new URL('./index.html', ROOT).href,
   new URL('./BTCUSD_Market_Mechanics_Lab_Fixed.html', ROOT).href,
   new URL('./manifest.webmanifest', ROOT).href,
-  new URL('./icon.svg', ROOT).href
+  new URL('./icon.svg', ROOT).href,
+  new URL('./src/ingestion/zip-reader.js', ROOT).href,
+  new URL('./src/data/packed-trade-rows.js', ROOT).href
 ];
 const isAppDocument = request => request.mode === 'navigate'
   || request.destination === 'document'
