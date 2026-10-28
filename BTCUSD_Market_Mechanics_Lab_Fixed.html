@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BTCUSD Market Mechanics Lab · Accuracy-Fixed Edition</title>
+<style>
+:root{--bg:#080d18;--panel:#0f1727;--panel2:#121d30;--border:#24334a;--text:#e8eef7;--muted:#91a3bb;--buy:#48d6ad;--sell:#ff7e87;--gold:#f3c969;--blue:#88b8ff;--purple:#aa9cff;--grid:#1b2a40}
+*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:radial-gradient(1000px 550px at 8% -10%,#162541 0%,transparent 65%),var(--bg);color:var(--text);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1600px;margin:0 auto;padding:24px 24px 42px}.eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--buy);font-weight:800}.top{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-bottom:20px}.top h1{font-size:clamp(27px,3vw,42px);line-height:1.05;margin:8px 0 10px;letter-spacing:-.04em}.sub{color:var(--muted);max-width:840px;font-size:14px}.stamp{border:1px solid var(--border);background:#101a2b;border-radius:12px;padding:12px 15px;min-width:175px}.stamp strong{display:block;font-size:15px}.stamp span{color:var(--muted);font-size:12px}
+.controls{display:flex;flex-wrap:wrap;align-items:end;gap:12px;padding:14px;background:rgba(15,23,39,.93);border:1px solid var(--border);border-radius:14px;margin-bottom:14px;box-shadow:0 12px 32px #0002}.control{display:flex;flex-direction:column;gap:5px;min-width:110px}.control label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700}.control select,.control input[type=time],.control input[type=date],.control input[type=number]{background:#091220;color:var(--text);border:1px solid #31435d;border-radius:8px;padding:9px 10px;font:inherit;outline:none;min-height:38px}.control input[type=file]{background:#091220;color:var(--muted);border:1px solid #31435d;border-radius:8px;padding:6px 8px;font:inherit;min-height:38px;max-width:260px}.data-status{width:100%;color:var(--muted);font-size:12px;line-height:1.4}.status:empty{display:none}.status{color:var(--sell)}.control select:focus,.control input:focus{border-color:var(--buy)}.threshold{min-width:205px;flex:1}.threshold input{width:100%;accent-color:var(--buy)}.threshold .rangeval{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}.btn{border:1px solid #315f60;background:#103332;color:#b6ffeb;padding:9px 13px;border-radius:8px;cursor:pointer;font-weight:800;min-height:38px}.btn:hover{background:#174744}.status{width:100%;color:var(--sell);font-size:12px;min-height:0}.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:14px 0 18px}.kpi{background:linear-gradient(150deg,#111c2e,#0d1523);border:1px solid var(--border);border-radius:12px;padding:13px 14px;min-width:0}.kpi .label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:800}.kpi .value{font-size:clamp(17px,1.8vw,25px);line-height:1.25;font-weight:800;margin:7px 0 3px;letter-spacing:-.03em;overflow-wrap:anywhere}.kpi .hint{font-size:11px;color:var(--muted)}.positive{color:var(--buy)}.negative{color:var(--sell)}.neutral{color:var(--text)}
+.sectionhead{display:flex;justify-content:space-between;align-items:end;margin:20px 2px 10px;gap:12px}.sectionhead h2{font-size:17px;letter-spacing:-.02em;margin:0}.sectionhead p{font-size:12px;color:var(--muted);margin:0}.chartgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.chartcard{background:linear-gradient(180deg,rgba(16,25,42,.98),rgba(12,19,32,.98));border:1px solid var(--border);border-radius:14px;padding:10px 10px 4px;min-width:0;box-shadow:0 8px 22px #0001}.chartcard.full{grid-column:1/-1}.charttitle{padding:4px 8px 0;display:flex;justify-content:space-between;align-items:baseline;gap:10px}.charttitle strong{font-size:13px}.charttitle span{font-size:11px;color:var(--muted);text-align:right}.plot{height:340px;width:100%}.plot.tall{height:465px}.plot.short{height:300px}.plot.profile{height:380px}.notes{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin-top:16px}.note{padding:16px;background:var(--panel);border:1px solid var(--border);border-radius:12px}.note h3{margin:0 0 9px;font-size:13px}.note p,.note li{color:#b0bfd3;font-size:12px}.note p{margin:6px 0}.note ul{padding-left:18px;margin:7px 0}.tag{display:inline-block;border:1px solid #38506a;color:#c3d4e9;border-radius:999px;padding:3px 8px;font-size:10px;font-weight:800;letter-spacing:.04em}.fineprint{color:#71849d;font-size:11px;margin:14px 3px 0}.loading{padding:30px;color:var(--muted)}
+.toolbar{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.8fr);gap:12px;align-items:start;padding:13px 14px;margin:0 0 14px;background:rgba(15,23,39,.74);border:1px solid var(--border);border-radius:14px}.toolbar-block{min-width:0}.toolbar-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800;margin:0 0 8px}.toolbar-label span{font-weight:500;text-transform:none;letter-spacing:0;margin-left:6px}.quick-buttons{display:flex;flex-wrap:wrap;gap:7px}.btn.subtle{background:#101a2b;border-color:#31435d;color:#c5d4e7}.btn.subtle:hover{background:#182740}.btn.subtle.active{border-color:var(--buy);background:#103332;color:#b6ffeb;box-shadow:inset 0 0 0 1px #48d6ad33}.coverage-summary{grid-column:1/-1;color:var(--muted);font-size:12px;line-height:1.5;border-top:1px solid var(--border);padding-top:9px}.research-grid .plot{height:350px}.research-grid .plot.profile{height:350px}
+@media(max-width:1050px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.chartgrid{grid-template-columns:1fr}.chartcard.full{grid-column:auto}.notes{grid-template-columns:1fr}.top{flex-direction:column}.stamp{min-width:0}.toolbar{grid-template-columns:1fr}}
+@media(max-width:560px){.wrap{padding:14px 10px 26px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.controls{gap:8px}.control{min-width:calc(50% - 6px);flex:1}.threshold,.import-control{min-width:100%}.control input[type=file]{max-width:100%;width:100%}.plot{height:300px}.plot.tall{height:370px}.plot.profile{height:340px}}
+
+/* Interactive Pro chart studio */
+.studio{background:linear-gradient(145deg,rgba(16,26,44,.97),rgba(10,17,29,.97));border:1px solid #2a3c56;border-radius:16px;padding:15px;margin:0 0 16px;box-shadow:0 14px 36px #0002}
+.studio-topline{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:13px}.studio-caption{font-size:12px;color:var(--muted);margin-top:3px}.studio-actions{display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end}.studio-controls{display:flex;flex-wrap:wrap;align-items:end;gap:10px;padding:12px;border:1px solid var(--border);border-radius:11px;background:#0a1322}.studio-controls .control{min-width:125px}.studio-toggles{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-height:38px;flex:1 1 350px}.studio-toggle{display:flex;gap:6px;align-items:center;border:1px solid #2c3d56;background:#101b2c;border-radius:8px;padding:8px 10px;color:#cbd7e7;font-size:12px;white-space:nowrap;cursor:pointer}.studio-toggle input{accent-color:var(--buy)}
+.panel-picker-row{display:flex;gap:12px;align-items:flex-start;margin:12px 0}.panel-picker-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:800;padding-top:7px;white-space:nowrap}.panel-picker{display:flex;flex-wrap:wrap;gap:6px}.panel-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #2b3b52;border-radius:999px;padding:5px 9px;background:#0b1422;color:#c4d2e4;font-size:11px;cursor:pointer;max-width:100%}.panel-chip input{accent-color:var(--buy)}.panel-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
+.replay-box{margin-top:12px;border:1px solid #2b3b52;border-radius:12px;padding:12px;background:linear-gradient(110deg,#0b1625,#101a2a)}.replay-head{display:flex;justify-content:space-between;align-items:center;gap:12px}.focus-time{font-size:14px;font-weight:800;color:var(--gold);margin-top:2px;font-variant-numeric:tabular-nums}.replay-buttons{display:flex;align-items:end;gap:7px;flex-wrap:wrap}.icon-btn{min-width:38px;padding:8px 10px}.speed-control{min-width:85px}.time-scrubber{display:block;width:100%;margin:14px 0 12px;accent-color:var(--gold);cursor:pointer}.time-scrubber:disabled{opacity:.4;cursor:not-allowed}.focus-metrics{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px}.focus-metrics>div{min-width:0;border:1px solid #253650;border-radius:9px;padding:9px 10px;background:#0a1320}.focus-metrics span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}.focus-metrics strong{display:block;font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.focus-footnote{color:#7386a0;font-size:10px;line-height:1.45;margin-top:9px}
+.chartgrid.studio-cols-1,.research-grid.studio-cols-1{grid-template-columns:minmax(0,1fr)}.chartgrid.studio-cols-2,.research-grid.studio-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.chartgrid.studio-cols-3,.research-grid.studio-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.chartcard{position:relative;transition:border-color .15s,box-shadow .15s}.chartcard.dragging{opacity:.45;border-color:var(--gold)}.chartcard.drop-target{outline:2px dashed var(--buy);outline-offset:2px}.chartcard.panel-hidden{display:none!important}.charttitle{flex-wrap:wrap}.panel-actions{display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-left:auto;flex-shrink:0}.panel-action{border:1px solid #2c3f59;color:#b8c8db;background:#101a2b;border-radius:6px;font-size:10px;line-height:1;padding:5px 7px;min-height:25px;cursor:pointer}.panel-action:hover{border-color:var(--buy);color:#dcfff5}.panel-action.drag-grip{cursor:grab;font-size:13px;letter-spacing:-2px;padding:4px 8px}.panel-action.drag-grip:active{cursor:grabbing}.chartcard.is-maximized{position:fixed!important;inset:12px!important;z-index:9999!important;width:auto!important;height:auto!important;max-width:none!important;max-height:none!important;overflow:auto!important;display:flex!important;flex-direction:column!important;background:#0b1220!important;border-color:#506886!important;box-shadow:0 30px 100px #000c!important;padding:14px!important}.chartcard.is-maximized .charttitle{flex-shrink:0}.chartcard.is-maximized .plot{height:calc(100vh - 135px)!important;min-height:320px;flex:1}.chartcard.is-maximized .panel-action[data-action="hide"]{display:none}body.has-maximized-panel{overflow:hidden}.density-compact .plot:not(.tall):not(.profile){height:245px}.density-compact .plot.tall{height:370px}.density-compact .plot.profile{height:270px}.density-large .plot:not(.tall):not(.profile){height:430px}.density-large .plot.tall{height:590px}.density-large .plot.profile{height:470px}
+@media(max-width:1180px){.focus-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}.chartgrid.studio-cols-3,.research-grid.studio-cols-3{grid-template-columns:repeat(2,minmax(0,1fr))}.studio-topline{flex-direction:column}.studio-actions{justify-content:flex-start}}
+@media(max-width:1050px){.chartgrid.studio-cols-2,.chartgrid.studio-cols-3,.research-grid.studio-cols-2,.research-grid.studio-cols-3{grid-template-columns:minmax(0,1fr)!important}.chartcard.full{grid-column:auto}}
+@media(max-width:650px){.studio{padding:10px}.studio-controls{padding:9px}.studio-controls .control{min-width:calc(50% - 6px)}.studio-toggles{flex-basis:100%}.studio-toggle{flex:1 1 42%}.panel-picker-row{display:block}.panel-picker-title{margin-bottom:7px}.replay-head{align-items:flex-start;flex-direction:column}.replay-buttons{width:100%}.focus-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.focus-metrics>div:last-child{grid-column:auto}.panel-chip span{max-width:160px}.studio-actions .btn{flex:1 1 auto}.panel-actions{width:100%;justify-content:flex-start}.chartcard.is-maximized{inset:4px!important;padding:8px!important}.chartcard.is-maximized .plot{height:calc(100vh - 155px)!important}}
+
+
+/* Intuitive guided workflow */
+.guided-home{background:linear-gradient(140deg,#111d31 0%,#0c1422 100%);border:1px solid #2d4260;border-radius:18px;padding:18px;margin:0 0 14px;box-shadow:0 16px 40px #0002}
+.guided-head{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(360px,.95fr);gap:22px;align-items:center}.guided-head h2{font-size:22px;line-height:1.2;margin:5px 0 8px;letter-spacing:-.025em}.guided-head p{max-width:660px;color:#9eb0c7;margin:0;font-size:13px}.guided-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.guided-steps>div{display:flex;align-items:flex-start;gap:8px;background:#0a1321;border:1px solid #243650;padding:10px;border-radius:11px;min-width:0}.guided-steps>div>b{display:grid;place-items:center;width:23px;height:23px;flex:0 0 23px;background:#183a40;color:#72edc7;border-radius:8px;font-size:11px}.guided-steps strong,.guided-steps small{display:block}.guided-steps strong{font-size:11px;color:#e6eef9}.guided-steps small{font-size:10px;line-height:1.35;color:#8195af;margin-top:3px}
+.question-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin-top:15px}.question-card{display:flex;align-items:flex-start;gap:9px;text-align:left;min-width:0;position:relative;padding:12px 11px;border:1px solid #293c57;border-radius:12px;background:#0b1422;color:var(--text);cursor:pointer;transition:transform .14s,border-color .14s,background .14s;min-height:108px}.question-card:hover{transform:translateY(-2px);border-color:#6385b0;background:#101e31}.question-card[aria-pressed="true"]{border-color:#48d6ad;background:linear-gradient(145deg,#102b30,#102033);box-shadow:inset 0 0 0 1px #48d6ad44}.question-icon{display:grid;place-items:center;flex:0 0 29px;width:29px;height:29px;border-radius:9px;background:#123c37;color:#71e9c2;font-size:20px;font-weight:800}.question-icon.purple{background:#282340;color:#bcb0ff}.question-icon.gold{background:#342c1a;color:#f3c969}.question-icon.blue{background:#172d46;color:#88b8ff}.question-icon.green{background:#17382c;color:#7de5ad}.question-copy{display:block;min-width:0;flex:1}.question-copy strong{display:block;font-size:12px;line-height:1.3;margin:1px 0 6px}.question-copy small{display:block;color:#8fa2bb;font-size:10px;line-height:1.45}.question-arrow{position:absolute;right:10px;bottom:7px;color:#5a7595;font-size:16px}.question-card[aria-pressed="true"] .question-arrow{color:#48d6ad}.guided-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #22344d;margin-top:13px;padding-top:11px}.guided-footer>div{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}.guided-footer strong{font-size:11px;color:#cfe6e7}.guided-footer #activeQuestionHint{font-size:11px;color:#8fa2bb}.active-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--buy);box-shadow:0 0 0 4px #48d6ad16;flex:0 0 auto}.advanced-toggle{white-space:nowrap;flex:0 0 auto}.advanced-control{display:none!important}body.show-advanced .advanced-control{display:flex!important}.focus-insight{display:flex;align-items:flex-start;gap:10px;border:1px solid #2c4561;background:linear-gradient(100deg,#101f31,#0d1726);border-radius:10px;padding:10px 12px;margin-top:10px}.insight-spark{display:grid;place-items:center;flex:0 0 25px;width:25px;height:25px;border-radius:8px;background:#203146;color:var(--gold);font-size:15px}.focus-insight strong{font-size:12px;color:#dce8f7}.focus-insight p{font-size:11px;line-height:1.45;color:#9eb1ca;margin:3px 0 0}.chart-howto{margin:0 0 5px;color:#8195ad;font-size:10px}.chart-howto summary{display:inline-flex;align-items:center;gap:5px;cursor:pointer;list-style:none;border:1px solid #263750;border-radius:6px;background:#0a1422;padding:4px 7px;color:#9fb5d0;font-size:10px;user-select:none}.chart-howto summary::-webkit-details-marker{display:none}.chart-howto summary:before{content:'?';display:inline-grid;place-items:center;width:13px;height:13px;border-radius:50%;background:#1b3049;color:#c7dcf5;font-size:9px;font-weight:800}.chart-howto[open]{background:#0b1523;border:1px solid #263750;border-radius:8px;padding:7px 8px 8px;margin-bottom:8px}.chart-howto[open] summary{margin-bottom:6px}.chart-howto p{margin:0;color:#a2b3c8;font-size:11px;line-height:1.5;max-width:900px}.charttitle strong{line-height:1.3}.controls input[type=file]{padding:7px;background:#0b1422;border:1px dashed #314762;border-radius:8px;color:#b2c3d8;font-size:11px;max-width:100%}.controls input[type=date],.controls input[type=time],.controls select{cursor:pointer}
+@media(max-width:1200px){.guided-head{grid-template-columns:1fr}.question-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.guided-steps{max-width:none}}
+@media(max-width:760px){.guided-home{padding:12px}.guided-head h2{font-size:20px}.question-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.question-card{min-height:105px;padding:10px 9px}.question-card-all{grid-column:1/-1;min-height:75px}.guided-steps{grid-template-columns:1fr}.guided-steps>div{align-items:center}.guided-footer{align-items:flex-start;flex-direction:column}.guided-footer>div{align-items:flex-start}.guided-footer #activeQuestionHint{width:100%;padding-left:15px}.advanced-toggle{width:100%}}
+@media(prefers-reduced-motion:reduce){.question-card{transition:none}.question-card:hover{transform:none}}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Trade tape → structure → response</div>
+      <h1>BTCUSD <span style="color:var(--buy)">Market Mechanics Lab</span> <span class="tag">Deep Audit</span></h1>
+      <div class="sub">Explore executed flow, price location, trade size, session regimes and flow-to-return response across dates. Arrange charts to fit your question, scrub a linked time cursor, replay the tape, and save reusable data and view presets. This is a trade-print microscope, not an order-book reconstruction.</div>
+    </div>
+    <div class="stamp"><strong id="stampDate">2026-09-01</strong><span id="stampRows">314,107 trade prints · one day</span></div>
+  </header>
+
+  <section class="guided-home" aria-label="Guided exploration">
+    <div class="guided-head">
+      <div>
+        <div class="eyebrow">START WITH A QUESTION</div>
+        <h2>What do you want to understand?</h2>
+        <p>Choose a research path. The dashboard will arrange the most useful charts for that question. You can change anything later.</p>
+      </div>
+      <div class="guided-steps" aria-label="Suggested workflow">
+        <div><b>1</b><span><strong>Load data</strong><small>Add more dates when you need them</small></span></div>
+        <div><b>2</b><span><strong>Choose a question</strong><small>Start with a focused chart set</small></span></div>
+        <div><b>3</b><span><strong>Inspect a moment</strong><small>Click a chart, then scrub or replay</small></span></div>
+      </div>
+    </div>
+    <div class="question-grid" id="questionModes" role="group" aria-label="Choose a research path">
+      <button class="question-card" type="button" data-question-mode="price-flow" aria-pressed="false">
+        <span class="question-icon" aria-hidden="true">↗</span><span class="question-copy"><strong>Follow price + flow</strong><small>Start here: price, buying/selling pressure and cumulative delta.</small></span><span class="question-arrow" aria-hidden="true">→</span>
+      </button>
+      <button class="question-card" type="button" data-question-mode="large-trades" aria-pressed="false">
+        <span class="question-icon purple" aria-hidden="true">◉</span><span class="question-copy"><strong>Inspect large trades</strong><small>Find unusually large prints and what price did afterward.</small></span><span class="question-arrow" aria-hidden="true">→</span>
+      </button>
+      <button class="question-card" type="button" data-question-mode="price-zones" aria-pressed="false">
+        <span class="question-icon gold" aria-hidden="true">▤</span><span class="question-copy"><strong>Find active price zones</strong><small>See where executions clustered and when activity peaked.</small></span><span class="question-arrow" aria-hidden="true">→</span>
+      </button>
+      <button class="question-card" type="button" data-question-mode="flow-test" aria-pressed="false">
+        <span class="question-icon blue" aria-hidden="true">⌁</span><span class="question-copy"><strong>Test flow vs returns</strong><small>Explore lead/lag relationships and hourly market states.</small></span><span class="question-arrow" aria-hidden="true">→</span>
+      </button>
+      <button class="question-card question-card-all" type="button" data-question-mode="full-lab" aria-pressed="false">
+        <span class="question-icon green" aria-hidden="true">▦</span><span class="question-copy"><strong>Full research lab</strong><small>Show all nine chart panels for broad exploration.</small></span><span class="question-arrow" aria-hidden="true">→</span>
+      </button>
+    </div>
+    <div class="guided-footer">
+      <div><span class="active-dot" aria-hidden="true"></span><strong id="activeQuestionLabel">Active view: Follow price + flow</strong><span id="activeQuestionHint">A focused starting point. Use “Visible panels” to add more charts at any time.</span></div>
+      <button class="btn subtle" id="toggleAdvanced" type="button" aria-expanded="false">Show advanced filters <span aria-hidden="true">⌄</span></button>
+    </div>
+  </section>
+
+  <section class="controls" aria-label="Dashboard controls">
+    <div class="control date-control"><label for="startDate">Start date</label><input id="startDate" type="date" value="2026-09-01" /></div>
+    <div class="control date-control"><label for="endDate">End date</label><input id="endDate" type="date" value="2026-09-01" /></div>
+    <div class="control import-control"><label for="tradeFiles">Add trade files (.CSV / .ZIP)</label><input id="tradeFiles" type="file" multiple accept=".csv,.zip,text/csv,application/zip" /></div>
+    <div class="control"><label for="tf">Bar interval</label><select id="tf"><option value="10s">10 seconds</option><option value="1m" selected>1 minute</option><option value="5m">5 minutes</option><option value="15m">15 minutes</option><option value="1h">1 hour</option></select></div>
+    <div class="control advanced-control"><label for="start">From time</label><input id="start" type="time" value="00:00" step="60" /></div>
+    <div class="control advanced-control"><label for="end">To time</label><input id="end" type="time" value="23:59" step="60" /></div>
+    <div class="control threshold advanced-control"><label for="threshold">Mark trades above <span class="tag">size units</span></label><input id="threshold" type="range" min="220" max="8500" step="10" value="672"/><div class="rangeval"><span>220 · stored-event floor</span><strong id="thresholdValue">672</strong><span>8,539 · max</span></div></div>
+    <div class="control advanced-control"><label for="profileBin">Price bucket width</label><select id="profileBin"><option value="5">$5</option><option value="10" selected>$10</option><option value="25">$25</option><option value="50">$50</option><option value="100">$100</option></select></div>
+    <div class="control advanced-control"><label for="smooth">Smooth flow over</label><select id="smooth"><option value="3">3 bars</option><option value="10" selected>10 bars</option><option value="30">30 bars</option></select></div>
+    <div class="control advanced-control"><label for="flowLookback">Lead/lag flow lookback</label><select id="flowLookback"><option value="1">1 minute</option><option value="5" selected>5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option></select></div>
+    <button class="btn subtle" id="reset" title="Return the date range, interval and research filters to their defaults">Reset filters</button>
+    <div id="status" class="status"></div>
+    <div id="dataStatus" class="data-status">Loaded data: 2026-09-01 only. Import additional CSV/ZIP trade files to unlock multi-day analysis.</div>
+  </section>
+
+  <section class="toolbar" aria-label="Quick ranges and data tools">
+    <div class="toolbar-block">
+      <div class="toolbar-label">Quick range <span>counts loaded dates, not calendar days</span></div>
+      <div class="quick-buttons">
+        <button class="btn subtle active" data-range="1" type="button">Latest day</button>
+        <button class="btn subtle" data-range="3" type="button">Last 3 days</button>
+        <button class="btn subtle" data-range="7" type="button">Last 7 days</button>
+        <button class="btn subtle" data-range="all" type="button">All loaded</button>
+      </div>
+    </div>
+    <div class="toolbar-block">
+      <div class="toolbar-label">Export and workspace</div>
+      <div class="quick-buttons">
+        <button class="btn subtle" id="importFolder" type="button">Import folder</button>
+        <input id="tradeFolder" type="file" webkitdirectory directory multiple accept=".csv,.zip,text/csv,application/zip" hidden />
+        <button class="btn subtle" id="exportBars" type="button">Export bars CSV</button>
+        <button class="btn subtle" id="exportEvents" type="button">Export large trades CSV</button>
+        <button class="btn" id="saveWorkspace" type="button">Save data workspace</button>
+        <button class="btn subtle" id="loadWorkspace" type="button">Load data workspace</button>
+        <input id="workspaceFile" type="file" accept=".json,.gz,.json.gz,application/json,application/gzip" hidden />
+      </div>
+    </div>
+    <div class="coverage-summary" id="coverageSummary">Coverage summary appears after data is loaded.</div>
+  </section>
+
+  <section class="studio" id="chartStudio" aria-label="Interactive chart studio">
+    <div class="studio-topline">
+      <div>
+        <div class="toolbar-label">Chart Studio <span>Customize the workspace, then click any time-series chart to inspect that moment</span></div>
+        <div class="studio-caption">Drag panels by their grip, hide views you do not need, or expand a chart into a full-screen workbench.</div>
+      </div>
+      <div class="studio-actions">
+        <button class="btn subtle" id="saveViewPreset" type="button">Save chart layout</button>
+        <button class="btn subtle" id="loadViewPreset" type="button">Load chart layout</button>
+        <input id="viewPresetFile" type="file" accept=".json,application/json" hidden />
+        <button class="btn subtle" id="resetStudio" type="button">Reset chart layout</button>
+      </div>
+    </div>
+    <div class="studio-controls">
+      <div class="control"><label for="panelLayout">Panel grid</label><select id="panelLayout"><option value="2" selected>Two columns</option><option value="1">Single column</option><option value="3">Three columns</option></select></div>
+      <div class="control"><label for="chartDensity">Chart height</label><select id="chartDensity"><option value="compact">Compact</option><option value="standard" selected>Standard</option><option value="large">Large</option></select></div>
+      <div class="control"><label for="priceStyle">Price rendering</label><select id="priceStyle"><option value="candles" selected>Candlesticks</option><option value="line">Close line</option></select></div>
+      <div class="control"><label for="priceScale">Price scale</label><select id="priceScale"><option value="linear" selected>Linear</option><option value="log">Logarithmic</option></select></div>
+      <div class="studio-toggles">
+        <label class="studio-toggle"><input id="showLarge" type="checkbox" checked /> Large-trade markers</label>
+        <label class="studio-toggle"><input id="showEMA20" type="checkbox" /> EMA 20</label>
+        <label class="studio-toggle"><input id="showEMA50" type="checkbox" /> EMA 50</label>
+        <label class="studio-toggle"><input id="showVWAP" type="checkbox" /> Trade-weighted price</label>
+      </div>
+    </div>
+    <div class="panel-picker-row">
+      <div class="panel-picker-title">Visible panels</div>
+      <div id="panelVisibility" class="panel-picker" aria-label="Show or hide chart panels"></div>
+    </div>
+    <div class="replay-box">
+      <div class="replay-head">
+        <div>
+          <div class="toolbar-label">Linked time cursor <span>1-minute tape index, clipped to the selected date/time window</span></div>
+          <div id="focusAtTime" class="focus-time">Choose a time by clicking a chart or moving the cursor.</div>
+        </div>
+        <div class="replay-buttons">
+          <button class="btn subtle icon-btn" id="focusPrev" title="Previous bar" aria-label="Previous bar" type="button">◀</button>
+          <button class="btn" id="focusPlay" type="button">▶ Play</button>
+          <button class="btn subtle icon-btn" id="focusNext" title="Next bar" aria-label="Next bar" type="button">▶|</button>
+          <div class="control speed-control"><label for="replaySpeed">Replay speed</label><select id="replaySpeed"><option value="1">1×</option><option value="4" selected>4×</option><option value="12">12×</option></select></div>
+        </div>
+      </div>
+      <input id="timeFocus" class="time-scrubber" type="range" min="0" max="0" step="1" value="0" aria-label="Inspect time in selected window" disabled />
+      <div class="focus-metrics">
+        <div><span>Close</span><strong id="focusPrice">…</strong></div>
+        <div><span>High / low</span><strong id="focusHighLow">…</strong></div>
+        <div><span>Prints</span><strong id="focusPrints">…</strong></div>
+        <div><span>Executed size</span><strong id="focusSize">…</strong></div>
+        <div><span>Flow imbalance</span><strong id="focusFlow">…</strong></div>
+        <div><span>Forward +5m</span><strong id="focusReturn5">…</strong></div>
+        <div><span>Forward +15m</span><strong id="focusReturn15">…</strong></div>
+      </div>
+      <div class="focus-insight" id="focusInsight" aria-live="polite"><span class="insight-spark" aria-hidden="true">✳</span><div><strong id="focusInsightTitle">Reading the tape</strong><p id="focusInsightText">Move the cursor to compare the last five minutes of price change with the signed-flow proxy. This is a descriptive hint, not a trade signal.</p></div></div>
+      <div class="focus-footnote">Click a bar in Price, Executed Flow or CVD to jump the cursor. Large-trade forward returns use the first recorded trade at or after each horizon only when it is within 30 seconds. Timestamps without a timezone are assumed UTC; explicit offsets are normalized to UTC.</div>
+    </div>
+  </section>
+
+  <section class="kpis" aria-label="Selected window metrics">
+    <div class="kpi"><div class="label">Window return</div><div id="kReturn" class="value">…</div><div id="kReturnHint" class="hint">first open → last close</div></div>
+    <div class="kpi"><div class="label">Price span</div><div id="kRange" class="value">…</div><div id="kRangeHint" class="hint">high to low</div></div>
+    <div class="kpi"><div class="label">Trade prints</div><div id="kTrades" class="value">…</div><div id="kTradesHint" class="hint">in selected window</div></div>
+    <div class="kpi"><div class="label">Executed size</div><div id="kSize" class="value">…</div><div id="kSizeHint" class="hint">size units, not assumed USD</div></div>
+    <div class="kpi"><div class="label">Net signed flow</div><div id="kDelta" class="value">…</div><div id="kDeltaHint" class="hint">buy-side proxy − sell-side proxy</div></div>
+    <div class="kpi"><div class="label">Flow imbalance</div><div id="kImb" class="value">…</div><div id="kImbHint" class="hint">net signed size / total size</div></div>
+  </section>
+
+  <div class="sectionhead"><div><h2>01 / Price path with large-print footprints</h2><p>Zoom, pan, and use the range slider. Long windows are grouped for speed; chart totals are preserved and exports keep raw bars.</p></div><span class="tag" id="priceBadge">1-minute bars</span></div>
+  <div class="chartgrid">
+    <div class="chartcard full"><div class="charttitle"><strong>Price structure + large executions</strong><span>▲ buyer was taker · ▼ buyer was maker (sell-aggressor proxy)</span></div><div id="priceChart" class="plot tall"></div></div>
+    <div class="chartcard"><div class="charttitle"><strong>02 / Executed flow + rolling imbalance</strong><span>Bars: buy-side proxy above zero, sell-side proxy below</span></div><div id="flowChart" class="plot"></div></div>
+    <div class="chartcard"><div class="charttitle"><strong>03 / Cumulative volume delta (CVD)</strong><span>Starts at zero for the selected window</span></div><div id="cvdChart" class="plot"></div></div>
+    <div class="chartcard"><div class="charttitle"><strong>04 / Volume-at-price profile</strong><span>Length = executed size · color = signed flow</span></div><div id="profileChart" class="plot profile"></div></div>
+    <div class="chartcard"><div class="charttitle"><strong>05 / Trade-size distribution</strong><span>Count of prints in each size bucket</span></div><div id="sizeChart" class="plot profile"></div></div>
+    <div class="chartcard"><div class="charttitle"><strong>06 / Activity by hour</strong><span>Trade count with net signed flow overlay</span></div><div id="hourChart" class="plot"></div></div>
+    <div class="chartcard"><div class="charttitle"><strong>07 / Large-print follow-through</strong><span>Median return from execution to first trade at/after horizon</span></div><div id="eventChart" class="plot"></div></div>
+  </div>
+
+  <div class="sectionhead" id="researchSectionHead"><div><h2>08 / Flow lead-lag and hourly market states</h2><p>Research views for testing whether executed flow leads returns and how activity differs by hour. Correlation is descriptive, not causal.</p></div><span class="tag">Research view</span></div>
+  <div class="chartgrid research-grid">
+    <div class="chartcard"><div class="charttitle"><strong>Flow imbalance vs price-return horizon</strong><span id="leadLagMeta">Uses trailing 5-minute signed-size imbalance</span></div><div id="leadLagChart" class="plot"></div></div>
+    <div class="chartcard"><div class="charttitle"><strong>Hourly regime map</strong><span id="regimeMeta">Color = signed-flow imbalance</span></div><div id="regimeChart" class="plot profile"></div></div>
+  </div>
+
+  <section class="notes">
+    <div class="note"><h3>Accuracy checks applied</h3>
+      <p><span class="tag">Validated</span> CSV quoting, calendar timestamps, positive prices and sizes, known maker/taker labels, and BTCUSD symbol consistency (when the symbol column is present). Invalid rows now reject the import instead of silently becoming sell-side flow.</p>
+      <p><span class="tag">Gap-aware</span> Minute-flow correlations include only exact adjacent 60-second pairs; lead/lag lookbacks require complete contiguous minutes and exact forward endpoints; compressed candles split at detected missing intervals; hourly activity uses a real time axis.</p>
+      <p><span class="tag">Indicators</span> EMA overlays warm up on preceding loaded bars and restart after detected gaps. The price overlay uses exact trade-price × size sums divided by summed size for the embedded data and newly imported trade files. Legacy workspaces without those sums use an HLC3-weighted proxy, clearly labelled. This is not guaranteed to match exchange-defined VWAP until the size unit is verified.</p><p><span class="tag">Forward samples</span> Large-trade outcomes use the first trade at or after the target horizon only when it is within 30 seconds. The dashboard does not present a weighted average of daily medians as a pooled median. Use per-day size distributions when an exact pooled quantile is required.</p>
+    </div>
+    <div class="note"><h3>How to read this tape</h3>
+      <p><span class="tag">Observed</span> Price, trade size, execution timestamps, trade counts and the supplied buyer-role label.</p>
+      <p><span class="tag">Derived</span> Flow signs, cumulative delta, imbalance, price bins and forward trade-price responses. These depend on the assumptions below.</p>
+      <ul><li><b>Role-to-side assumption:</b> <code>buyer_role=taker</code> is treated as buyer-initiated flow; <code>buyer_role=maker</code> as a sell-aggressor proxy. Verify this field's exchange-specific definition before using it for signals.</li><li><b>Size units:</b> preserved as supplied. The file does not define the contract multiplier, so size is not relabeled as BTC or USD notional.</li><li><b>Follow-through:</b> uses the first recorded trade at or after +1m, +5m and +15m, compared with the event's execution price. It is not a quote-mid impact measure.</li></ul>
+    </div>
+    <div class="note"><h3>What this file cannot reveal</h3>
+      <p>There is no order-book depth, best bid/ask, spread, queue position, cancellation feed or liquidation flag. Large executions can hint at aggressive activity, but they cannot prove that resting liquidity was thin or that a stop cascade occurred.</p>
+      <p>The archive filename says “monthly,” but its rows cover <b>September 1, 2026 only</b>. The original timestamps have no timezone metadata. Unzoned values are interpreted as UTC coordinates; explicit timezone offsets are normalized to UTC. Treat this as an assumption until the source's timezone convention is confirmed.</p>
+      <p id="dataInsight"></p>
+    </div>
+  </section>
+  <div class="fineprint">Local interactive report · all calculations run in this file · Plotly visualization library embedded · no data is uploaded anywhere.</div>
+</div>
+<script>
+const DATA = {"metrics":{"date":"2026-09-01","row_count":0,"start_time":"00:00:00","end_time":"23:59:59","start_price":0,"end_price":0,"return_pct":0,"low":0,"high":0,"range_pct":0,"total_size":0,"buy_size":0,"sell_size":0,"delta":0,"imbalance_pct":0,"median_size":0,"p90":0,"p95":0,"p99":0,"max_size":0,"active_seconds_pct":0,"minute_flow_return_corr":0},"bars":{"10s":{"t":[],"o":[],"h":[],"l":[],"c":[],"v":[],"n":[],"b":[],"s":[],"d":[],"pv":[]},"1m":{"t":[],"o":[],"h":[],"l":[],"c":[],"v":[],"n":[],"b":[],"s":[],"d":[],"pv":[]},"5m":{"t":[],"o":[],"h":[],"l":[],"c":[],"v":[],"n":[],"b":[],"s":[],"d":[],"pv":[]},"15m":{"t":[],"o":[],"h":[],"l":[],"c":[],"v":[],"n":[],"b":[],"s":[],"d":[],"pv":[]},"1h":{"t":[],"o":[],"h":[],"l":[],"c":[],"v":[],"n":[],"b":[],"s":[],"d":[],"pv":[]}},"profile":{"m":[],"p":[],"v":[],"d":[]},"hist":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"hist_labels":["1–9","10–24","25–49","50–99","100–219","220–671","672–999","1k–1.9k","2k+"],"events":{"t":[],"p":[],"s":[],"r":[],"r1":[],"r5":[],"r15":[]}};
+</script>
+<script src="https://cdn.plot.ly/plotly-3.3.1.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+let M = DATA.metrics, B = DATA.bars, E = DATA.events, P = DATA.profile, HIST = DATA.hist, HIST_LABELS = DATA.hist_labels, HIST_DATES=[DATA.metrics.date];
+let BASE = Date.UTC(2026,8,1,0,0,0);
+const DAYS = new Map([[DATA.metrics.date, DATA]]);
+const BAR_STEPS = {'10s':10,'1m':60,'5m':300,'15m':900,'1h':3600};
+const HIST_BUCKETS = [9,24,49,99,219,671,999,1999,Infinity];
+let focusIndices=[], focusTimeSec=null, replayHandle=null, draggedPanel=null, focusLineTimer=null, pendingFocusLineTime=null;
+// Performance caches are invalidated whenever combined data is rebuilt.
+const MAX_RENDER_POINTS=3200; let subsetCache=new Map(), leadPrefixSource=null, leadPrefixD=null, leadPrefixV=null;
+let refreshTimer=null, refreshRequestId=0;
+const dateEpoch = date => {const a=String(date).slice(0,10).split('-').map(Number);return Date.UTC(a[0],a[1]-1,a[2]);};
+const dateOffset = date => (dateEpoch(date)-BASE)/1000;
+const isoDate = ms => new Date(ms).toISOString().slice(0,10);
+const selectedDates = () => ({start:$('startDate').value || isoDate(BASE),end:$('endDate').value || isoDate(BASE)});
+function getWindow(){const d=selectedDates();const s=dateOffset(d.start)+minuteOf($('start').value);const e=dateOffset(d.end)+minuteOf($('end').value)+59.999;return {s,e};}
+function updateDateBounds(resetRange=false){
+ const dates=[...DAYS.keys()].sort();if(!dates.length)return;const lo=dates[0],hi=dates[dates.length-1];
+ for(const id of ['startDate','endDate']){$(id).min=lo;$(id).max=hi;}
+ if(resetRange||!$('startDate').value||$('startDate').value<lo||$('startDate').value>hi)$('startDate').value=lo;
+ if(resetRange||!$('endDate').value||$('endDate').value<lo||$('endDate').value>hi)$('endDate').value=hi;
+ if($('startDate').value>$('endDate').value)$('startDate').value=$('endDate').value;
+}
+function rebuildCombined(){
+ const dates=[...DAYS.keys()].sort();if(!dates.length)return;
+ BASE=dateEpoch(dates[0]);
+ const bars={};for(const tf of Object.keys(BAR_STEPS)){bars[tf]={t:[],o:[],h:[],l:[],c:[],v:[],n:[],b:[],s:[],d:[],pv:[]};}
+ const profile={m:[],p:[],v:[],d:[]},events={t:[],p:[],s:[],r:[],r1:[],r5:[],r15:[]};const hist=new Float32Array(dates.length*1440*DATA.hist_labels.length);
+ let rowCount=0,total=0,buy=0,sell=0,high=-Infinity,low=Infinity,maxSize=0,firstPrice=null,lastPrice=null;
+ for(let dayIndex=0;dayIndex<dates.length;dayIndex++){const date=dates[dayIndex],day=DAYS.get(date);const off=dateOffset(date);const dm=day.metrics||{};rowCount+=Number(dm.row_count||0);total+=Number(dm.total_size||0);buy+=Number(dm.buy_size||0);sell+=Number(dm.sell_size||0);high=Math.max(high,Number(dm.high||-Infinity));low=Math.min(low,Number(dm.low||Infinity));maxSize=Math.max(maxSize,Number(dm.max_size||0));
+  if(firstPrice===null)firstPrice=Number(dm.start_price||day.bars['1m'].o.find(v=>v!==null));lastPrice=Number(dm.end_price||day.bars['1m'].c.filter(v=>v!==null).slice(-1)[0]);
+  for(const tf of Object.keys(BAR_STEPS)){const a=day.bars[tf],z=bars[tf];for(let i=0;i<a.t.length;i++){z.t.push(Number(a.t[i])+off);for(const k of ['o','h','l','c','v','n','b','s','d'])z[k].push(a[k][i]);z.pv.push(a.pv&&a.pv.length===a.t.length&&a.pv[i]!==null&&a.pv[i]!==undefined?Number(a.pv[i]):null);}}
+  const pp=day.profile;for(let i=0;i<pp.m.length;i++){profile.m.push(Number(pp.m[i])+off/60);profile.p.push(pp.p[i]);profile.v.push(pp.v[i]);profile.d.push(pp.d[i]);}
+  const ee=day.events;for(let i=0;i<ee.t.length;i++){events.t.push(Number(ee.t[i])+off);for(const k of ['p','s','r','r1','r5','r15'])events[k].push(ee[k][i]);}
+  const histOffset=dayIndex*1440*DATA.hist_labels.length;for(let hi=0;hi<day.hist.length;hi++)hist[histOffset+hi]=day.hist[hi];
+ }
+ B=bars;P=profile;E=events;HIST=hist;HIST_DATES=dates.slice();subsetCache.clear();leadPrefixSource=null;leadPrefixD=null;leadPrefixV=null;
+ const delta=buy-sell, datesSpan=dates.length===1?dates[0]:dates[0]+' → '+dates[dates.length-1];
+ M={date:datesSpan,row_count:rowCount,total_size:total,buy_size:buy,sell_size:sell,delta,imbalance_pct:total?delta/total*100:0,max_size:maxSize,start_price:firstPrice||0,end_price:lastPrice||0,high:high===-Infinity?0:high,low:low===Infinity?0:low,return_pct:firstPrice?(lastPrice/firstPrice-1)*100:0,range_pct:low>0?(high/low-1)*100:0};
+ const x=B['1m'];let prev=null,prevT=null,arrFlow=[],arrRet=[];for(let i=0;i<x.t.length;i++){if(x.c[i]!==null&&x.o[i]!==null){if(prev!==null&&prev!==0&&x.t[i]>prevT&&x.t[i]-prevT===60){arrFlow.push(Number(x.d[i]||0));arrRet.push((x.c[i]/prev-1)*100);}prev=x.c[i];prevT=x.t[i];}}
+ const n=arrFlow.length, mf=arrFlow.reduce((a,v)=>a+v,0)/Math.max(1,n),mr=arrRet.reduce((a,v)=>a+v,0)/Math.max(1,n);let cv=0,vf=0,vr=0;for(let i=0;i<n;i++){const a=arrFlow[i]-mf,b=arrRet[i]-mr;cv+=a*b;vf+=a*a;vr+=b*b;}M.minute_flow_return_corr=n>=3&&vf&&vr?cv/Math.sqrt(vf*vr):null;M.minute_flow_return_pairs=n;
+ $('stampDate').textContent=datesSpan;$('stampRows').textContent=rowCount?nfmt(rowCount)+' trade prints · '+dates.length+' loaded day'+(dates.length===1?'':'s'):'No trade data loaded';
+ $('threshold').max=Math.max(8500,Math.ceil(maxSize||8500));const maxLabel=$('threshold').parentElement.querySelector('.rangeval span:last-child');if(maxLabel)maxLabel.textContent=nfmt(maxSize||8500)+' · max loaded';
+ $('dataStatus').textContent=rowCount===0?'No trades loaded yet. Choose Import trade data and select your daily CSV or ZIP file.':('Loaded '+dates.length+' date'+(dates.length===1?'':'s')+' ('+dates[0]+' to '+dates[dates.length-1]+'), '+nfmt(rowCount)+' trade prints. Import additional daily CSV or ZIP files to expand the date range); dates already loaded are replaced, not duplicated.';
+ $('dataInsight').textContent=rowCount===0?'No trade data loaded. Import your CSV/ZIP to calculate price, flow, volume profile and follow-through from the actual trades.':('Loaded snapshot: '+signed(M.return_pct,2)+' first-to-last recorded trade-price change); '+nfmt(M.row_count)+' prints; size imbalance '+M.imbalance_pct.toFixed(2)+'% under the buyer-role assumption. The 1-minute contemporaneous correlation between signed flow and close-to-close return is '+(M.minute_flow_return_corr===null?'n/a':M.minute_flow_return_corr.toFixed(2))+' across '+nfmt(M.minute_flow_return_pairs||0)+' exact adjacent-minute pairs; intervals with missing minute bars are excluded. This is descriptive, not proof of predictive edge.';
+ updateDateBounds(false);
+ const coverage=$('coverageSummary');
+ if(coverage){
+   const daySet=new Set(dates);let gaps=[];const first=dateEpoch(dates[0]),last=dateEpoch(dates[dates.length-1]);
+   for(let ms=first+86400000;ms<last;ms+=86400000){const d=isoDate(ms);if(!daySet.has(d))gaps.push(d);}
+   const span=Math.round((last-first)/86400000)+1;
+   let msg=dates.length+' loaded date'+(dates.length===1?'':'s')+' across '+span+' calendar day'+(span===1?'':'s')+'.';
+   if(gaps.length)msg+=' Missing dates: '+gaps.slice(0,6).join(', ')+(gaps.length>6?' and '+(gaps.length-6)+' more':'')+'.';
+   if(dates.length===1)msg+=' Only one date is embedded initially; import more daily CSV/ZIP files or load a saved workspace to compare sessions.';
+   else msg+=' Quick ranges select the most recent loaded sessions, even when calendar dates are missing.';
+   coverage.textContent=msg;
+ }
+}
+function histBucket(size){if(size<=9)return 0;if(size<=24)return 1;if(size<=49)return 2;if(size<=99)return 3;if(size<=219)return 4;if(size<=671)return 5;if(size<=999)return 6;if(size<=1999)return 7;return 8;}
+function parseCsvRow(line){
+ const cells=[];let value='',quoted=false;
+ for(let i=0;i<line.length;i++){
+  const ch=line[i];
+  if(ch==='"'){
+   if(quoted&&line[i+1]==='"'){value+='"';i++;}
+   else quoted=!quoted;
+  }else if(ch===','&&!quoted){cells.push(value);value='';}
+  else value+=ch;
+ }
+ if(quoted)throw new Error('Malformed CSV quoting. Check the source file near the row being imported.');
+ cells.push(value);return cells;
+}
+function parseTradeTimestamp(stamp){
+ const m=/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:?\d{2})?$/i.exec(String(stamp||'').trim());
+ if(!m)throw new Error('Invalid timestamp "'+stamp+'". Expected YYYY-MM-DD HH:MM:SS[.fraction] with an optional timezone.');
+ const date=m[1],ymd=date.split('-').map(Number),h=Number(m[2]),min=Number(m[3]),s=Number(m[4]),frac=m[5]?Number('0.'+m[5]):0,zone=(m[6]||'').toUpperCase();
+ const midnight=Date.UTC(ymd[0],ymd[1]-1,ymd[2]);
+ if(isoDate(midnight)!==date||h>23||min>59||s>59)throw new Error('Invalid calendar date or time "'+stamp+'".');
+ let offset=0;
+ if(zone&&zone!=='Z'){
+  const z=/^([+-])(\d{2}):?(\d{2})$/.exec(zone);if(!z)throw new Error('Invalid timezone offset in "'+stamp+'".');
+  const zh=Number(z[2]),zm=Number(z[3]);if(zh>14||zm>59||(zh===14&&zm!==0))throw new Error('Invalid timezone offset in "'+stamp+'".');
+  offset=(zh*3600+zm*60)*(z[1]==='+'?1:-1);
+ }
+ // Naive timestamps are treated as UTC coordinates; explicit offsets are normalized to UTC.
+ const absolute=midnight/1000+h*3600+min*60+s+frac-offset,dayStart=Math.floor(absolute/86400)*86400;
+ return {date:isoDate(dayStart*1000),sec:absolute-dayStart};
+}
+function aggregateDay(date, rows){
+ rows.sort((a,b)=>a[0]-b[0]);
+ const bars={};for(const tf of Object.keys(BAR_STEPS)){const step=BAR_STEPS[tf],map=new Map();for(const row of rows){const [sec,price,size,role]=row;const t=Math.floor(sec/step)*step;let a=map.get(t);if(!a){a={t,o:price,h:price,l:price,c:price,v:0,n:0,b:0,s:0,d:0,pv:0};map.set(t,a);}a.h=Math.max(a.h,price);a.l=Math.min(a.l,price);a.c=price;a.v+=size;a.pv+=price*size;a.n++;if(role===1)a.b+=size;else a.s+=size;a.d=a.b-a.s;}const vals=[...map.values()].sort((a,b)=>a.t-b.t);const obj={t:[],o:[],h:[],l:[],c:[],v:[],n:[],b:[],s:[],d:[],pv:[]};for(const a of vals)for(const k of Object.keys(obj))obj[k].push(a[k]);bars[tf]=obj;}
+ const prof=new Map(),hist=new Array(1440*9).fill(0),active=new Set(),sizes=[];let total=0,buy=0,sell=0,high=-Infinity,low=Infinity;
+ for(const [sec,price,size,role] of rows){const minute=Math.floor(sec/60),p=Math.floor(price/5),key=minute+'|'+p;let a=prof.get(key);if(!a){a={m:minute,p,v:0,d:0};prof.set(key,a);}a.v+=size;a.d+=role===1?size:-size;hist[minute*9+histBucket(size)]++;active.add(Math.floor(sec));sizes.push(size);total+=size;high=Math.max(high,price);low=Math.min(low,price);if(role===1)buy+=size;else sell+=size;}
+ const sortedSizes=sizes.slice().sort((a,b)=>a-b),quant=q=>sortedSizes.length?sortedSizes[Math.min(sortedSizes.length-1,Math.floor((sortedSizes.length-1)*q))]:0;
+ const first=rows.length?rows[0][1]:0,last=rows.length?rows[rows.length-1][1]:0;
+ const profile={m:[],p:[],v:[],d:[]};for(const a of prof.values())for(const k of Object.keys(profile))profile[k].push(a[k]);
+ const events={t:[],p:[],s:[],r:[],r1:[],r5:[],r15:[]};const horizon=[60,300,900];
+ const lowerBound=(target,lo)=>{let hi=rows.length;while(lo<hi){const mid=(lo+hi)>>1;if(rows[mid][0]<target)lo=mid+1;else hi=mid;}return lo;};
+ for(let i=0;i<rows.length;i++){const [sec,price,size,role]=rows[i];if(size<220)continue;events.t.push(sec);events.p.push(price);events.s.push(size);events.r.push(role);for(let j=0;j<horizon.length;j++){const target=sec+horizon[j],ix=lowerBound(target,i+1),k=['r1','r5','r15'][j],valid=ix<rows.length&&rows[ix][0]-target<=30;events[k].push(valid?(rows[ix][1]/price-1)*100:null);}}
+ const minuteBars=bars['1m'];let prev=null,prevTime=null,flow=[],rets=[];for(let i=0;i<minuteBars.t.length;i++){if(prev!==null&&prev!==0&&minuteBars.t[i]>prevTime&&minuteBars.t[i]-prevTime===60){flow.push(minuteBars.d[i]);rets.push((minuteBars.c[i]/prev-1)*100);}prev=minuteBars.c[i];prevTime=minuteBars.t[i];}const n=flow.length,mf=flow.reduce((a,v)=>a+v,0)/Math.max(1,n),mr=rets.reduce((a,v)=>a+v,0)/Math.max(1,n);let cv=0,vf=0,vr=0;for(let i=0;i<n;i++){let a=flow[i]-mf,b=rets[i]-mr;cv+=a*b;vf+=a*a;vr+=b*b;}
+ const delta=buy-sell;const metrics={date,row_count:rows.length,start_price:first,end_price:last,return_pct:first?(last/first-1)*100:0,low:low===-Infinity?0:low,high:high===-Infinity?0:high,range_pct:low>0?(high/low-1)*100:0,total_size:total,buy_size:buy,sell_size:sell,delta,imbalance_pct:total?delta/total*100:0,median_size:quant(.5),p90:quant(.9),p95:quant(.95),p99:quant(.99),max_size:sortedSizes.length?sortedSizes[sortedSizes.length-1]:0,active_seconds_pct:active.size/86400*100,minute_flow_return_corr:flow.length>=3&&vf&&vr?cv/Math.sqrt(vf*vr):null};
+ return {metrics,bars,profile,hist,hist_labels:DATA.hist_labels,events};
+}
+function parseCsvByDay(text){
+ const result=new Map();let pos=0,lineNo=0,header=null,idx={},currentDate=null,rows=[];
+ const flush=()=>{if(currentDate&&rows.length){result.set(currentDate,aggregateDay(currentDate,rows));rows=[];}};
+ while(pos<text.length){let end=text.indexOf('\n',pos);if(end<0)end=text.length;let line=text.slice(pos,end).replace(/\r$/,'');pos=end+1;if(!line.trim())continue;lineNo++;
+  const a=parseCsvRow(line);
+  if(!header){header=a.map(x=>x.trim().toLowerCase());idx={price:header.indexOf('price'),size:header.indexOf('size'),timestamp:header.indexOf('timestamp'),role:header.indexOf('buyer_role'),product:header.indexOf('product_symbol')};if(idx.price<0||idx.size<0||idx.timestamp<0||idx.role<0)throw new Error('CSV needs price, size, timestamp and buyer_role columns.');continue;}
+  if(a.length<=Math.max(idx.price,idx.size,idx.timestamp,idx.role,idx.product))throw new Error('Malformed CSV row '+lineNo+': one or more required fields are missing.');
+  const stamp=String(a[idx.timestamp]||'').trim();if(!stamp)throw new Error('Missing timestamp at CSV row '+lineNo+'.');
+  const parsed=parseTradeTimestamp(stamp),date=parsed.date,sec=parsed.sec;
+  const price=Number(String(a[idx.price]||'').trim()),size=Number(String(a[idx.size]||'').trim()),roleText=String(a[idx.role]||'').trim().toLowerCase();
+  if(!Number.isFinite(price)||price<=0)throw new Error('Invalid price at CSV row '+lineNo+'. Prices must be positive numbers.');
+  if(!Number.isFinite(size)||size<=0)throw new Error('Invalid size at CSV row '+lineNo+'. Sizes must be positive numbers.');
+  if(roleText!=='taker'&&roleText!=='maker')throw new Error('Unknown buyer_role "'+roleText+'" at CSV row '+lineNo+'. Expected maker or taker; the file was not imported to avoid silently misclassifying flow.');
+  if(idx.product>=0){const symbol=String(a[idx.product]||'').trim().toUpperCase();if(symbol!=='BTCUSD')throw new Error('This dashboard is for BTCUSD, but CSV row '+lineNo+' has product_symbol="'+symbol+'". Mixed or different symbols are not combined.');}
+  const role=roleText==='taker'?1:0;
+  if(currentDate===null)currentDate=date;if(date!==currentDate){flush();if(result.has(date))throw new Error('Rows in '+date+' are not contiguous after timestamp normalization. Please import chronologically sorted trade CSVs.');currentDate=date;}
+  rows.push([sec,price,size,role]);
+ }
+ flush();if(!result.size)throw new Error('No valid trade rows were found in this file.');return result;
+}
+async function zipCsvTexts(file){
+ const buf=await file.arrayBuffer(),u8=new Uint8Array(buf),v=new DataView(buf);let eocd=-1;for(let i=u8.length-22;i>=Math.max(0,u8.length-65557);i--){if(v.getUint32(i,true)===0x06054b50){eocd=i;break;}}if(eocd<0)throw new Error('Could not read ZIP directory in '+file.name);
+ const count=v.getUint16(eocd+10,true);let off=v.getUint32(eocd+16,true);const out=[];
+ for(let n=0;n<count;n++){if(v.getUint32(off,true)!==0x02014b50)break;const method=v.getUint16(off+10,true),compSize=v.getUint32(off+20,true),nameLen=v.getUint16(off+28,true),extraLen=v.getUint16(off+30,true),commentLen=v.getUint16(off+32,true),localOff=v.getUint32(off+42,true);const name=new TextDecoder().decode(u8.slice(off+46,off+46+nameLen));off+=46+nameLen+extraLen+commentLen;if(!name.toLowerCase().endsWith('.csv'))continue;const localName=v.getUint16(localOff+26,true),localExtra=v.getUint16(localOff+28,true),dataOff=localOff+30+localName+localExtra,compressed=u8.slice(dataOff,dataOff+compSize);let txt;if(method===0)txt=new TextDecoder().decode(compressed);else if(method===8&&typeof DecompressionStream!=='undefined'){const stream=new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate-raw'));txt=await new Response(stream).text();}else throw new Error('ZIP compression method not supported in this browser for '+name);out.push({name,text:txt});}
+ if(!out.length)throw new Error('No .csv file found inside '+file.name);return out;
+}
+async function importTradeFiles(files,sourceInputId='tradeFiles'){
+ const input=$(sourceInputId);if(!files.length)return;files=files.filter(f=>/\.(csv|zip)$/i.test(f.name));if(!files.length){$('status').textContent='No .CSV or .ZIP trade files were found in that selection.';input.value='';return;}input.disabled=true;$('dataStatus').textContent='Reading trade files and building multi-day bars. Larger files may take a little while.';$('status').textContent='';
+ try{const incoming=new Map();for(const file of files){let texts;if(file.name.toLowerCase().endsWith('.zip'))texts=await zipCsvTexts(file);else texts=[{name:file.name,text:await file.text()}];for(const entry of texts){const days=parseCsvByDay(entry.text);for(const [date,obj] of days){if(incoming.has(date))throw new Error('More than one selected file contains '+date+'. Import one complete file per date in a single batch to avoid silently overwriting or double-counting a session.');incoming.set(date,obj);}}}
+  for(const [date,obj] of incoming)DAYS.set(date,obj);rebuildCombined();updateDateBounds(true);refresh();$('dataStatus').textContent='Imported '+incoming.size+' date'+(incoming.size===1?'':'s')+' from '+files.length+' file'+(files.length===1?'':'s')+'. '+DAYS.size+' day(s) and '+nfmt(M.row_count)+' prints are now loaded. Matching dates were replaced, not double-counted. Unzoned timestamps are assumed UTC; explicit offsets are normalized to UTC.';
+ }catch(err){$('status').textContent='Import failed: '+(err&&err.message?err.message:String(err));$('dataStatus').textContent='Current loaded data was kept. For best stability, import chronologically sorted daily CSV or ZIP files.';}
+ finally{input.disabled=false;input.value='';}
+}
+
+const C = {bg:'#0f1727',paper:'#0f1727',text:'#dce7f5',muted:'#91a3bb',grid:'#203047',buy:'#48d6ad',sell:'#ff7e87',gold:'#f3c969',blue:'#88b8ff',purple:'#aa9cff'};
+const nfmt = (v, digs=0) => Number(v).toLocaleString('en-US',{maximumFractionDigits:digs,minimumFractionDigits:0});
+const short = v => { const a=Math.abs(v); if(a>=1e9)return (v/1e9).toFixed(2)+'B'; if(a>=1e6)return (v/1e6).toFixed(2)+'M'; if(a>=1e3)return (v/1e3).toFixed(1)+'k'; return nfmt(v,1); };
+const signed = (v,d=2) => (v>0?'+':'')+v.toFixed(d)+'%';
+const dt = sec => new Date(BASE + sec*1000);
+const dtMs = sec => BASE + sec*1000; // Plotly date axes accept epoch milliseconds; avoids per-point Date allocations.
+const timeLabel = sec => {const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=Math.floor(sec%60);return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+(s?':'+String(s).padStart(2,'0'):'');};
+const minuteOf = val => {if(!val)return 0;const a=val.split(':').map(Number);return a[0]*3600+a[1]*60;};
+const common = (extra={}) => Object.assign({paper_bgcolor:C.paper,plot_bgcolor:C.paper,font:{family:'Inter,system-ui,sans-serif',size:11,color:C.text},margin:{l:58,r:54,t:12,b:48},hovermode:'x unified',showlegend:true,legend:{orientation:'h',y:1.13,x:0,font:{size:10,color:C.muted}},xaxis:{gridcolor:C.grid,linecolor:C.grid,tickfont:{color:C.muted},zerolinecolor:C.grid},yaxis:{gridcolor:C.grid,linecolor:C.grid,tickfont:{color:C.muted},zerolinecolor:C.grid},uirevision:'market-lab'},extra);
+const config = {responsive:true,displaylogo:false,scrollZoom:true,modeBarButtonsToRemove:['lasso2d','select2d','autoScale2d']};
+const plotQueue=new Map();
+function plot(id,traces,layout){
+ const el=$(id),state=plotQueue.get(id)||{running:false,pending:null,waiters:[]};
+ const request={traces,layout};
+ if(state.running){state.pending=request;const promise=new Promise(resolve=>state.waiters.push(resolve));plotQueue.set(id,state);return promise;}
+ state.running=true;plotQueue.set(id,state);
+ const run=async req=>{
+   let current=req;
+   while(current){
+     try{await Plotly.react(el,current.traces,common(current.layout),config);}catch(err){if(!state.pending)throw err;}
+     if(['priceChart','flowChart','cvdChart'].includes(id)&&el&&typeof el.on==='function'&&!el.__focusLinked){el.__focusLinked=true;el.on('plotly_click',ev=>{if(ev&&ev.points&&ev.points[0]&&ev.points[0].x!==undefined){const raw=ev.points[0].x instanceof Date?ev.points[0].x.getTime():Number(ev.points[0].x);setFocusByTime((raw-BASE)/1000);}});}
+     current=state.pending;state.pending=null;
+   }
+   state.running=false;const waiters=state.waiters.splice(0);waiters.forEach(resolve=>resolve());
+ };
+ const promise=run(request).catch(err=>{state.running=false;state.pending=null;const waiters=state.waiters.splice(0);waiters.forEach(resolve=>resolve());throw err;});
+ return promise;
+}
+function axisTickFormat(){return $('startDate').value!==$('endDate').value?'%b %d<br>%H:%M':'%H:%M';}
+function axisHoverTime(){return $('startDate').value!==$('endDate').value?'%Y-%m-%d %H:%M:%S':'%H:%M:%S';}
+function subsetBars(tf,w){
+ const key=tf+'|'+w.s+'|'+w.e;if(subsetCache.has(key))return subsetCache.get(key);
+ const source=B[tf],step=BAR_STEPS[tf]||60,lo=lowerBoundTime(source.t,w.s),hi=upperBoundTime(source.t,w.e),count=Math.max(0,hi-lo);
+ const breaks=[];for(let i=lo;i<hi;i++)breaks.push(i>lo&&source.t[i]-source.t[i-1]>step*1.5);
+ if(count<=MAX_RENDER_POINTS){const ids=Array.from({length:count},(_,i)=>lo+i),result={x:source,ids,source,sourceLo:lo,sourceHi:hi,ends:null,groupSize:1,compressed:false,breakBefore:breaks,step};cacheSubset(key,result);return result;}
+ const x={t:[],o:[],h:[],l:[],c:[],v:[],n:[],b:[],s:[],d:[],pv:[]},ends=[],breakBefore=[],segments=[];
+ let segmentStart=lo;for(let i=lo+1;i<hi;i++){const gap=source.t[i]-source.t[i-1]>step*1.5;const sessionBoundary=Math.floor(source.t[i]/86400)!==Math.floor(source.t[i-1]/86400);if(gap||sessionBoundary){segments.push([segmentStart,i]);segmentStart=i;}}segments.push([segmentStart,hi]);
+ let groupSize=Math.max(1,Math.ceil(count/MAX_RENDER_POINTS));
+ const estimatedPoints=()=>segments.reduce((n,seg)=>n+Math.ceil((seg[1]-seg[0])/groupSize),0);
+ while(groupSize<count&&estimatedPoints()>MAX_RENDER_POINTS)groupSize++;
+ const appendSegment=(segLo,segHi)=>{for(let start=segLo;start<segHi;start+=groupSize){const end=Math.min(segHi,start+groupSize);let high=-Infinity,low=Infinity,v=0,n=0,b=0,ss=0,d=0,pv=0;
+   for(let i=start;i<end;i++){if(Number.isFinite(source.h[i]))high=Math.max(high,source.h[i]);if(Number.isFinite(source.l[i]))low=Math.min(low,source.l[i]);v+=Number(source.v[i]||0);n+=Number(source.n[i]||0);b+=Number(source.b[i]||0);ss+=Number(source.s[i]||0);d+=Number(source.d[i]||0);pv+=source.pv&&source.pv[i]!==null&&source.pv[i]!==undefined?Number(source.pv[i]):0;}
+   x.t.push(source.t[end-1]);x.o.push(source.o[start]);x.h.push(high===-Infinity?null:high);x.l.push(low===Infinity?null:low);x.c.push(source.c[end-1]);x.v.push(v);x.n.push(n);x.b.push(b);x.s.push(ss);x.d.push(d);x.pv.push(pv);ends.push(end-1);breakBefore.push(start>lo&&source.t[start]-source.t[start-1]>step*1.5);
+ }};
+ for(const [segLo,segHi] of segments)appendSegment(segLo,segHi);
+ const ids=Array.from({length:x.t.length},(_,i)=>i),result={x,ids,source,sourceLo:lo,sourceHi:hi,ends,groupSize,compressed:true,sourceCount:count,breakBefore,step};cacheSubset(key,result);return result;
+}
+function cacheSubset(key,value){subsetCache.set(key,value);if(subsetCache.size>8)subsetCache.delete(subsetCache.keys().next().value);}
+function upperBoundTime(times,target){let lo=0,hi=times.length;while(lo<hi){const mid=(lo+hi)>>1;if(times[mid]<=target)lo=mid+1;else hi=mid;}return lo;}
+function subsetRollingRatio(sub,window){
+ const out=[];let sd=0,sv=0,next=0,segmentStart=sub.sourceLo;const source=sub.source,lo=sub.sourceLo,hi=sub.sourceHi,ends=sub.ends,w=Math.max(1,window),step=sub.step;
+ for(let i=lo;i<hi;i++){if(i>lo&&source.t[i]-source.t[i-1]>step*1.5){sd=0;sv=0;segmentStart=i;}sd+=Number(source.d[i]||0);sv+=Number(source.v[i]||0);const remove=i-w;if(remove>=segmentStart){sd-=Number(source.d[remove]||0);sv-=Number(source.v[remove]||0);}if(sub.compressed){if(next<ends.length&&i===ends[next]){out.push(sv?sd/sv*100:0);next++;}}else{out.push(sv?sd/sv*100:0);}}
+ return out;
+}
+function lineArrays(sub,values){
+ const xs=[],ys=[],ids=sub.ids;
+ for(let k=0;k<ids.length;k++){
+  if(k>0&&sub.breakBefore&&sub.breakBefore[k]){const ta=sub.x.t[ids[k-1]],tb=sub.x.t[ids[k]];xs.push(dtMs(ta+(tb-ta)/2));ys.push(null);}
+  xs.push(dtMs(sub.x.t[ids[k]]));ys.push(values[k]===undefined?null:values[k]);
+ }
+ return {x:xs,y:ys};
+}
+function emaForSubset(sub,period){
+ const source=sub.source,lo=Math.max(0,sub.sourceLo-period*5),hi=sub.sourceHi,targets=new Set(sub.compressed?sub.ends:sub.ids),out=[];const alpha=2/(period+1);let prev=null;
+ for(let i=lo;i<hi;i++){if(i>lo&&source.t[i]-source.t[i-1]>sub.step*1.5)prev=null;const v=Number(source.c[i]);if(!Number.isFinite(v))continue;prev=prev===null?v:v*alpha+prev*(1-alpha);if(i>=sub.sourceLo&&targets.has(i))out.push(prev);}
+ return out;
+}
+function tradeWeightedAverageForSubset(sub){
+ const source=sub.source,hi=sub.sourceHi;if(sub.sourceLo>=hi)return {values:[],exact:true};
+ const firstDay=Math.floor(source.t[sub.sourceLo]/86400),scanLo=lowerBoundTime(source.t,firstDay*86400),targets=new Set(sub.compressed?sub.ends:sub.ids),out=[];let day=-1,pv=0,vv=0,exact=true;
+ for(let i=scanLo;i<hi;i++){
+  const dayKey=Math.floor(source.t[i]/86400);if(dayKey!==day){day=dayKey;pv=0;vv=0;}
+  const vol=Number(source.v[i]||0),rawPV=source.pv&&source.pv.length===source.t.length?source.pv[i]:null;
+  if(rawPV!==null&&rawPV!==undefined&&Number.isFinite(Number(rawPV)))pv+=Number(rawPV);
+  else {const typ=(Number(source.h[i])+Number(source.l[i])+Number(source.c[i]))/3;pv+=typ*vol;if(vol>0)exact=false;}
+  vv+=vol;if(i>=sub.sourceLo&&targets.has(i))out.push(vv?pv/vv:null);
+ }
+ return {values:out,exact};
+}
+function sum(a,ids){let s=0;ids.forEach(i=>s+=Number(a[i]||0));return s;}
+function rollingRatio(d,v,window,times,step){const out=new Array(d.length);let sd=0,sv=0,segmentStart=0;const w=Math.max(1,Number(window)||1);for(let i=0;i<d.length;i++){if(i>0&&times&&times[i]-times[i-1]>step*1.5){sd=0;sv=0;segmentStart=i;}sd+=Number(d[i]||0);sv+=Number(v[i]||0);const remove=i-w;if(remove>=segmentStart){sd-=Number(d[remove]||0);sv-=Number(v[remove]||0);}out[i]=sv?sd/sv*100:0;}return out;}
+function setMetric(id,value,cls){const el=$(id);el.textContent=value;el.className='value '+(cls||'neutral');}
+function updateKpis(w){
+ const x=B['1m'],loIx=lowerBoundTime(x.t,w.s),hiIx=upperBoundTime(x.t,w.e),ids=Array.from({length:Math.max(0,hiIx-loIx)},(_,j)=>loIx+j);
+ if(!ids.length){for(const id of ['kReturn','kRange','kTrades','kSize','kDelta','kImb'])setMetric(id,'—','neutral');for(const id of ['kReturnHint','kRangeHint','kTradesHint','kSizeHint','kDeltaHint','kImbHint'])$(id).textContent='No populated bars in this window';$('status').textContent='No minute bars in this window. Widen the time range.';return false;}
+ const first=ids[0],last=ids[ids.length-1], open=x.o[first], close=x.c[last];let hi=-Infinity,lo=Infinity,total=0,delta=0,trades=0;for(const i of ids){if(x.h[i]!==null&&x.h[i]!==undefined)hi=Math.max(hi,x.h[i]);if(x.l[i]!==null&&x.l[i]!==undefined)lo=Math.min(lo,x.l[i]);total+=Number(x.v[i]||0);delta+=Number(x.d[i]||0);trades+=Number(x.n[i]||0);}const r=(close/open-1)*100, span=(hi/lo-1)*100, imb=total?delta/total*100:0;
+ setMetric('kReturn',signed(r,2),r>=0?'positive':'negative');$('kReturnHint').textContent=nfmt(open,1)+' → '+nfmt(close,1);
+ setMetric('kRange',nfmt(hi,1)+' / '+nfmt(lo,1),'neutral');$('kRangeHint').textContent=span.toFixed(2)+'% high-low span';
+ setMetric('kTrades',nfmt(trades),'neutral');$('kTradesHint').textContent=(trades/Math.max(1,ids.length)).toFixed(1)+' prints per populated minute bar';
+ setMetric('kSize',short(total),'neutral');$('kSizeHint').textContent=nfmt(trades?total/trades:0,1)+' average size units per print';
+ setMetric('kDelta',(delta>0?'+':'')+short(delta),delta>0?'positive':delta<0?'negative':'neutral');$('kDeltaHint').textContent='signed size under role assumption';
+ setMetric('kImb',(imb>0?'+':'')+imb.toFixed(2)+'%',imb>0?'positive':imb<0?'negative':'neutral');$('kImbHint').textContent='net flow / executed size';
+ return true;
+}
+function ema(values,period){const out=[];if(!values.length)return out;const alpha=2/(period+1);let prev=Number(values[0]);for(let i=0;i<values.length;i++){const v=Number(values[i]);prev=i===0?v:(Number.isFinite(v)?v*alpha+prev*(1-alpha):prev);out.push(prev);}return out;}
+function updatePrice(tf,w,threshold){
+ const sub=subsetBars(tf,w),x=sub.x,ids=sub.ids,xx=ids.map(i=>dtMs(x.t[i]));
+ const closes=ids.map(i=>x.c[i]),highs=ids.map(i=>x.h[i]),lows=ids.map(i=>x.l[i]),vols=ids.map(i=>Number(x.v[i]||0));
+ const style=$('priceStyle')&&$('priceStyle').value==='line'?'line':'candles';
+ const tr=[];
+ if(style==='line'){const ln=lineArrays(sub,closes);tr.push({type:'scattergl',mode:'lines',name:'Close',x:ln.x,y:ln.y,connectgaps:false,line:{color:C.blue,width:1.8},hovertemplate:'%{x|%Y-%m-%d %H:%M:%S}<br>Close %{y:.1f}<extra></extra>'});}
+ else tr.push({type:'candlestick',name:'BTCUSD',x:xx,open:ids.map(i=>x.o[i]),high:highs,low:lows,close:closes,increasing:{line:{color:C.buy,width:1},fillcolor:C.buy},decreasing:{line:{color:C.sell,width:1},fillcolor:C.sell},whiskerwidth:.3,hovertemplate:'%{x|%Y-%m-%d %H:%M:%S}<br>O %{open:.1f} · H %{high:.1f}<br>L %{low:.1f} · C %{close:.1f}<extra></extra>'});
+ if($('showEMA20')&&$('showEMA20').checked&&ids.length){const ln=lineArrays(sub,emaForSubset(sub,20));tr.push({type:'scattergl',mode:'lines',name:'EMA 20',x:ln.x,y:ln.y,connectgaps:false,line:{color:C.gold,width:1.4},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>EMA20 %{y:.2f}<extra></extra>'});}
+ if($('showEMA50')&&$('showEMA50').checked&&ids.length){const ln=lineArrays(sub,emaForSubset(sub,50));tr.push({type:'scattergl',mode:'lines',name:'EMA 50',x:ln.x,y:ln.y,connectgaps:false,line:{color:C.purple,width:1.5},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>EMA50 %{y:.2f}<extra></extra>'});}
+ if($('showVWAP')&&$('showVWAP').checked&&ids.length){const avg=tradeWeightedAverageForSubset(sub),ln=lineArrays(sub,avg.values),nm=avg.exact?'Trade-size-weighted price (loaded prints)':'Weighted-price proxy (legacy bars use HLC3)';tr.push({type:'scattergl',mode:'lines',name:nm,x:ln.x,y:ln.y,connectgaps:false,line:{color:'#f0a1ff',width:1.5,dash:'dot'},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Weighted price %{y:.2f}<extra></extra>'});}
+ const keep=[];if(!$('showLarge')||$('showLarge').checked){const lo=lowerBoundTime(E.t,w.s),hi=upperBoundTime(E.t,w.e);for(let i=lo;i<hi;i++)if(E.s[i]>=threshold)keep.push(i);}
+ const markerLimit=1600;let visibleKeep=keep;if(keep.length>markerLimit){visibleKeep=keep.slice().sort((a,b)=>E.s[b]-E.s[a]).slice(0,markerLimit).sort((a,b)=>E.t[a]-E.t[b]);}
+ for(const roleCode of [1,0]){const ev=visibleKeep.filter(i=>E.r[i]===roleCode);if(!ev.length)continue;tr.push({type:'scattergl',mode:'markers',name:roleCode===1?'Buyer is taker':'Buyer is maker*',x:ev.map(i=>dtMs(E.t[i])),y:ev.map(i=>E.p[i]),customdata:ev.map(i=>[nfmt(E.s[i]),roleCode===1?'taker':'maker',timeLabel(E.t[i])]),marker:{symbol:roleCode===1?'triangle-up':'triangle-down',color:roleCode===1?C.buy:C.sell,opacity:.72,size:ev.map(i=>Math.max(5,Math.min(17,4+Math.sqrt(E.s[i]/Math.max(1,threshold))*4))),line:{width:.4,color:'#07101c'}},hovertemplate:'%{customdata[2]}<br>Price %{y:.1f}<br>Size %{customdata[0]}<br>buyer_role=%{customdata[1]}<extra></extra>'});}
+ $('priceBadge').textContent=$('tf').selectedOptions[0].text+' · '+nfmt(sub.sourceCount||ids.length)+' source bars'+(sub.compressed?' · grouped ×'+sub.groupSize:'')+' · '+nfmt(keep.length)+' large prints'+(keep.length>visibleKeep.length?' · showing largest '+nfmt(visibleKeep.length):'')+(style==='line'?' · close line':'');
+ return plot('priceChart',tr,{height:455,xaxis:{type:'date',gridcolor:C.grid,tickformat:axisTickFormat(),rangeslider:{visible:true,thickness:.08,bgcolor:'#091220',bordercolor:C.grid}},yaxis:{title:'Price',side:'right',type:$('priceScale')&&$('priceScale').value==='log'?'log':'linear',gridcolor:C.grid},margin:{l:58,r:65,t:16,b:48},hovermode:'x'});
+}
+function updateFlow(tf,w){
+ const sub=subsetBars(tf,w),x=sub.x,ids=sub.ids,xx=ids.map(i=>dtMs(x.t[i]));
+ const b=ids.map(i=>x.b[i]),s=ids.map(i=>-x.s[i]),d=ids.map(i=>x.d[i]),v=ids.map(i=>x.v[i]);
+ const imb=sub.compressed?subsetRollingRatio(sub,Number($('smooth').value)):rollingRatio(d,v,Number($('smooth').value),ids.map(i=>x.t[i]),BAR_STEPS[tf]),imbLine=lineArrays(sub,imb);
+ return plot('flowChart',[
+ {type:'bar',name:'Buyer taker size',x:xx,y:b,marker:{color:C.buy,opacity:.8},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Buy-side proxy %{y:,.0f}<extra></extra>'},
+ {type:'bar',name:'Buyer maker size',x:xx,y:s,marker:{color:C.sell,opacity:.8},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Sell-side proxy %{customdata:,.0f}<extra></extra>',customdata:s.map(v=>-v)},
+ {type:'scatter',mode:'lines',name:'Rolling imbalance',x:imbLine.x,y:imbLine.y,connectgaps:false,yaxis:'y2',line:{color:C.gold,width:1.8},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Rolling imbalance %{y:.1f}%<extra></extra>'}
+ ],{barmode:'relative',xaxis:{type:'date',gridcolor:C.grid,tickformat:axisTickFormat()},yaxis:{title:'Size units',zeroline:true,zerolinecolor:'#53647c'},yaxis2:{title:'Imbalance %',overlaying:'y',side:'right',range:[-100,100],showgrid:false,tickfont:{color:C.gold},titlefont:{color:C.gold}},margin:{l:62,r:60,t:16,b:46},hovermode:'x unified'});
+}
+function updateCvd(tf,w){
+ const sub=subsetBars(tf,w),x=sub.x,ids=sub.ids;let acc=0;const cvd=ids.map(i=>(acc+=x.d[i]||0)),ln=lineArrays(sub,cvd);
+ return plot('cvdChart',[{type:'scatter',mode:'lines',name:'CVD · selected-window cumulative',x:ln.x,y:ln.y,connectgaps:false,line:{color:C.purple,width:2},fill:'tozeroy',fillcolor:'rgba(170,156,255,.08)',hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>CVD %{y:,.0f}<extra></extra>'}],{xaxis:{type:'date',gridcolor:C.grid,tickformat:axisTickFormat()},yaxis:{title:'Cumulative signed size from range start',side:'right'},margin:{l:58,r:58,t:16,b:46},showlegend:false,hovermode:'x'});
+}
+function updateProfile(w){
+ const bin=Number($('profileBin').value), m0=Math.floor(w.s/60),m1=Math.floor(w.e/60);
+ const map=new Map(),pLo=lowerBoundTime(P.m,m0),pHi=upperBoundTime(P.m,m1);for(let i=pLo;i<pHi;i++){const key=Math.floor((P.p[i]*5)/bin);const a=map.get(key)||{v:0,d:0};a.v+=P.v[i];a.d+=P.d[i];map.set(key,a);}
+ const rows=Array.from(map.entries()).map(([k,v])=>({price:k*bin+bin/2,v:v.v,d:v.d,imb:v.v?v.d/v.v:0})).sort((a,b)=>a.price-b.price);
+ let maxAbs=1;for(const r of rows)if(Math.abs(r.d)>maxAbs)maxAbs=Math.abs(r.d);
+ return plot('profileChart',[{type:'bar',orientation:'h',name:'Executed size',x:rows.map(r=>r.v),y:rows.map(r=>r.price),customdata:rows.map(r=>[r.d,r.imb*100]),marker:{color:rows.map(r=>r.d),colorscale:[[0,'#ff7e87'],[.5,'#34435a'],[1,'#48d6ad']],cmin:-maxAbs,cmax:maxAbs,colorbar:{title:'Net flow',thickness:10,len:.8,tickfont:{size:9,color:C.muted},titlefont:{size:10,color:C.muted}}},hovertemplate:'Price bin center %{y:.1f}<br>Size %{x:,.0f}<br>Net flow %{customdata[0]:,.0f}<br>Imbalance %{customdata[1]:.1f}%<extra></extra>'}],{xaxis:{title:'Executed size (units)',gridcolor:C.grid},yaxis:{title:'Price',gridcolor:C.grid,tickformat:'.0f'},margin:{l:68,r:24,t:12,b:48},showlegend:false,hovermode:'closest'});
+}
+function updateSizeHist(w){
+ const nBuckets=HIST_LABELS.length,counts=Array(nBuckets).fill(0);
+ // Histograms are stored compactly by loaded session, so gaps between dates do not allocate empty calendar-day blocks.
+ for(let di=0;di<HIST_DATES.length;di++){const dayOffset=dateOffset(HIST_DATES[di]),left=Math.max(w.s,dayOffset),right=Math.min(w.e,dayOffset+86399.999);if(right<left)continue;const m0=Math.max(0,Math.floor((left-dayOffset)/60)),m1=Math.min(1439,Math.floor((right-dayOffset)/60)),base=di*1440*nBuckets;for(let m=m0;m<=m1;m++){const offset=base+m*nBuckets;for(let b=0;b<nBuckets;b++)counts[b]+=HIST[offset+b]||0;}}
+ const total=counts.reduce((a,b)=>a+b,0),cum=[];let a=0;counts.forEach(v=>{a+=v;cum.push(total?a/total*100:0)});
+ return plot('sizeChart',[
+ {type:'bar',name:'Print count',x:HIST_LABELS,y:counts,marker:{color:HIST_LABELS.map((_,i)=>i>=5?C.gold:C.blue),opacity:.85},customdata:cum,hovertemplate:'Size %{x}<br>Prints %{y:,.0f}<br>Cumulative count %{customdata:.1f}%<extra></extra>'},
+ {type:'scatter',name:'Cumulative %',x:HIST_LABELS,y:cum,yaxis:'y2',mode:'lines+markers',line:{color:C.purple,width:2},marker:{size:4},hovertemplate:'Size %{x}<br>Cumulative %{y:.1f}%<extra></extra>'}
+ ],{xaxis:{title:'Trade size bucket',gridcolor:C.grid,tickangle:-20},yaxis:{title:'Trade count',gridcolor:C.grid},yaxis2:{title:'Cumulative %',overlaying:'y',side:'right',range:[0,100],showgrid:false,tickfont:{color:C.purple}},margin:{l:58,r:58,t:16,b:76},hovermode:'x unified'});
+}
+function updateHours(w){
+ const x=B['1h'],lo=lowerBoundTime(x.t,w.s),hi=upperBoundTime(x.t,w.e),ids=Array.from({length:Math.max(0,hi-lo)},(_,j)=>lo+j),xx=ids.map(i=>dtMs(x.t[i]));
+ return plot('hourChart',[
+ {type:'bar',name:'Trade prints',x:xx,y:ids.map(i=>x.n[i]),marker:{color:C.blue,opacity:.85},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Trade prints %{y:,.0f}<extra></extra>'},
+ {type:'scatter',mode:'lines+markers',name:'Net signed flow',x:xx,y:ids.map(i=>x.d[i]),yaxis:'y2',line:{color:C.gold,width:2},marker:{size:4},connectgaps:false,hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Net flow %{y:,.0f}<extra></extra>'}
+ ],{xaxis:{type:'date',title:'Timestamp hour as supplied',gridcolor:C.grid,tickformat:axisTickFormat()},yaxis:{title:'Trade prints',gridcolor:C.grid},yaxis2:{title:'Net signed size',overlaying:'y',side:'right',showgrid:false,tickfont:{color:C.gold}},margin:{l:58,r:65,t:16,b:46},hovermode:'x unified'});
+}
+function median(arr){const a=arr.filter(v=>v!==null&&Number.isFinite(v)).sort((x,y)=>x-y);if(!a.length)return null;const h=Math.floor(a.length/2);return a.length%2?a[h]:(a[h-1]+a[h])/2;}
+function updateEvents(w,threshold){
+ const roles=[1,0], horizons=[['+1m','r1'],['+5m','r5'],['+15m','r15']],eventLo=lowerBoundTime(E.t,w.s),eventHi=upperBoundTime(E.t,w.e);
+ const traces=roles.map(rc=>{const med=[],means=[],ns=[];for(const [lab,k] of horizons){const vals=[];for(let i=eventLo;i<eventHi;i++)if(E.s[i]>=threshold&&E.r[i]===rc&&E[k][i]!==null)vals.push(E[k][i]);med.push(median(vals));means.push(vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null);ns.push(vals.length);}
+ return {type:'bar',name:rc===1?'Buyer taker':'Buyer maker*',x:horizons.map(x=>x[0]),y:med,marker:{color:rc===1?C.buy:C.sell,opacity:.85},customdata:med.map((v,i)=>[means[i],ns[i]]),hovertemplate:'%{x}<br>Median: %{y:.4f}%<br>Mean: %{customdata[0]:.4f}%<br>Events: %{customdata[1]:,.0f}<extra></extra>'};});
+ return plot('eventChart',traces,{barmode:'group',xaxis:{title:'Horizon after large trade'},yaxis:{title:'Median price change (%)',zeroline:true,zerolinecolor:'#6f8197',gridcolor:C.grid},margin:{l:62,r:25,t:16,b:48},hovermode:'x unified'});
+}
+
+function pearson(xs,ys){
+ const n=Math.min(xs.length,ys.length);if(n<3)return null;
+ let sx=0,sy=0,sxx=0,syy=0,sxy=0,k=0;
+ for(let i=0;i<n;i++){const x=xs[i],y=ys[i];if(!Number.isFinite(x)||!Number.isFinite(y))continue;sx+=x;sy+=y;sxx+=x*x;syy+=y*y;sxy+=x*y;k++;}
+ if(k<3)return null;const cov=sxy-sx*sy/k,vx=sxx-sx*sx/k,vy=syy-sy*sy/k;return vx>0&&vy>0?cov/Math.sqrt(vx*vy):null;
+}
+function lowerBoundTime(times,target){let lo=0,hi=times.length;while(lo<hi){const mid=(lo+hi)>>1;if(times[mid]<target)lo=mid+1;else hi=mid;}return lo;}
+function updateLeadLag(w){
+ const x=B['1m'],lookback=Number($('flowLookback').value),horizons=[['Same bar',0],['+1m',1],['+5m',5],['+15m',15],['+30m',30],['+60m',60]];
+ const fs=[[],[],[],[],[],[]],rs=[[],[],[],[],[],[]],counts=[];
+ if(leadPrefixSource!==x){leadPrefixD=new Float64Array(x.t.length+1);leadPrefixV=new Float64Array(x.t.length+1);for(let i=0;i<x.t.length;i++){leadPrefixD[i+1]=leadPrefixD[i]+Number(x.d[i]||0);leadPrefixV[i+1]=leadPrefixV[i]+Number(x.v[i]||0);}leadPrefixSource=x;}
+ const prefixD=leadPrefixD,prefixV=leadPrefixV,rangeLo=lowerBoundTime(x.t,w.s),rangeHi=upperBoundTime(x.t,w.e);
+ for(let i=rangeLo;i<rangeHi;i++){
+   if(!Number.isFinite(x.c[i]))continue;
+   const begin=lowerBoundTime(x.t,x.t[i]-Math.max(0,lookback-1)*60);if(i-begin+1!==lookback||x.t[i]-x.t[begin]!==Math.max(0,lookback-1)*60)continue;const vol=prefixV[i+1]-prefixV[begin],flow=vol?(prefixD[i+1]-prefixD[begin])/vol*100:null;
+   if(flow===null)continue;
+   if(i>0&&x.t[i]-x.t[i-1]===60&&x.c[i-1]){fs[0].push(flow);rs[0].push((x.c[i]/x.c[i-1]-1)*100);}
+   for(let h=1;h<horizons.length;h++){
+     const secs=horizons[h][1]*60,target=x.t[i]+secs,j=lowerBoundTime(x.t,target);
+     if(j>=x.t.length||x.t[j]>w.e||!Number.isFinite(x.c[j])||!x.c[i]||x.t[j]!==target)continue;
+     fs[h].push(flow);rs[h].push((x.c[j]/x.c[i]-1)*100);
+   }
+ }
+ const corr=horizons.map((_,i)=>pearson(fs[i],rs[i]));
+ counts.push(...fs.map(a=>a.length));
+ $('leadLagMeta').textContent='Trailing '+lookback+'m imbalance · '+nfmt(fs.slice(1).reduce((a,v)=>a+v.length,0))+' forward samples';
+ const colors=corr.map(v=>v===null?'#52627a':v>=0?C.buy:C.sell);
+ return plot('leadLagChart',[{type:'bar',name:'Pearson r',x:horizons.map(v=>v[0]),y:corr,marker:{color:colors,opacity:.88},customdata:counts,hovertemplate:'%{x}<br>Correlation %{y:.3f}<br>Pairs %{customdata:,}<extra></extra>'}],{xaxis:{title:'Return horizon after the flow measurement',gridcolor:C.grid},yaxis:{title:'Pearson correlation',range:[-1,1],gridcolor:C.grid,zeroline:true,zerolinecolor:'#91a3bb'},margin:{l:58,r:22,t:20,b:58},showlegend:false,hovermode:'closest',annotations:[{x:0,y:1.08,xref:'paper',yref:'paper',text:'+1 = positive association · −1 = negative association',showarrow:false,font:{size:10,color:C.muted},xanchor:'left'}]});
+}
+function updateRegimeHeatmap(w){
+ const x=B['1h'],allDates=[...DAYS.keys()].sort(),start=selectedDates().start,end=selectedDates().end;
+ const dates=allDates.filter(d=>d>=start&&d<=end),hours=Array.from({length:24},(_,i)=>String(i).padStart(2,'0')+':00');
+ const values=new Map(),meta=new Map(),heatLo=lowerBoundTime(x.t,w.s),heatHi=upperBoundTime(x.t,w.e);
+ for(let i=heatLo;i<heatHi;i++){
+   const d=isoDate(BASE+x.t[i]*1000),hr=Math.floor((x.t[i]%86400)/3600),key=d+'|'+hr,v=Number(x.v[i]||0),delta=Number(x.d[i]||0);
+   values.set(key,v?(delta/v)*100:null);
+   meta.set(key,[Number(x.n[i]||0),x.o[i]?(x.c[i]/x.o[i]-1)*100:0,x.l[i]>0?(x.h[i]/x.l[i]-1)*100:0,v]);
+ }
+ const z=dates.map(d=>hours.map((_,h)=>values.has(d+'|'+h)?values.get(d+'|'+h):null));
+ const cd=dates.map(d=>hours.map((_,h)=>meta.get(d+'|'+h)||[0,null,null,0]));
+ $('regimeMeta').textContent=dates.length+' loaded session'+(dates.length===1?'':'s')+' · color = hourly flow imbalance';
+ return plot('regimeChart',[{type:'heatmap',x:hours,y:dates,z,customdata:cd,zmin:-100,zmax:100,colorscale:[[0,'#ff7e87'],[0.5,'#18243a'],[1,'#48d6ad']],colorbar:{title:'Imbalance %',thickness:10,tickfont:{size:9,color:C.muted},titlefont:{size:10,color:C.muted}},hovertemplate:'Date %{y}<br>Hour %{x}<br>Flow imbalance %{z:.1f}%<br>Prints %{customdata[0]:,.0f}<br>Hourly return %{customdata[1]:.3f}%<br>High-low span %{customdata[2]:.3f}%<br>Executed size %{customdata[3]:,.0f}<extra></extra>'}],{xaxis:{title:'Timestamp hour as supplied',gridcolor:C.grid,tickangle:0},yaxis:{title:'Loaded date',gridcolor:C.grid,autorange:'reversed',type:'category'},margin:{l:88,r:62,t:22,b:48},showlegend:false,hovermode:'closest'});
+}
+let currentRange={s:0,e:86399.999};
+function loadedDates(){return [...DAYS.keys()].sort();}
+function setQuickRange(value){
+ const dates=loadedDates();if(!dates.length)return;
+ const selected=value==='all'?dates:dates.slice(-Math.max(1,Number(value)||1));
+ $('startDate').value=selected[0];$('endDate').value=selected[selected.length-1];$('start').value='00:00';$('end').value='23:59';
+ document.querySelectorAll('[data-range]').forEach(b=>b.classList.toggle('active',String(b.dataset.range)===String(value)));
+ refresh();
+}
+function downloadBlob(blob,filename){
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+function csvCell(v){const s=v===null||v===undefined?'':String(v);return '"'+s.replace(/"/g,'""')+'"';}
+function downloadCsv(filename,rows){const text=rows.map(r=>r.map(csvCell).join(',')).join('\r\n');downloadBlob(new Blob(['\ufeff',text],{type:'text/csv;charset=utf-8'}),filename);}
+function exportSelectedBars(){
+ const tf=$('tf').value,w=getWindow(),x=B[tf],lo=lowerBoundTime(x.t,w.s),hi=upperBoundTime(x.t,w.e),ids=Array.from({length:Math.max(0,hi-lo)},(_,j)=>lo+j);
+ if(!ids.length){$('status').textContent='No bars in the selected window to export.';return;}
+ const rows=[['timestamp_utc_assumed','interval','open','high','low','close','executed_size_units','trade_print_count','buyer_taker_size_proxy','buyer_maker_size_proxy','net_signed_size_proxy','flow_imbalance_pct','price_x_size_sum']];
+ for(const i of ids){const v=Number(x.v[i]||0),d=Number(x.d[i]||0);rows.push([dt(x.t[i]).toISOString(),tf,x.o[i],x.h[i],x.l[i],x.c[i],v,x.n[i],x.b[i],x.s[i],d,v?d/v*100:0,x.pv&&x.pv[i]!==null&&x.pv[i]!==undefined?x.pv[i]:'']);}
+ downloadCsv('BTCUSD_bars_'+tf+'_'+$('startDate').value+'_to_'+$('endDate').value+'.csv',rows);$('status').textContent='Exported '+nfmt(ids.length)+' raw selected bars.';
+}
+function exportLargeTrades(){
+ const w=getWindow(),threshold=Number($('threshold').value),rows=[['timestamp_utc_assumed','price','size_units','buyer_role','return_after_1m_pct','return_after_5m_pct','return_after_15m_pct']],lo=lowerBoundTime(E.t,w.s),hi=upperBoundTime(E.t,w.e);
+ for(let i=lo;i<hi;i++)if(E.s[i]>=threshold)rows.push([dt(E.t[i]).toISOString(),E.p[i],E.s[i],E.r[i]===1?'taker':'maker',E.r1[i],E.r5[i],E.r15[i]]);
+ if(rows.length===1){$('status').textContent='No large-trade events match this window and threshold.';return;}
+ downloadCsv('BTCUSD_large_trades_'+$('startDate').value+'_to_'+$('endDate').value+'.csv',rows);$('status').textContent='Exported '+nfmt(rows.length-1)+' large-trade events.';
+}
+async function saveWorkspace(){
+ $('status').textContent='Preparing a compressed workspace snapshot…';
+ const dates=loadedDates(),payload={format:'BTCUSD-Market-Mechanics-Lab',version:1,exported_at:new Date().toISOString(),days:[...DAYS.entries()]};
+ const text=JSON.stringify(payload);const first=dates[0]||'empty',last=dates[dates.length-1]||'empty';
+ try{
+   if(typeof CompressionStream!=='undefined'){
+     const stream=new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+     const blob=await new Response(stream).blob();downloadBlob(blob,'BTCUSD_Market_Mechanics_Workspace_'+first+'_to_'+last+'.json.gz');
+     $('status').textContent='Saved workspace with '+dates.length+' loaded date(s), compressed as JSON.GZ.';
+   }else{
+     downloadBlob(new Blob([text],{type:'application/json;charset=utf-8'}),'BTCUSD_Market_Mechanics_Workspace_'+first+'_to_'+last+'.json');
+     $('status').textContent='Saved workspace as JSON with '+dates.length+' loaded date(s).';
+   }
+ }catch(err){$('status').textContent='Workspace export failed: '+String(err);}
+}
+async function loadWorkspaceFile(file){
+ let text;
+ if(file.name.toLowerCase().endsWith('.gz')){
+   if(typeof DecompressionStream==='undefined')throw new Error('This browser cannot decompress .gz workspaces. Load the uncompressed .json copy instead.');
+   const stream=new Blob([await file.arrayBuffer()]).stream().pipeThrough(new DecompressionStream('gzip'));text=await new Response(stream).text();
+ }else text=await file.text();
+ const doc=JSON.parse(text);if(doc.format!=='BTCUSD-Market-Mechanics-Lab'||!Array.isArray(doc.days))throw new Error('This is not a compatible Market Mechanics Lab workspace.');
+ let added=0;
+ for(const entry of doc.days){
+   if(!Array.isArray(entry)||entry.length!==2)continue;const [date,day]=entry;
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(String(date))||!day||!day.metrics||!day.bars||!day.bars['1m']||!Array.isArray(day.hist)||!day.profile||!day.events)continue;
+   DAYS.set(date,day);added++;
+ }
+ if(!added)throw new Error('No valid daily summaries were found in this workspace.');
+ rebuildCombined();updateDateBounds(true);refresh();$('status').textContent='Loaded '+added+' date summary/summaries from workspace. Current data with matching dates was replaced.';
+}
+
+const STUDIO_PANEL_NAMES={priceChart:'Price + large executions',flowChart:'Executed flow',cvdChart:'Cumulative volume delta',profileChart:'Volume-at-price profile',sizeChart:'Trade-size distribution',hourChart:'Activity by hour',eventChart:'Large-trade follow-through',leadLagChart:'Flow lead-lag',regimeChart:'Hourly regime map'};
+function studioCards(){return Array.from(document.querySelectorAll('.chartcard')).filter(card=>card.querySelector&&card.querySelector('.plot'));}
+function studioCardFor(id){const p=$(id);return p&&p.closest?p.closest('.chartcard'):null;}
+function resizeStudioCharts(){if(typeof Plotly==='undefined'||!Plotly.Plots||!Plotly.Plots.resize)return;document.querySelectorAll('.plot').forEach(p=>{if(p.offsetParent!==null&&p.data)try{Plotly.Plots.resize(p);}catch(_){}});}
+function applyStudioLayout(){
+ const cols=$('panelLayout')?($('panelLayout').value||'2'):'2',density=$('chartDensity')?($('chartDensity').value||'standard'):'standard';
+ document.querySelectorAll('.chartgrid,.research-grid').forEach(g=>{g.classList.remove('studio-cols-1','studio-cols-2','studio-cols-3');g.classList.add('studio-cols-'+cols);});
+ if(document.body&&document.body.classList){document.body.classList.remove('density-compact','density-standard','density-large');if(density!=='standard')document.body.classList.add('density-'+density);}
+ setTimeout(resizeStudioCharts,80);
+}
+function setCardVisibility(id,visible){const card=studioCardFor(id);if(!card)return;card.classList.toggle('panel-hidden',!visible);card.style.display=visible?'':'none';if(typeof updateGuidedSectionHeaders==='function')updateGuidedSectionHeaders();const checkbox=document.querySelector('[data-panel-target="'+id+'"]');if(checkbox&&checkbox.checked!==visible)checkbox.checked=visible;if(visible)setTimeout(()=>{const plotEl=$(id);if(plotEl&&typeof Plotly!=='undefined'&&Plotly.Plots&&Plotly.Plots.resize&&plotEl.data)try{Plotly.Plots.resize(plotEl);}catch(_){}},80);}
+function createPanelActions(card,plotId){
+ const title=card.querySelector('.charttitle');if(!title||title.querySelector('.panel-actions'))return;
+ const actions=document.createElement('div');actions.className='panel-actions';
+ const grip=document.createElement('button');grip.type='button';grip.className='panel-action drag-grip';grip.textContent='⋮⋮';grip.title='Drag to reorder this chart';grip.setAttribute('aria-label','Drag to reorder chart');grip.draggable=true;
+ grip.addEventListener('dragstart',e=>{draggedPanel=card;card.classList.add('dragging');if(e.dataTransfer){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',plotId);}});
+ grip.addEventListener('dragend',()=>{card.classList.remove('dragging');document.querySelectorAll('.chartcard.drop-target').forEach(c=>c.classList.remove('drop-target'));draggedPanel=null;});
+ const expand=document.createElement('button');expand.type='button';expand.className='panel-action';expand.dataset.action='expand';expand.textContent='⛶';expand.title='Expand chart';expand.setAttribute('aria-label','Expand chart');
+ expand.addEventListener('click',()=>{const on=!card.classList.contains('is-maximized');document.querySelectorAll('.chartcard.is-maximized').forEach(other=>{other.classList.remove('is-maximized');const ob=other.querySelector('[data-action="expand"]');if(ob){ob.textContent='⛶';ob.title='Expand chart';}});if(on)card.classList.add('is-maximized');document.body.classList.toggle('has-maximized-panel',on);expand.textContent=on?'✕':'⛶';expand.title=on?'Close expanded chart':'Expand chart';setTimeout(resizeStudioCharts,90);});
+ const hide=document.createElement('button');hide.type='button';hide.className='panel-action';hide.dataset.action='hide';hide.textContent='Hide';hide.title='Hide chart';hide.addEventListener('click',()=>{setCardVisibility(plotId,false);markQuestionModeCustom();});
+ actions.append(grip,expand,hide);title.appendChild(actions);
+ card.addEventListener('dragover',e=>{if(draggedPanel&&draggedPanel!==card&&draggedPanel.parentElement===card.parentElement){e.preventDefault();card.classList.add('drop-target');if(e.dataTransfer)e.dataTransfer.dropEffect='move';}});
+ card.addEventListener('dragleave',()=>card.classList.remove('drop-target'));
+ card.addEventListener('drop',e=>{e.preventDefault();card.classList.remove('drop-target');if(!draggedPanel||draggedPanel===card||draggedPanel.parentElement!==card.parentElement)return;const r=card.getBoundingClientRect();card.parentElement.insertBefore(draggedPanel,e.clientX<r.left+r.width/2?card:card.nextSibling);applyStudioLayout();});
+}
+function buildPanelPicker(){
+ const host=$('panelVisibility');if(!host)return;host.innerHTML='';
+ for(const [id,name] of Object.entries(STUDIO_PANEL_NAMES)){const card=studioCardFor(id);if(!card)continue;createPanelActions(card,id);const label=document.createElement('label');label.className='panel-chip';const input=document.createElement('input');input.type='checkbox';input.checked=!card.classList.contains('panel-hidden');input.dataset.panelTarget=id;input.addEventListener('change',()=>{setCardVisibility(id,input.checked);markQuestionModeCustom();if(input.checked)refresh();});const span=document.createElement('span');span.textContent=name;label.append(input,span);host.appendChild(label);}
+}
+function updateFocusBounds(w){
+ const x=B['1m'];const lo=lowerBoundTime(x.t,w.s),hi=upperBoundTime(x.t,w.e);focusIndices=Array.from({length:Math.max(0,hi-lo)},(_,j)=>lo+j);
+ const slider=$('timeFocus');if(!slider)return;slider.min='0';slider.max=String(Math.max(0,focusIndices.length-1));slider.disabled=focusIndices.length===0;
+ if(!focusIndices.length){slider.value='0';focusTimeSec=null;return;}
+ let k=0;if(focusTimeSec!==null){let lo=0,hi=focusIndices.length;while(lo<hi){const m=(lo+hi)>>1;if(x.t[focusIndices[m]]<focusTimeSec)lo=m+1;else hi=m;}k=Math.min(focusIndices.length-1,lo);if(k>0&&Math.abs(x.t[focusIndices[k-1]]-focusTimeSec)<Math.abs(x.t[focusIndices[k]]-focusTimeSec))k--;}
+ slider.value=String(k);focusTimeSec=x.t[focusIndices[k]];
+}
+function setFocusByTime(sec){if(!focusIndices.length||!Number.isFinite(sec))return;const x=B['1m'];let lo=0,hi=focusIndices.length;while(lo<hi){const m=(lo+hi)>>1;if(x.t[focusIndices[m]]<sec)lo=m+1;else hi=m;}let k=Math.min(focusIndices.length-1,lo);if(k>0&&Math.abs(x.t[focusIndices[k-1]]-sec)<Math.abs(x.t[focusIndices[k]]-sec))k--;const slider=$('timeFocus');if(slider)slider.value=String(k);updateFocusAtIndex(k);}
+function forwardReturnAt(x,i,mins){const target=Number(x.t[i])+mins*60,j=lowerBoundTime(x.t,target);if(j>=x.t.length||x.t[j]!==target||x.c[i]===null||!x.c[i])return null;return (x.c[j]/x.c[i]-1)*100;}
+function updateFocusAtIndex(k){
+ if(!focusIndices.length)return;const x=B['1m'],idx=focusIndices[Math.max(0,Math.min(focusIndices.length-1,Number(k)||0))];if(idx===undefined)return;focusTimeSec=x.t[idx];
+ const stamp=dt(x.t[idx]),when=stamp.toISOString().replace('T',' ').replace('Z','')+' · supplied timestamp';$('focusAtTime').textContent=when;
+ $('focusPrice').textContent=nfmt(x.c[idx],1);$('focusHighLow').textContent=nfmt(x.h[idx],1)+' / '+nfmt(x.l[idx],1);$('focusPrints').textContent=nfmt(x.n[idx]||0);$('focusSize').textContent=short(x.v[idx]||0);
+ const imb=x.v[idx]?(x.d[idx]||0)/x.v[idx]*100:0;$('focusFlow').textContent=(imb>0?'+':'')+imb.toFixed(2)+'%';$('focusFlow').style.color=imb>0?C.buy:imb<0?C.sell:C.text;
+ const r5=forwardReturnAt(x,idx,5),r15=forwardReturnAt(x,idx,15);$('focusReturn5').textContent=r5===null?'n/a':signed(r5,3);$('focusReturn15').textContent=r15===null?'n/a':signed(r15,3);$('focusReturn5').style.color=r5===null?C.muted:r5>=0?C.buy:C.sell;$('focusReturn15').style.color=r15===null?C.muted:r15>=0?C.buy:C.sell;
+ // Plain-language five-minute comparison. This is a descriptive cue, not a forecast.
+ const insightTitle=$('focusInsightTitle'),insightText=$('focusInsightText');
+ if(insightTitle&&insightText){let from=idx;while(from>0&&x.t[idx]-x.t[from-1]<=4*60&&x.t[from]-x.t[from-1]<=120)from--;let sd=0,sv=0;for(let j=from;j<=idx;j++){sd+=Number(x.d[j]||0);sv+=Number(x.v[j]||0);}const move=x.c[from]&&x.c[idx]!==null?(x.c[idx]/x.c[from]-1)*100:null;const flow=sv?sd/sv*100:0;let title='Price and flow are mixed',msg='The recent window has no strong price/flow agreement. Zoom out to the surrounding move or compare a different event.';if(idx-from<4){title='Build a little more history';msg='Move the cursor a few minutes forward so there is enough recent data to compare price change with signed flow.';}else if(move!==null&&move>=0.08&&flow>=8){title='Price rising with positive flow';msg='Over the last five one-minute bars, price rose '+signed(move,3)+'% while the buyer-side flow proxy was '+signed(flow,1)+'%. That is directional agreement, not proof the move will continue.';}else if(move!==null&&move<=-0.08&&flow<=-8){title='Price falling with negative flow';msg='Over the last five one-minute bars, price fell '+signed(move,3)+'% while the buyer-side flow proxy was '+signed(flow,1)+'%. Selling pressure and price are aligned here; check the surrounding structure before drawing conclusions.';}else if(move!==null&&move>=0.08&&flow<=-8){title='Price/flow divergence';msg='Price rose '+signed(move,3)+'% while the flow proxy was '+signed(flow,1)+'%. This mismatch can reflect absorption, timing differences or noisy side classification. Inspect the next bars; it is not a standalone reversal signal.';}else if(move!==null&&move<=-0.08&&flow>=8){title='Price/flow divergence';msg='Price fell '+signed(move,3)+'% while the flow proxy was +'+flow.toFixed(1)+'%. This mismatch can reflect absorption, timing differences or noisy side classification. It does not prove a reversal is coming.';}insightTitle.textContent=title;insightText.textContent=msg;}
+ pendingFocusLineTime=dtMs(x.t[idx]);if(focusLineTimer!==null)clearTimeout(focusLineTimer);focusLineTimer=setTimeout(()=>{focusLineTimer=null;const t=pendingFocusLineTime;for(const id of ['priceChart','flowChart','cvdChart']){const p=$(id);if(p&&p.data&&typeof Plotly!=='undefined'&&typeof Plotly.relayout==='function'){try{Plotly.relayout(p,{shapes:[{type:'line',xref:'x',yref:'paper',x0:t,x1:t,y0:0,y1:1,line:{color:C.gold,width:1.25,dash:'dot'}}]});}catch(_){}}}},85);
+}
+function focusStep(delta){if(!focusIndices.length)return;const slider=$('timeFocus'),k=Math.max(0,Math.min(focusIndices.length-1,Number(slider.value||0)+delta));slider.value=String(k);updateFocusAtIndex(k);}
+function stopReplay(){if(replayHandle!==null){clearInterval(replayHandle);replayHandle=null;}const btn=$('focusPlay');if(btn)btn.textContent='▶ Play';}
+function startReplay(){if(!focusIndices.length)return;stopReplay();const speed=Number($('replaySpeed').value||4),delay=speed>=12?70:speed>=4?220:650;$('focusPlay').textContent='Ⅱ Pause';replayHandle=setInterval(()=>{const slider=$('timeFocus');if(Number(slider.value)>=focusIndices.length-1){stopReplay();return;}focusStep(1);},delay);}
+function toggleReplay(){if(replayHandle!==null)stopReplay();else startReplay();}
+function studioViewPayload(){
+ const orders=Array.from(document.querySelectorAll('.chartgrid,.research-grid')).map(grid=>({grid:grid.classList.contains('research-grid')?'research-grid':'chartgrid',ids:Array.from(grid.querySelectorAll('.plot')).map(p=>p.id)}));
+ const visibility={};for(const [id] of Object.entries(STUDIO_PANEL_NAMES)){const c=studioCardFor(id);visibility[id]=!!(c&&!c.classList.contains('panel-hidden'));}
+ return {format:'BTCUSD-Market-Mechanics-View',version:1,created_at:new Date().toISOString(),layout:$('panelLayout').value,density:$('chartDensity').value,priceStyle:$('priceStyle').value,priceScale:$('priceScale').value,overlays:{large:!!$('showLarge').checked,ema20:!!$('showEMA20').checked,ema50:!!$('showEMA50').checked,vwap:!!$('showVWAP').checked},visibility,orders};
+}
+function saveViewPreset(){const payload=studioViewPayload();downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),'BTCUSD_Market_Mechanics_View_Preset.json');if($('status'))$('status').textContent='Exported chart layout, visibility and price-overlay settings.';}
+async function loadViewPreset(file){const doc=JSON.parse(await file.text());if(doc.format!=='BTCUSD-Market-Mechanics-View'||doc.version!==1)throw new Error('Unsupported view preset. Choose a preset exported by this dashboard.');
+ if(['1','2','3'].includes(String(doc.layout)))$('panelLayout').value=String(doc.layout);if(['compact','standard','large'].includes(doc.density))$('chartDensity').value=doc.density;if(['candles','line'].includes(doc.priceStyle))$('priceStyle').value=doc.priceStyle;if(['linear','log'].includes(doc.priceScale))$('priceScale').value=doc.priceScale;
+ const ov=doc.overlays||{};$('showLarge').checked=ov.large!==false;$('showEMA20').checked=!!ov.ema20;$('showEMA50').checked=!!ov.ema50;$('showVWAP').checked=!!ov.vwap;
+ for(const [id,vis] of Object.entries(doc.visibility||{}))if(Object.prototype.hasOwnProperty.call(STUDIO_PANEL_NAMES,id))setCardVisibility(id,!!vis);
+ for(const order of doc.orders||[]){const grid=document.querySelector(order.grid==='research-grid'?'.research-grid':'.chartgrid');if(!grid||!Array.isArray(order.ids))continue;for(const id of order.ids){const card=studioCardFor(id);if(card&&card.parentElement===grid)grid.appendChild(card);}}
+ applyStudioLayout();refresh();if($('status'))$('status').textContent='Loaded view preset. Data is unchanged.';
+}
+function resetStudioSettings(){stopReplay();document.querySelectorAll('.chartcard.is-maximized').forEach(c=>{c.classList.remove('is-maximized');const b=c.querySelector('[data-action="expand"]');if(b){b.textContent='⛶';b.title='Expand chart';}});if(document.body&&document.body.classList)document.body.classList.remove('has-maximized-panel');$('panelLayout').value='2';$('chartDensity').value='standard';$('priceStyle').value='candles';$('priceScale').value='linear';$('showLarge').checked=true;$('showEMA20').checked=false;$('showEMA50').checked=false;$('showVWAP').checked=false;
+ for(const id of Object.keys(STUDIO_PANEL_NAMES))setCardVisibility(id,true);
+ // Restore each chart grid to the original narrative order.
+ const orders={chartgrid:['priceChart','flowChart','cvdChart','profileChart','sizeChart','hourChart','eventChart'],'research-grid':['leadLagChart','regimeChart']};for(const [selector,ids] of Object.entries(orders)){const grid=document.querySelector(selector==='research-grid'?'.research-grid':'.chartgrid');if(grid)for(const id of ids){const card=studioCardFor(id);if(card&&card.parentElement===grid)grid.appendChild(card);}}
+ applyStudioLayout();if(typeof setQuestionModeStatus==='function')setQuestionModeStatus('full-lab');updateGuidedSectionHeaders();refresh();
+}
+function initInteractiveStudio(){
+ buildPanelPicker();applyStudioLayout();
+ ['panelLayout','chartDensity'].forEach(id=>$(id).addEventListener('change',applyStudioLayout));
+ ['priceStyle','priceScale','showLarge','showEMA20','showEMA50','showVWAP'].forEach(id=>$(id).addEventListener('change',refresh));
+ $('timeFocus').addEventListener('input',e=>{stopReplay();updateFocusAtIndex(Number(e.target.value));});$('focusPrev').addEventListener('click',()=>{stopReplay();focusStep(-1);});$('focusNext').addEventListener('click',()=>{stopReplay();focusStep(1);});$('focusPlay').addEventListener('click',toggleReplay);$('replaySpeed').addEventListener('change',()=>{if(replayHandle!==null)startReplay();});
+ $('resetStudio').addEventListener('click',resetStudioSettings);$('saveViewPreset').addEventListener('click',saveViewPreset);$('loadViewPreset').addEventListener('click',()=>$('viewPresetFile').click());$('viewPresetFile').addEventListener('change',async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{await loadViewPreset(f);}catch(err){$('status').textContent='View preset failed: '+String(err);}finally{e.target.value='';}});
+ if(document.addEventListener)document.addEventListener('keydown',e=>{if(e.key==='Escape'){const open=document.querySelector('.chartcard.is-maximized');if(open){open.classList.remove('is-maximized');if(document.body&&document.body.classList)document.body.classList.remove('has-maximized-panel');const b=open.querySelector('[data-action="expand"]');if(b){b.textContent='⛶';b.title='Expand chart';}setTimeout(resizeStudioCharts,60);}stopReplay();return;}const tag=(e.target&&e.target.tagName||'').toLowerCase();if(['input','select','textarea','button'].includes(tag))return;if(e.code==='Space'){e.preventDefault();toggleReplay();}else if(e.key==='ArrowLeft'){focusStep(-1);}else if(e.key==='ArrowRight'){focusStep(1);}});
+}
+
+
+const QUESTION_MODES={
+ 'price-flow':{title:'Follow price + flow',hint:'A focused starting point. Use “Visible panels” to add more charts at any time.',panels:['priceChart','flowChart','cvdChart']},
+ 'large-trades':{title:'Inspect large trades',hint:'Compare large executions with trade-size distribution and post-trade returns.',panels:['priceChart','flowChart','sizeChart','eventChart']},
+ 'price-zones':{title:'Find active price zones',hint:'Volume-at-price shows where trades occurred, not resting orders waiting in the book.',panels:['priceChart','profileChart','hourChart','cvdChart']},
+ 'flow-test':{title:'Test flow vs returns',hint:'Use lead/lag and hourly states to investigate patterns. Correlation alone is not predictive edge.',panels:['priceChart','flowChart','cvdChart','leadLagChart','regimeChart']},
+ 'full-lab':{title:'Full research lab',hint:'All nine chart panels are visible. Hide, rearrange or expand any panel to customize the workspace.',panels:Object.keys(STUDIO_PANEL_NAMES)}
+};
+let activeQuestionMode='price-flow',applyingQuestionMode=false;
+function setQuestionModeStatus(mode){activeQuestionMode=mode;const item=QUESTION_MODES[mode];document.querySelectorAll('[data-question-mode]').forEach(btn=>{const on=btn.dataset.questionMode===mode;btn.setAttribute('aria-pressed',on?'true':'false');btn.classList.toggle('selected',on);});const label=$('activeQuestionLabel'),hint=$('activeQuestionHint');if(label)label.textContent='Active view: '+(item?item.title:'Custom workspace');if(hint)hint.textContent=item?item.hint:'You changed the visible panels manually. Choose a research path above to restore a focused layout.';}
+function markQuestionModeCustom(){if(applyingQuestionMode)return;setQuestionModeStatus('');}
+function updateGuidedSectionHeaders(){const h=$('researchSectionHead');if(!h)return;const any=['leadLagChart','regimeChart'].some(id=>{const c=studioCardFor(id);return c&&!c.classList.contains('panel-hidden');});h.style.display=any?'':'none';}
+function applyQuestionPreset(mode,scroll=true){const item=QUESTION_MODES[mode];if(!item)return;const keep=new Set(item.panels);applyingQuestionMode=true;for(const id of Object.keys(STUDIO_PANEL_NAMES))setCardVisibility(id,keep.has(id));applyingQuestionMode=false;setQuestionModeStatus(mode);updateGuidedSectionHeaders();if(scroll){refresh();const target=$('chartStudio')||document.querySelector('.chartgrid');if(target)target.scrollIntoView({behavior:window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});}}
+function initChartGuides(){
+ const guides={
+  priceChart:'Candles show open, high, low and close for the selected interval. Markers are executions that meet your size threshold, not orders sitting in the book.',
+  flowChart:'Bars split signed executed size into buyer-side proxy above zero and seller-side proxy below zero. The side estimate depends on the source buyer-role field.',
+  cvdChart:'Cumulative volume delta is the running total of signed executed size. It starts at zero for the selected window, so changing dates changes the starting point.',
+  profileChart:'Horizontal bars aggregate executed size into price buckets. This shows where trades happened, not resting liquidity or guaranteed support/resistance.',
+  sizeChart:'Each bucket counts how many prints had a particular size. The far-right tail helps locate unusually large executions. Size units are preserved as supplied.',
+  hourChart:'Compare print counts and signed flow by hour of the timestamp in the file. The source does not specify a timezone, so do not assume these are local hours.',
+  eventChart:'Shows median price changes after large executions at selected horizons. It is descriptive follow-through, not quote-mid impact or proof that the trade caused the move.',
+  leadLagChart:'Compares flow over a complete, contiguous lookback with same-bar and later returns. Samples with missing bars or missing exact horizon endpoints are excluded. Same-bar correlation is contemporaneous, not predictive; later horizons are hypothesis tests, not proof of edge.',
+  regimeChart:'Each cell summarizes an hour on a loaded date. A blank cell means no data was loaded for that date/hour, not that trading activity was zero.'
+ };
+ for(const [id,txt] of Object.entries(guides)){const plot=$(id);if(!plot)continue;const card=plot.closest('.chartcard');const title=card&&card.querySelector('.charttitle');if(!card||!title||card.querySelector('.chart-howto'))continue;const details=document.createElement('details');details.className='chart-howto';const summary=document.createElement('summary');summary.textContent='How to read this chart';const p=document.createElement('p');p.textContent=txt;details.append(summary,p);title.insertAdjacentElement('afterend',details);}
+}
+function initGuidedExperience(){
+ document.querySelectorAll('[data-question-mode]').forEach(btn=>btn.addEventListener('click',()=>applyQuestionPreset(btn.dataset.questionMode,true)));
+ const advanced=$('toggleAdvanced');if(advanced)advanced.addEventListener('click',()=>{const open=!document.body.classList.contains('show-advanced');document.body.classList.toggle('show-advanced',open);advanced.setAttribute('aria-expanded',open?'true':'false');advanced.innerHTML=open?'Hide advanced filters <span aria-hidden="true">⌃</span>':'Show advanced filters <span aria-hidden="true">⌄</span>';if(open){const first=document.querySelector('.advanced-control input,.advanced-control select');if(first&&first.focus)first.focus({preventScroll:true});}});
+ initChartGuides();applyQuestionPreset('price-flow',false);updateGuidedSectionHeaders();
+}
+
+function performRefresh(){
+ const requestId=++refreshRequestId;const w=getWindow();if(w.e<w.s){$('status').textContent='End date/time must be after start date/time.';return;}
+ $('status').textContent='';currentRange=w;const threshold=Number($('threshold').value),tf=$('tf').value;updateFocusBounds(currentRange);
+ $('thresholdValue').textContent=nfmt(threshold);
+ if(!updateKpis(currentRange))return;
+ const jobs=[['priceChart',()=>updatePrice(tf,currentRange,threshold)],['flowChart',()=>updateFlow(tf,currentRange)],['cvdChart',()=>updateCvd(tf,currentRange)],['profileChart',()=>updateProfile(currentRange)],['sizeChart',()=>updateSizeHist(currentRange)],['hourChart',()=>updateHours(currentRange)],['eventChart',()=>updateEvents(currentRange,threshold)],['leadLagChart',()=>updateLeadLag(currentRange)],['regimeChart',()=>updateRegimeHeatmap(currentRange)]];
+ const visibleJobs=jobs.filter(([id])=>{const card=studioCardFor(id);return !card||(!card.classList.contains('panel-hidden')&&card.style.display!=='none');});
+ (async()=>{for(const [,draw] of visibleJobs){if(requestId!==refreshRequestId)return;await new Promise(resolve=>requestAnimationFrame(resolve));if(requestId!==refreshRequestId)return;await draw();}if(requestId!==refreshRequestId)return;if(focusIndices.length){const k=Number($('timeFocus').value||0);updateFocusAtIndex(k);}})().catch(err=>{if(requestId===refreshRequestId){$('status').textContent='A chart could not render: '+String(err);console.error(err);}});
+}
+function refresh(){if(refreshTimer!==null)clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{refreshTimer=null;performRefresh();},65);}
+$('tf').addEventListener('change',refresh);$('start').addEventListener('change',()=>{document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('end').addEventListener('change',()=>{document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('startDate').addEventListener('change',()=>{if($('startDate').value>$('endDate').value)$('endDate').value=$('startDate').value;document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('endDate').addEventListener('change',()=>{if($('endDate').value<$('startDate').value)$('startDate').value=$('endDate').value;document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('threshold').addEventListener('input',refresh);$('profileBin').addEventListener('change',refresh);$('smooth').addEventListener('change',refresh);$('flowLookback').addEventListener('change',refresh);$('tradeFiles').addEventListener('change',e=>importTradeFiles([...e.target.files]));
+document.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',()=>setQuickRange(b.dataset.range)));
+$('importFolder').addEventListener('click',()=>$('tradeFolder').click());$('tradeFolder').addEventListener('change',e=>importTradeFiles([...e.target.files],'tradeFolder'));$('exportBars').addEventListener('click',exportSelectedBars);$('exportEvents').addEventListener('click',exportLargeTrades);$('saveWorkspace').addEventListener('click',saveWorkspace);$('loadWorkspace').addEventListener('click',()=>$('workspaceFile').click());$('workspaceFile').addEventListener('change',async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{$('status').textContent='Loading workspace…';await loadWorkspaceFile(f);}catch(err){$('status').textContent='Workspace import failed: '+String(err);}finally{e.target.value='';}});
+$('reset').addEventListener('click',()=>{$('tf').value='1m';$('start').value='00:00';$('end').value='23:59';$('threshold').value='672';$('profileBin').value='10';$('smooth').value='10';$('flowLookback').value='5';setQuickRange('all');});
+updateDateBounds(true);rebuildCombined();initInteractiveStudio();initGuidedExperience();setQuickRange('all');
+})();
+</script>
+</body>
+</html>
