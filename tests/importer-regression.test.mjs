@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { zipCsvEntries, zipEntryStream } from '../src/ingestion/zip-reader.js';
 import { PackedTradeRows } from '../src/data/packed-trade-rows.js';
+import { aggregateDay } from '../src/data/day-aggregator.js';
 
 const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', import.meta.url), 'utf8');
 assert.match(html, /<script type="module">/);
@@ -132,4 +133,26 @@ test('rejects a compressed payload range that overlaps the central directory', a
   const file = asFile(bytes);
   const entries = await zipCsvEntries(file);
   await assert.rejects(zipEntryStream(file, entries[0]), /Compressed data bounds are invalid/);
+});
+
+
+test('aggregates trade rows into stable OHLCV bars and signed flow', () => {
+  const rows = new PackedTradeRows(4);
+  rows.push(120, 60100, 2, 1);
+  rows.push(60, 60000, 3, 0);
+  rows.push(180, 60050, 4, 1);
+  const result = aggregateDay('2026-08-01', rows, false, {'1m': 60}, ['tiny']);
+  assert.equal(result.metrics.row_count, 3);
+  assert.equal(result.metrics.start_price, 60000);
+  assert.equal(result.metrics.end_price, 60050);
+  assert.equal(result.metrics.total_size, 9);
+  assert.equal(result.metrics.buy_size, 6);
+  assert.equal(result.metrics.sell_size, 3);
+  assert.equal(result.bars['1m'].o[0], 60000);
+  assert.equal(result.bars['1m'].h[1], 60100);
+  assert.equal(result.bars['1m'].l[1], 60050);
+  assert.equal(result.bars['1m'].c[2], 60050);
+  assert.equal(result.bars['1m'].v[0], 3);
+  assert.equal(result.bars['1m'].d[1], 2);
+  assert.deepEqual(result.hist_labels, ['tiny']);
 });
