@@ -129,3 +129,13 @@ test('rejects a local header filename that differs from the central directory', 
   const entries = await zipCsvEntries(file);
   await assert.rejects(zipEntryStream(file, entries[0]), /local filename does not match/);
 });
+
+test('rejects a compressed payload range that overlaps the central directory', async () => {
+  const bytes = makeZip();
+  const eocdOffset = bytes.length - 22;
+  const directoryOffset = bytes.readUInt32LE(eocdOffset + 16);
+  bytes.writeUInt32LE(bytes.length, directoryOffset + 20);
+  const file = asFile(bytes);
+  const entries = await zipCsvEntries(file);
+  await assert.rejects(zipEntryStream(file, entries[0]), /Compressed data bounds are invalid/);
+});
