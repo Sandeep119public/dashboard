@@ -234,9 +234,9 @@ const DATA = {"metrics":{"date":"2026-09-01","row_count":0,"start_time":"00:00:0
 (function(){
 'use strict';
 const $ = id => document.getElementById(id);
-let M = DATA.metrics, B = DATA.bars, E = DATA.events, P = DATA.profile, HIST = DATA.hist, HIST_LABELS = DATA.hist_labels, HIST_DATES=[DATA.metrics.date];
+let M = DATA.metrics, B = DATA.bars, E = DATA.events, P = DATA.profile, HIST = DATA.hist, HIST_LABELS = DATA.hist_labels, HIST_DATES=(Number(DATA.metrics.row_count||0)>0?[DATA.metrics.date]:[]);
 let BASE = Date.UTC(2026,8,1,0,0,0);
-const DAYS = new Map([[DATA.metrics.date, DATA]]);
+const DAYS = new Map(DATA.metrics&&Number(DATA.metrics.row_count||0)>0?[[DATA.metrics.date,DATA]]:[]);
 const BAR_STEPS = {'10s':10,'1m':60,'5m':300,'15m':900,'1h':3600};
 const HIST_BUCKETS = [9,24,49,99,219,671,999,1999,Infinity];
 let focusIndices=[], focusTimeSec=null, replayHandle=null, draggedPanel=null, focusLineTimer=null, pendingFocusLineTime=null;
@@ -304,21 +304,28 @@ function parseCsvRow(line){
  if(quoted)throw new Error('Malformed CSV quoting. Check the source file near the row being imported.');
  cells.push(value);return cells;
 }
+const fastTimestampDates=new Set();
 function parseTradeTimestamp(stamp){
- const m=/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:?\d{2})?$/i.exec(String(stamp||'').trim());
+ const text=String(stamp||'').trim();
+ if(text.length>=19&&(text[10]===' '||text[10]==='T')&&text[4]==='-'&&text[7]==='-'&&text[13]===':'&&text[16]===':'){
+  const digitAt=i=>{const c=text.charCodeAt(i);return c>=48&&c<=57;};
+  let digits=true;for(const i of [0,1,2,3,5,6,8,9,11,12,14,15,17,18])if(!digitAt(i)){digits=false;break;}
+  const suffix=text.slice(19);let fastSuffix=!suffix;
+  if(suffix&&suffix[0]==='.'&&suffix.length>1){fastSuffix=true;for(let i=1;i<suffix.length;i++){const c=suffix.charCodeAt(i);if(c<48||c>57){fastSuffix=false;break;}}}
+  if(digits&&fastSuffix){
+   const two=i=>(text.charCodeAt(i)-48)*10+(text.charCodeAt(i+1)-48),year=(text.charCodeAt(0)-48)*1000+(text.charCodeAt(1)-48)*100+(text.charCodeAt(2)-48)*10+(text.charCodeAt(3)-48),month=two(5),day=two(8),h=two(11),min=two(14),sec=two(17),date=text.slice(0,10);
+   if(h>23||min>59||sec>59)throw new Error('Invalid calendar date or time "'+stamp+'".');
+   if(!fastTimestampDates.has(date)){const midnight=Date.UTC(year,month-1,day);if(isoDate(midnight)!==date)throw new Error('Invalid calendar date or time "'+stamp+'".');fastTimestampDates.add(date);}
+   const frac=suffix?Number('0'+suffix):0;return {date,sec:h*3600+min*60+sec+frac};
+  }
+ }
+ const m=/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:?\d{2})?$/i.exec(text);
  if(!m)throw new Error('Invalid timestamp "'+stamp+'". Expected YYYY-MM-DD HH:MM:SS[.fraction] with an optional timezone.');
  const date=m[1],ymd=date.split('-').map(Number),h=Number(m[2]),min=Number(m[3]),s=Number(m[4]),frac=m[5]?Number('0.'+m[5]):0,zone=(m[6]||'').toUpperCase();
  const midnight=Date.UTC(ymd[0],ymd[1]-1,ymd[2]);
  if(isoDate(midnight)!==date||h>23||min>59||s>59)throw new Error('Invalid calendar date or time "'+stamp+'".');
- let offset=0;
- if(zone&&zone!=='Z'){
-  const z=/^([+-])(\d{2}):?(\d{2})$/.exec(zone);if(!z)throw new Error('Invalid timezone offset in "'+stamp+'".');
-  const zh=Number(z[2]),zm=Number(z[3]);if(zh>14||zm>59||(zh===14&&zm!==0))throw new Error('Invalid timezone offset in "'+stamp+'".');
-  offset=(zh*3600+zm*60)*(z[1]==='+'?1:-1);
- }
- // Naive timestamps are treated as UTC coordinates; explicit offsets are normalized to UTC.
- const absolute=midnight/1000+h*3600+min*60+s+frac-offset,dayStart=Math.floor(absolute/86400)*86400;
- return {date:isoDate(dayStart*1000),sec:absolute-dayStart};
+ let offset=0;if(zone&&zone!=='Z'){const z=/^([+-])(\d{2}):?(\d{2})$/.exec(zone);if(!z)throw new Error('Invalid timezone offset in "'+stamp+'".');const zh=Number(z[2]),zm=Number(z[3]);if(zh>14||zm>59||(zh===14&&zm!==0))throw new Error('Invalid timezone offset in "'+stamp+'".');offset=(zh*3600+zm*60)*(z[1]==='+'?1:-1);}
+ const absolute=midnight/1000+h*3600+min*60+s+frac-offset,dayStart=Math.floor(absolute/86400)*86400;return {date:isoDate(dayStart*1000),sec:absolute-dayStart};
 }
 function aggregateDay(date, rows){
  rows.sort((a,b)=>a[0]-b[0]);
@@ -335,12 +342,13 @@ function aggregateDay(date, rows){
  const delta=buy-sell;const metrics={date,row_count:rows.length,start_price:first,end_price:last,return_pct:first?(last/first-1)*100:0,low:low===-Infinity?0:low,high:high===-Infinity?0:high,range_pct:low>0?(high/low-1)*100:0,total_size:total,buy_size:buy,sell_size:sell,delta,imbalance_pct:total?delta/total*100:0,median_size:quant(.5),p90:quant(.9),p95:quant(.95),p99:quant(.99),max_size:sortedSizes.length?sortedSizes[sortedSizes.length-1]:0,active_seconds_pct:active.size/86400*100,minute_flow_return_corr:flow.length>=3&&vf&&vr?cv/Math.sqrt(vf*vr):null};
  return {metrics,bars,profile,hist,hist_labels:DATA.hist_labels,events};
 }
-function parseCsvByDay(text){
- const result=new Map();let pos=0,lineNo=0,header=null,idx={},currentDate=null,rows=[];
- const flush=()=>{if(currentDate&&rows.length){result.set(currentDate,aggregateDay(currentDate,rows));rows=[];}};
- while(pos<text.length){let end=text.indexOf('\n',pos);if(end<0)end=text.length;let line=text.slice(pos,end).replace(/\r$/,'');pos=end+1;if(!line.trim())continue;lineNo++;
-  const a=parseCsvRow(line);
-  if(!header){header=a.map(x=>x.trim().toLowerCase());idx={price:header.indexOf('price'),size:header.indexOf('size'),timestamp:header.indexOf('timestamp'),role:header.indexOf('buyer_role'),product:header.indexOf('product_symbol')};if(idx.price<0||idx.size<0||idx.timestamp<0||idx.role<0)throw new Error('CSV needs price, size, timestamp and buyer_role columns.');continue;}
+function createCsvDayParser(){
+ const result=new Map();let lineNo=0,header=null,idx={},currentDate=null,rows=[],rowCount=0;
+ const flush=()=>{if(currentDate!==null&&rows.length){result.set(currentDate,aggregateDay(currentDate,rows));rows=[];}};
+ const pushLine=rawLine=>{
+  const line=String(rawLine).replace(/\r$/,'');if(!line.trim())return;lineNo++;
+  const a=line.indexOf('"')<0?line.split(','):parseCsvRow(line);
+  if(!header){header=a.map(x=>x.trim().toLowerCase());idx={price:header.indexOf('price'),size:header.indexOf('size'),timestamp:header.indexOf('timestamp'),role:header.indexOf('buyer_role'),product:header.indexOf('product_symbol')};if(idx.price<0||idx.size<0||idx.timestamp<0||idx.role<0)throw new Error('CSV needs price, size, timestamp and buyer_role columns.');return;}
   if(a.length<=Math.max(idx.price,idx.size,idx.timestamp,idx.role,idx.product))throw new Error('Malformed CSV row '+lineNo+': one or more required fields are missing.');
   const stamp=String(a[idx.timestamp]||'').trim();if(!stamp)throw new Error('Missing timestamp at CSV row '+lineNo+'.');
   const parsed=parseTradeTimestamp(stamp),date=parsed.date,sec=parsed.sec;
@@ -350,25 +358,84 @@ function parseCsvByDay(text){
   if(roleText!=='taker'&&roleText!=='maker')throw new Error('Unknown buyer_role "'+roleText+'" at CSV row '+lineNo+'. Expected maker or taker; the file was not imported to avoid silently misclassifying flow.');
   if(idx.product>=0){const symbol=String(a[idx.product]||'').trim().toUpperCase();if(symbol!=='BTCUSD')throw new Error('This dashboard is for BTCUSD, but CSV row '+lineNo+' has product_symbol="'+symbol+'". Mixed or different symbols are not combined.');}
   const role=roleText==='taker'?1:0;
-  if(currentDate===null)currentDate=date;if(date!==currentDate){flush();if(result.has(date))throw new Error('Rows in '+date+' are not contiguous after timestamp normalization. Please import chronologically sorted trade CSVs.');currentDate=date;}
-  rows.push([sec,price,size,role]);
- }
- flush();if(!result.size)throw new Error('No valid trade rows were found in this file.');return result;
+  if(currentDate===null)currentDate=date;
+  if(date!==currentDate){flush();if(result.has(date))throw new Error('Rows in '+date+' are not contiguous after timestamp normalization. Please import chronologically sorted trade CSVs.');currentDate=date;}
+  rows.push([sec,price,size,role]);rowCount++;
+ };
+ return {pushLine,finish(){flush();if(!result.size)throw new Error('No valid trade rows were found in this file.');return result;},get rowCount(){return rowCount;},get currentDate(){return currentDate;},get lineNo(){return lineNo;}};
 }
-async function zipCsvTexts(file){
- const buf=await file.arrayBuffer(),u8=new Uint8Array(buf),v=new DataView(buf);let eocd=-1;for(let i=u8.length-22;i>=Math.max(0,u8.length-65557);i--){if(v.getUint32(i,true)===0x06054b50){eocd=i;break;}}if(eocd<0)throw new Error('Could not read ZIP directory in '+file.name);
- const count=v.getUint16(eocd+10,true);let off=v.getUint32(eocd+16,true);const out=[];
- for(let n=0;n<count;n++){if(v.getUint32(off,true)!==0x02014b50)break;const method=v.getUint16(off+10,true),compSize=v.getUint32(off+20,true),nameLen=v.getUint16(off+28,true),extraLen=v.getUint16(off+30,true),commentLen=v.getUint16(off+32,true),localOff=v.getUint32(off+42,true);const name=new TextDecoder().decode(u8.slice(off+46,off+46+nameLen));off+=46+nameLen+extraLen+commentLen;if(!name.toLowerCase().endsWith('.csv'))continue;const localName=v.getUint16(localOff+26,true),localExtra=v.getUint16(localOff+28,true),dataOff=localOff+30+localName+localExtra,compressed=u8.slice(dataOff,dataOff+compSize);let txt;if(method===0)txt=new TextDecoder().decode(compressed);else if(method===8&&typeof DecompressionStream!=='undefined'){const stream=new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate-raw'));txt=await new Response(stream).text();}else throw new Error('ZIP compression method not supported in this browser for '+name);out.push({name,text:txt});}
- if(!out.length)throw new Error('No .csv file found inside '+file.name);return out;
+function parseCsvByDay(text){
+ const parser=createCsvDayParser();let pos=0;
+ while(pos<text.length){let end=text.indexOf('\n',pos);if(end<0)end=text.length;parser.pushLine(text.slice(pos,end));pos=end+1;}
+ return parser.finish();
+}
+const yieldToUi=()=>new Promise(resolve=>setTimeout(resolve,0));
+async function parseCsvStreamByDay(readable,sourceName,onProgress){
+ const parser=createCsvDayParser(),reader=readable.getReader(),decoder=new TextDecoder();let pending='',lastYieldRows=0,done=false;
+ try{
+  while(!done){const item=await reader.read();done=item.done;if(item.value)pending+=decoder.decode(item.value,{stream:!done});else if(done)pending+=decoder.decode();
+   let lineStart=0,lf;
+   while((lf=pending.indexOf('\n',lineStart))!==-1){parser.pushLine(pending.slice(lineStart,lf));lineStart=lf+1;
+    if(parser.rowCount-lastYieldRows>=25000){lastYieldRows=parser.rowCount;if(onProgress)onProgress(parser.rowCount,parser.currentDate,sourceName);await yieldToUi();}
+   }
+   pending=pending.slice(lineStart);
+   if(done&&pending.length){parser.pushLine(pending);pending='';}
+  }
+  return parser.finish();
+ }catch(err){try{await reader.cancel(err);}catch(_){}throw err;}finally{try{reader.releaseLock();}catch(_){}}
+}
+async function zipCsvEntries(file){
+ const tailStart=Math.max(0,file.size-65557),tailBytes=new Uint8Array(await file.slice(tailStart).arrayBuffer()),tailView=new DataView(tailBytes.buffer,tailBytes.byteOffset,tailBytes.byteLength);let eocd=-1;
+ for(let i=tailBytes.length-22;i>=Math.max(0,tailBytes.length-65557);i--){if(tailView.getUint32(i,true)===0x06054b50){eocd=i;break;}}
+ if(eocd<0)throw new Error('Could not read ZIP directory in '+file.name+'.');
+ const disk=tailView.getUint16(eocd+4,true),dirDisk=tailView.getUint16(eocd+6,true),diskCount=tailView.getUint16(eocd+8,true),count=tailView.getUint16(eocd+10,true),dirSize=tailView.getUint32(eocd+12,true),dirOffset=tailView.getUint32(eocd+16,true);
+ if(disk!==0||dirDisk!==0||diskCount!==count)throw new Error('Multi-disk ZIP archives are not supported.');
+ if(count===0xffff||dirSize===0xffffffff||dirOffset===0xffffffff)throw new Error('ZIP64 archives are not supported by this browser importer. Extract the CSV and import it directly instead.');
+ if(dirOffset+dirSize>file.size)throw new Error('ZIP directory points outside the uploaded file.');
+ const out=[];let off=dirOffset;
+ for(let n=0;n<count;n++){
+  const fixedBytes=new Uint8Array(await file.slice(off,off+46).arrayBuffer());if(fixedBytes.length!==46)throw new Error('Truncated ZIP directory entry in '+file.name+'.');
+  const h=new DataView(fixedBytes.buffer,fixedBytes.byteOffset,fixedBytes.byteLength);if(h.getUint32(0,true)!==0x02014b50)throw new Error('Invalid ZIP directory entry in '+file.name+'.');
+  const flags=h.getUint16(8,true),method=h.getUint16(10,true),compSize=h.getUint32(20,true),uncompSize=h.getUint32(24,true),nameLen=h.getUint16(28,true),extraLen=h.getUint16(30,true),commentLen=h.getUint16(32,true),localOff=h.getUint32(42,true);
+  const nameBytes=await file.slice(off+46,off+46+nameLen).arrayBuffer(),name=new TextDecoder().decode(nameBytes);off+=46+nameLen+extraLen+commentLen;
+  if(name.endsWith('/')||!name.toLowerCase().endsWith('.csv'))continue;
+  if(flags&1)throw new Error('Encrypted ZIP entries are not supported ('+name+').');
+  if(compSize===0xffffffff||uncompSize===0xffffffff||localOff===0xffffffff)throw new Error('ZIP64 CSV entry is not supported ('+name+').');
+  out.push({name,method,flags,compSize,uncompSize,localOff});
+ }
+ if(!out.length)throw new Error('No .csv file found inside '+file.name+'.');
+ return out;
+}
+async function zipEntryStream(file,entry){
+ const b=new Uint8Array(await file.slice(entry.localOff,entry.localOff+30).arrayBuffer());if(b.length!==30)throw new Error('Truncated ZIP local header for '+entry.name+'.');
+ const h=new DataView(b.buffer,b.byteOffset,b.byteLength);if(h.getUint32(0,true)!==0x04034b50)throw new Error('Invalid ZIP local header for '+entry.name+'.');
+ const localFlags=h.getUint16(6,true),localMethod=h.getUint16(8,true),nameLen=h.getUint16(26,true),extraLen=h.getUint16(28,true);
+ if(localFlags&1)throw new Error('Encrypted ZIP entries are not supported ('+entry.name+').');
+ if(localMethod!==entry.method)throw new Error('ZIP compression metadata mismatch for '+entry.name+'.');
+ const dataStart=entry.localOff+30+nameLen+extraLen,dataEnd=dataStart+entry.compSize;if(dataStart<0||dataEnd>file.size)throw new Error('Compressed data bounds are invalid for '+entry.name+'.');
+ let stream=file.slice(dataStart,dataEnd).stream();
+ if(entry.method===8){if(typeof DecompressionStream==='undefined')throw new Error('This browser cannot stream-decompress ZIP files. Please use current Chrome or Edge.');try{stream=stream.pipeThrough(new DecompressionStream('deflate-raw'));}catch(err){throw new Error('This browser does not support raw DEFLATE ZIP streams. Please use current Chrome or Edge.');}}
+ else if(entry.method!==0)throw new Error('ZIP compression method '+entry.method+' is not supported for '+entry.name+'.');
+ return stream;
 }
 async function importTradeFiles(files,sourceInputId='tradeFiles'){
- const input=$(sourceInputId);if(!files.length)return;files=files.filter(f=>/\.(csv|zip)$/i.test(f.name));if(!files.length){$('status').textContent='No .CSV or .ZIP trade files were found in that selection.';input.value='';return;}input.disabled=true;$('dataStatus').textContent='Reading trade files and building multi-day bars. Larger files may take a little while.';$('status').textContent='';
- try{const incoming=new Map();for(const file of files){let texts;if(file.name.toLowerCase().endsWith('.zip'))texts=await zipCsvTexts(file);else texts=[{name:file.name,text:await file.text()}];for(const entry of texts){const days=parseCsvByDay(entry.text);for(const [date,obj] of days){if(incoming.has(date))throw new Error('More than one selected file contains '+date+'. Import one complete file per date in a single batch to avoid silently overwriting or double-counting a session.');incoming.set(date,obj);}}}
-  for(const [date,obj] of incoming)DAYS.set(date,obj);rebuildCombined();updateDateBounds(true);refresh();$('dataStatus').textContent='Imported '+incoming.size+' date'+(incoming.size===1?'':'s')+' from '+files.length+' file'+(files.length===1?'':'s')+'. '+DAYS.size+' day(s) and '+nfmt(M.row_count)+' prints are now loaded. Matching dates were replaced, not double-counted. Unzoned timestamps are assumed UTC; explicit offsets are normalized to UTC.';
- }catch(err){$('status').textContent='Import failed: '+(err&&err.message?err.message:String(err));$('dataStatus').textContent='Current loaded data was kept. For best stability, import chronologically sorted daily CSV or ZIP files.';}
+ const input=$(sourceInputId);if(!files.length)return;files=files.filter(f=>/\.(csv|zip)$/i.test(f.name));if(!files.length){$('status').textContent='No .CSV or .ZIP trade files were found in that selection.';input.value='';return;}
+ input.disabled=true;$('dataStatus').textContent='Streaming trade data and building multi-day bars. Monthly ZIP files are processed one day at a time to limit memory use.';$('status').textContent='';
+ try{
+  const incoming=new Map();
+  const progress=(rows,date,name)=>{$('status').textContent='Reading '+name+': '+nfmt(rows)+' trades processed'+(date?' · current date '+date:'')+'. Data is streamed; the full decompressed CSV is not kept in memory.';};
+  const acceptDays=days=>{for(const [date,obj] of days){if(incoming.has(date))throw new Error('More than one selected file contains '+date+'. Select a monthly archive by itself, or avoid overlapping CSV/ZIP files in one batch.');incoming.set(date,obj);}};
+  for(const file of files){
+   if(file.name.toLowerCase().endsWith('.zip')){
+    const entries=await zipCsvEntries(file);for(const entry of entries){$('dataStatus').textContent='Streaming '+file.name+' → '+entry.name+' ('+nfmt(entry.uncompSize)+' uncompressed bytes). Large monthly archives may take a few minutes; progress updates appear below.';const stream=await zipEntryStream(file,entry);const days=await parseCsvStreamByDay(stream,entry.name,progress);acceptDays(days);}
+   }else{
+    $('dataStatus').textContent='Streaming '+file.name+' without loading the complete CSV into memory.';const days=await parseCsvStreamByDay(file.stream(),file.name,progress);acceptDays(days);
+   }
+  }
+  for(const [date,obj] of incoming)DAYS.set(date,obj);rebuildCombined();updateDateBounds(true);refresh();$('status').textContent='Import complete: '+nfmt(M.row_count)+' total trade prints loaded across '+DAYS.size+' day(s).';$('dataStatus').textContent='Imported '+incoming.size+' date'+(incoming.size===1?'':'s')+' from '+files.length+' file'+(files.length===1?'':'s')+'. '+DAYS.size+' day(s) and '+nfmt(M.row_count)+' prints are now loaded. Monthly ZIPs are streamed and aggregated one date at a time. Matching dates were replaced, not double-counted. Unzoned timestamps are assumed UTC; explicit offsets are normalized to UTC.';
+ }catch(err){$('status').textContent='Import failed: '+(err&&err.message?err.message:String(err));$('dataStatus').textContent='Import failed; current loaded data was kept. If this archive uses ZIP64 or unsupported compression, extract the CSV and import it directly in current Chrome/Edge.';}
  finally{input.disabled=false;input.value='';}
 }
-
 const C = {bg:'#0f1727',paper:'#0f1727',text:'#dce7f5',muted:'#91a3bb',grid:'#203047',buy:'#48d6ad',sell:'#ff7e87',gold:'#f3c969',blue:'#88b8ff',purple:'#aa9cff'};
 const nfmt = (v, digs=0) => Number(v).toLocaleString('en-US',{maximumFractionDigits:digs,minimumFractionDigits:0});
 const short = v => { const a=Math.abs(v); if(a>=1e9)return (v/1e9).toFixed(2)+'B'; if(a>=1e6)return (v/1e6).toFixed(2)+'M'; if(a>=1e3)return (v/1e3).toFixed(1)+'k'; return nfmt(v,1); };
