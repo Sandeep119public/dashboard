@@ -1,0 +1,24 @@
+name: Importer regression tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'BTCUSD_Market_Mechanics_Lab_Fixed.html'
+      - 'tests/**'
+      - '.github/workflows/importer-tests.yml'
+  pull_request:
+    paths:
+      - 'BTCUSD_Market_Mechanics_Lab_Fixed.html'
+      - 'tests/**'
+      - '.github/workflows/importer-tests.yml'
+
+jobs:
+  importer-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --test tests/importer-regression.test.mjs
