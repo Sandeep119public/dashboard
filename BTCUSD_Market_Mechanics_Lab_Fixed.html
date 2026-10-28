@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>BTCUSD Market Mechanics Lab · Accuracy-Fixed Edition</title>
 <style>
 :root{--bg:#080d18;--panel:#0f1727;--panel2:#121d30;--border:#24334a;--text:#e8eef7;--muted:#91a3bb;--buy:#48d6ad;--sell:#ff7e87;--gold:#f3c969;--blue:#88b8ff;--purple:#aa9cff;--grid:#1b2a40}
@@ -33,6 +33,141 @@
 @media(max-width:1200px){.guided-head{grid-template-columns:1fr}.question-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.guided-steps{max-width:none}}
 @media(max-width:760px){.guided-home{padding:12px}.guided-head h2{font-size:20px}.question-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.question-card{min-height:105px;padding:10px 9px}.question-card-all{grid-column:1/-1;min-height:75px}.guided-steps{grid-template-columns:1fr}.guided-steps>div{align-items:center}.guided-footer{align-items:flex-start;flex-direction:column}.guided-footer>div{align-items:flex-start}.guided-footer #activeQuestionHint{width:100%;padding-left:15px}.advanced-toggle{width:100%}}
 @media(prefers-reduced-motion:reduce){.question-card{transition:none}.question-card:hover{transform:none}}
+
+
+/* Mobile-first polish: compact Android phones, tablets and rotated devices */
+html{min-width:0;overflow-x:clip;-webkit-text-size-adjust:100%;text-size-adjust:100%;scroll-padding-top:12px}
+body{min-width:0;width:100%;overflow-x:clip;padding-bottom:env(safe-area-inset-bottom)}
+button,select,input{font:inherit}
+button,summary,label,input[type=range],input[type=checkbox]{-webkit-tap-highlight-color:transparent}
+.wrap{width:100%;min-width:0}
+.top,.controls,.toolbar,.studio,.guided-home,.chartgrid,.research-grid,.chartcard,.charttitle,.plot,.notes,.note,.guided-head,.question-grid,.focus-insight{min-width:0;max-width:100%}
+.plot{touch-action:pan-y}
+@media(max-width:760px){
+  .wrap{padding:12px max(10px,env(safe-area-inset-left)) calc(26px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-right))}
+  .top{gap:10px;margin-bottom:12px}
+  .top h1{font-size:clamp(24px,7vw,32px);overflow-wrap:anywhere}
+  .sub{font-size:13px;line-height:1.5}
+  .stamp{width:100%;padding:10px 12px}
+  .guided-home{padding:12px;border-radius:14px}
+  .guided-head{gap:13px}
+  .guided-head h2{font-size:19px}
+  .guided-head p{font-size:12px}
+  .question-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .question-card{min-height:100px;padding:10px;gap:7px}
+  .question-copy strong{font-size:12px}
+  .question-copy small{font-size:10px}
+  .question-card-all{grid-column:1/-1;min-height:58px}
+  .guided-steps>div{padding:9px}
+  .guided-footer{gap:10px}
+  .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:9px;padding:10px;border-radius:12px}
+  .controls>.control{width:100%;min-width:0;max-width:100%;flex:initial}
+  .controls .control label{font-size:10px;line-height:1.3}
+  .controls .control select,.controls .control input[type=date],.controls .control input[type=time],.controls .control input[type=number]{width:100%;min-width:0;min-height:44px;padding:9px 8px;font-size:14px}
+  .controls .import-control,.controls .threshold,.controls .data-status,.controls .status{grid-column:1/-1;width:100%;min-width:0}
+  .controls .import-control input[type=file]{display:block;width:100%;max-width:100%;min-height:48px;padding:9px;font-size:12px}
+  .controls>.btn{grid-column:1/-1;width:100%;min-height:44px}
+  .controls .rangeval{gap:5px;flex-wrap:wrap}
+  .controls .rangeval span,.controls .rangeval strong{font-size:10px}
+  .data-status,.coverage-summary{font-size:11px;overflow-wrap:anywhere}
+  .toolbar{display:grid;grid-template-columns:minmax(0,1fr);gap:11px;padding:11px;border-radius:12px}
+  .quick-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .quick-buttons .btn{min-width:0;width:100%;min-height:44px;padding:9px 8px;white-space:normal}
+  .toolbar-block .btn{min-height:44px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0 14px}
+  .kpi{padding:10px;border-radius:10px}
+  .kpi .label{font-size:9px;letter-spacing:.08em;line-height:1.3}
+  .kpi .value{font-size:clamp(16px,4.7vw,22px);margin:6px 0 3px;overflow-wrap:anywhere}
+  .kpi .hint{font-size:10px;line-height:1.35}
+  .sectionhead{align-items:flex-start;flex-direction:column;gap:4px;margin:17px 2px 9px}
+  .sectionhead h2{font-size:16px}
+  .sectionhead p{font-size:11px;line-height:1.45}
+  .chartgrid.studio-cols-1,.chartgrid.studio-cols-2,.chartgrid.studio-cols-3,
+  .research-grid.studio-cols-1,.research-grid.studio-cols-2,.research-grid.studio-cols-3{grid-template-columns:minmax(0,1fr)!important}
+  .chartgrid,.research-grid{gap:9px}
+  .chartcard{padding:8px 7px 4px;border-radius:11px}
+  .charttitle{padding:4px 4px 2px;align-items:flex-start;gap:6px}
+  .charttitle strong{font-size:12px;overflow-wrap:anywhere}
+  .charttitle>span{font-size:10px;max-width:55%;overflow-wrap:anywhere}
+  .charttitle .panel-actions{display:flex;width:100%;margin:2px 0 0;gap:6px}
+  .panel-action{min-height:38px;min-width:38px;padding:8px 10px;border-radius:8px;font-size:11px}
+  .panel-action.drag-grip{display:none}
+  .panel-action[data-action="move-up"],.panel-action[data-action="move-down"]{display:inline-flex;align-items:center;justify-content:center}
+  .plot{height:270px}
+  .plot.tall{height:310px}
+  .plot.short{height:235px}
+  .plot.profile{height:295px}
+  .research-grid .plot,.research-grid .plot.profile{height:280px}
+  .studio{padding:10px;border-radius:13px}
+  .studio-topline{gap:9px;margin-bottom:10px}
+  .studio-caption{font-size:11px;line-height:1.45}
+  .studio-actions{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .studio-actions .btn{width:100%;min-width:0;min-height:44px;padding:8px 6px;font-size:11px;white-space:normal}
+  .studio-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;padding:9px}
+  .studio-controls>.control{min-width:0;width:100%}
+  .studio-controls .control select{width:100%;min-width:0;min-height:44px;font-size:13px}
+  .studio-toggles{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;width:100%}
+  .studio-toggle{min-height:44px;padding:10px 9px;line-height:1.35}
+  .panel-picker-row{padding:10px 0}
+  .panel-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .panel-chip{min-width:0;min-height:42px;padding:8px;align-items:center}
+  .panel-chip span{max-width:none;min-width:0;white-space:normal;font-size:11px;line-height:1.3;overflow-wrap:anywhere}
+  .replay-box{padding:10px;border-radius:10px}
+  .replay-head{gap:9px}
+  .replay-head>div:first-child{width:100%;min-width:0}
+  .focus-time{font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+  .replay-buttons{display:grid;grid-template-columns:44px minmax(90px,1fr) 44px minmax(76px,.8fr);align-items:end;width:100%;gap:6px}
+  .replay-buttons>.btn{min-height:44px;padding:8px 5px}
+  .replay-buttons .speed-control{width:100%;min-width:0}
+  .replay-buttons .speed-control select{width:100%;min-width:0;min-height:44px;padding:7px 4px}
+  .time-scrubber{min-height:34px;margin:11px 0}
+  .focus-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .focus-metrics>div{padding:8px}
+  .focus-metrics span{font-size:9px}
+  .focus-metrics strong{font-size:12px}
+  .focus-footnote{font-size:10px;overflow-wrap:anywhere}
+  .notes{grid-template-columns:minmax(0,1fr);gap:9px}
+  .note{padding:12px}
+  .note p,.note li{font-size:12px;line-height:1.5}
+  .chart-howto summary{min-height:34px;padding:7px 9px}
+  .chart-howto p{font-size:11px}
+  .chartcard.is-maximized{inset:env(safe-area-inset-top,4px) 4px calc(env(safe-area-inset-bottom,4px) + 2px)!important;padding:8px!important;border-radius:10px}
+  .chartcard.is-maximized .plot{height:calc(100dvh - 195px)!important;min-height:220px;flex:1}
+  .fineprint{font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+}
+@media(max-width:420px){
+  .wrap{padding-left:8px;padding-right:8px}
+  .top h1{font-size:24px}
+  .eyebrow{font-size:9px;letter-spacing:.13em}
+  .question-grid{grid-template-columns:minmax(0,1fr)}
+  .question-card,.question-card-all{grid-column:auto;min-height:74px}
+  .question-copy small{font-size:11px}
+  .guided-steps{gap:6px}
+  .controls{padding:8px;gap:8px}
+  .quick-buttons{grid-template-columns:minmax(0,1fr)}
+  .studio-actions{grid-template-columns:minmax(0,1fr)}
+  .panel-picker{grid-template-columns:minmax(0,1fr)}
+  .replay-buttons{grid-template-columns:42px minmax(72px,1fr) 42px}
+  .replay-buttons .speed-control{grid-column:1/-1}
+  .replay-buttons .speed-control select{min-height:42px}
+  .plot{height:245px}
+  .plot.tall{height:285px}
+  .plot.short{height:215px}
+  .plot.profile,.research-grid .plot,.research-grid .plot.profile{height:265px}
+  .charttitle>span{max-width:100%;text-align:left;width:100%}
+}
+@media(max-height:520px) and (orientation:landscape) and (max-width:900px){
+  .wrap{padding-top:8px}
+  .top{margin-bottom:8px}
+  .guided-home{padding:9px}
+  .question-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .question-card{min-height:72px}
+  .guided-steps{display:none}
+  .plot{height:220px}
+  .plot.tall,.plot.profile,.research-grid .plot{height:245px}
+  .chartcard.is-maximized .plot{height:calc(100dvh - 120px)!important}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:0.01ms!important;animation-duration:0.01ms!important}}
 
 </style>
 </head>
@@ -712,10 +847,12 @@ function createPanelActions(card,plotId){
  const grip=document.createElement('button');grip.type='button';grip.className='panel-action drag-grip';grip.textContent='⋮⋮';grip.title='Drag to reorder this chart';grip.setAttribute('aria-label','Drag to reorder chart');grip.draggable=true;
  grip.addEventListener('dragstart',e=>{draggedPanel=card;card.classList.add('dragging');if(e.dataTransfer){e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',plotId);}});
  grip.addEventListener('dragend',()=>{card.classList.remove('dragging');document.querySelectorAll('.chartcard.drop-target').forEach(c=>c.classList.remove('drop-target'));draggedPanel=null;});
+ const moveButton=(direction,label,glyph)=>{const b=document.createElement('button');b.type='button';b.className='panel-action';b.dataset.action=direction<0?'move-up':'move-down';b.textContent=glyph;b.title=label;b.setAttribute('aria-label',label);b.addEventListener('click',()=>{const parent=card.parentElement;if(!parent)return;const cards=[...parent.children].filter(x=>x.classList&&x.classList.contains('chartcard')&&!x.classList.contains('panel-hidden'));const i=cards.indexOf(card),target=cards[i+direction];if(i<0||!target)return;if(direction<0)parent.insertBefore(card,target);else parent.insertBefore(card,target.nextSibling);applyStudioLayout();markQuestionModeCustom();});return b;};
+ const moveUp=moveButton(-1,'Move chart up','↑'),moveDown=moveButton(1,'Move chart down','↓');
  const expand=document.createElement('button');expand.type='button';expand.className='panel-action';expand.dataset.action='expand';expand.textContent='⛶';expand.title='Expand chart';expand.setAttribute('aria-label','Expand chart');
  expand.addEventListener('click',()=>{const on=!card.classList.contains('is-maximized');document.querySelectorAll('.chartcard.is-maximized').forEach(other=>{other.classList.remove('is-maximized');const ob=other.querySelector('[data-action="expand"]');if(ob){ob.textContent='⛶';ob.title='Expand chart';}});if(on)card.classList.add('is-maximized');document.body.classList.toggle('has-maximized-panel',on);expand.textContent=on?'✕':'⛶';expand.title=on?'Close expanded chart':'Expand chart';setTimeout(resizeStudioCharts,90);});
  const hide=document.createElement('button');hide.type='button';hide.className='panel-action';hide.dataset.action='hide';hide.textContent='Hide';hide.title='Hide chart';hide.addEventListener('click',()=>{setCardVisibility(plotId,false);markQuestionModeCustom();});
- actions.append(grip,expand,hide);title.appendChild(actions);
+ actions.append(grip,moveUp,moveDown,expand,hide);title.appendChild(actions);
  card.addEventListener('dragover',e=>{if(draggedPanel&&draggedPanel!==card&&draggedPanel.parentElement===card.parentElement){e.preventDefault();card.classList.add('drop-target');if(e.dataTransfer)e.dataTransfer.dropEffect='move';}});
  card.addEventListener('dragleave',()=>card.classList.remove('drop-target'));
  card.addEventListener('drop',e=>{e.preventDefault();card.classList.remove('drop-target');if(!draggedPanel||draggedPanel===card||draggedPanel.parentElement!==card.parentElement)return;const r=card.getBoundingClientRect();card.parentElement.insertBefore(draggedPanel,e.clientX<r.left+r.width/2?card:card.nextSibling);applyStudioLayout();});
