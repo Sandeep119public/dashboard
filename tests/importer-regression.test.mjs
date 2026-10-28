@@ -1,20 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { zipCsvEntries, zipEntryStream } from '../src/ingestion/zip-reader.js';
+import { PackedTradeRows } from '../src/data/packed-trade-rows.js';
 
 const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', import.meta.url), 'utf8');
-const start = html.indexOf('async function zipCsvEntries(file){');
-const end = html.indexOf('async function zipEntryStream(file,entry){', start);
-assert.ok(start >= 0 && end > start, 'ZIP directory parser must remain available for regression tests');
-const zipCsvEntries = new Function(`${html.slice(start, end)}; return zipCsvEntries;`)();
-const streamStart = html.indexOf('async function zipEntryStream(file,entry){');
-const streamEnd = html.indexOf('\nfunction syncImportControls()', streamStart);
-assert.ok(streamStart >= 0 && streamEnd > streamStart, 'ZIP entry stream reader must remain available for regression tests');
-const zipEntryStream = new Function(`${html.slice(streamStart, streamEnd)}; return zipEntryStream;`)();
-const rowsStart = html.indexOf('class PackedTradeRows {');
-const rowsEnd = html.indexOf('function aggregateDay(', rowsStart);
-assert.ok(rowsStart >= 0 && rowsEnd > rowsStart, 'packed trade buffer must remain available for regression tests');
-const PackedTradeRows = new Function(`${html.slice(rowsStart, rowsEnd)}; return PackedTradeRows;`)();
+assert.match(html, /<script type="module">/);
+assert.match(html, /import \{ zipCsvEntries, zipEntryStream \} from '\.\/src\/ingestion\/zip-reader\.js'/);
+assert.match(html, /import \{ PackedTradeRows \} from '\.\/src\/data\/packed-trade-rows\.js'/);
+assert.match(html, /window\.DATA = DATA;/);
 
 function makeZip({ name = 'trades.csv', localName = name, comment = Buffer.alloc(0), data = 'timestamp,price,size,buyer_role,product_symbol\n2026-08-01 00:00:00,60000,1,taker,BTCUSD\n' } = {}) {
   const filename = Buffer.from(name);
