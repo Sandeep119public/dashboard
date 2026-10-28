@@ -4,12 +4,18 @@ Interactive trade-flow research dashboard for BTCUSD price action, executed volu
 
 ## Open the dashboard
 
-Open `BTCUSD_Market_Mechanics_Lab_Fixed.html` in a modern browser. The repository copy is a lightweight web version: it loads Plotly from the official CDN, so an internet connection is required. It starts with an empty dataset. Choose **Import trade data** and select your Binance daily CSV or ZIP archive to populate the charts. Use multiple files for multi-day analysis.
+Open [BTCUSD_Market_Mechanics_Lab_Fixed.html](BTCUSD_Market_Mechanics_Lab_Fixed.html) in a modern browser. The GitHub Pages copy loads Plotly from its official CDN, so an internet connection is required.
 
-The original archive available in the conversation contains trades for September 1, 2026 only. Add more daily files to analyze additional sessions.
+## Import data
+
+Use **Add trade files (.CSV / .ZIP)** to import data. The importer supports Binance-style BTCUSD CSV files with columns `product_symbol,price,size,timestamp,buyer_role`, including a monthly ZIP containing one chronologically sorted CSV across multiple dates.
+
+Large ZIPs are streamed directly from the archive. The app reads the ZIP directory and decompresses the CSV incrementally, validates records, aggregates one day at a time, and reports progress. It does not keep the entire expanded CSV in one giant string.
+
+The importer was validated against `futures-trades-monthly-BTCUSD-2026-08.csv.zip`: 7,440,458 trade prints across August 1–31, 2026, matching an independent CSV row count. For ZIP64 archives or unsupported compression, extract the CSV and import it directly. Use current Chrome or Edge for streaming ZIP decompression.
 
 ## Accuracy notes
 
-The dashboard's directional flow depends on the source buyer-role field. The source does not explicitly specify timestamp timezone or trade-size unit. Trade prints do not include order-book snapshots, so resting liquidity, queue position and cancellations cannot be directly measured. Correlations and post-trade outcomes are descriptive research, not proof of predictive trading edge.
+Directional flow depends on the source buyer-role field. The source does not explicitly specify timestamp timezone or trade-size unit. Trade prints do not include order-book snapshots, so resting liquidity, queue position and cancellations cannot be directly measured. Correlations and post-trade outcomes are descriptive research, not proof of predictive trading edge.
 
-See `BTCUSD_Market_Mechanics_Fix_Report.md` for the fixes, validation notes and remaining limitations.
+See [BTCUSD_Market_Mechanics_Fix_Report.md](BTCUSD_Market_Mechanics_Fix_Report.md) for audit notes and remaining limitations.
