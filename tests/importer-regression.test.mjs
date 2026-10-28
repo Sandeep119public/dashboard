@@ -27,7 +27,7 @@ function makeZip({ name = 'trades.csv', localName = name, comment = Buffer.alloc
   local.writeUInt16LE(0, 8);
   local.writeUInt32LE(payload.length, 18);
   local.writeUInt32LE(payload.length, 22);
-  local.writeUInt16LE(filename.length, 26);
+  local.writeUInt16LE(localFilename.length, 26);
   const localRecord = Buffer.concat([local, localFilename, payload]);
 
   const central = Buffer.alloc(46);
