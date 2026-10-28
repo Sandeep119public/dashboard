@@ -45,3 +45,11 @@ This validates the streaming parser against the supplied archive and row counts.
 ## Import memory refinement (2026-10-28)
 
 The daily aggregation path now stores transient trade records in a packed four-column `Float64Array` buffer and sorts packed records only when timestamps arrive out of order. This preserves numeric precision and the existing event/bar calculations while reducing per-trade JavaScript object overhead. The change has been source-reviewed, but a full browser/device memory benchmark and visual regression were not performed in this environment; the previously reported 555 MB peak belongs to the earlier Node test and should not be treated as the new peak-memory measurement.
+
+
+## ZIP parser hardening (2026-10-28)
+
+- The end-of-central-directory scan now checks the declared ZIP comment length, avoiding false matches on a ZIP-signature byte sequence embedded in a valid comment.
+- Each CSV entry's local filename must match its central-directory filename.
+- Compressed payloads must remain before the central directory and within the uploaded file, preventing malformed offsets from reading directory bytes as CSV data.
+- Added regression cases for valid comments containing a false ZIP signature, stored-entry streaming, local filename mismatches, and directory/payload bounds.
