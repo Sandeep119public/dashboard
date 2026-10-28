@@ -40,3 +40,8 @@ Validation with the August sample archive:
 - After import, the dashboard reported 31 loaded days and 7,440,458 trade prints.
 
 This validates the streaming parser against the supplied archive and row counts. A full browser visual regression was not performed in this environment. The app still cannot infer unprovided order-book data, timestamp timezone semantics, or the exact contract multiplier.
+
+
+## Import memory refinement (2026-10-28)
+
+The daily aggregation path now stores transient trade records in a packed four-column `Float64Array` buffer and sorts packed records only when timestamps arrive out of order. This preserves numeric precision and the existing event/bar calculations while reducing per-trade JavaScript object overhead. The change has been source-reviewed, but a full browser/device memory benchmark and visual regression were not performed in this environment; the previously reported 555 MB peak belongs to the earlier Node test and should not be treated as the new peak-memory measurement.
