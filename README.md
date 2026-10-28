@@ -14,6 +14,10 @@ Large ZIPs are streamed directly from the archive. The app reads the ZIP directo
 
 The importer was validated against `futures-trades-monthly-BTCUSD-2026-08.csv.zip`: 7,440,458 trade prints across August 1–31, 2026, matching an independent CSV row count. ZIP central-directory offsets and entry lengths are checked before streaming; EOCD comment lengths, local filenames, and compressed-payload bounds are also validated. For ZIP64 archives or unsupported compression, extract the CSV and import it directly. Use current Chrome or Edge for streaming ZIP decompression. Run `node --test tests/importer-regression.test.mjs` to check ZIP parsing and malformed-archive handling; GitHub Actions runs this test on relevant pushes and pull requests.
 
+## Code structure
+
+The browser app keeps its existing single-page UI but separates reusable logic into native ES modules: `src/ingestion/zip-reader.js` owns ZIP directory validation and CSV-entry streaming, while `src/data/packed-trade-rows.js` owns the packed four-column trade buffer. The page imports these modules explicitly, and the service worker precaches them for offline use. Import orchestration, day aggregation, chart rendering, and UI state remain in the main page for now, so this is an incremental refactor rather than a full rewrite.
+
 ## Accuracy notes
 
 Directional flow depends on the source buyer-role field. The source does not explicitly specify timestamp timezone or trade-size unit. Trade prints do not include order-book snapshots, so resting liquidity, queue position and cancellations cannot be directly measured. Correlations and post-trade outcomes are descriptive research, not proof of predictive trading edge.
