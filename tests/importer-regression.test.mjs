@@ -150,7 +150,8 @@ test('aggregates trade rows into stable OHLCV bars and signed flow', () => {
   assert.equal(result.metrics.sell_size, 3);
   assert.equal(result.bars['1m'].o[0], 60000);
   assert.equal(result.bars['1m'].h[1], 60100);
-  assert.equal(result.bars['1m'].l[1], 60050);
+  assert.equal(result.bars['1m'].l[1], 60100);
+  assert.equal(result.bars['1m'].l[2], 60050);
   assert.equal(result.bars['1m'].c[2], 60050);
   assert.equal(result.bars['1m'].v[0], 3);
   assert.equal(result.bars['1m'].d[1], 2);
