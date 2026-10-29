@@ -8,6 +8,7 @@ import { PackedTradeRows } from '../src/data/packed-trade-rows.js';
 import { aggregateDay } from '../src/data/day-aggregator.js';
 import { readTradeFiles } from '../src/app/import-controller.js';
 import { bindMobileQuickActions } from '../src/ui/mobile-quick-actions.js';
+import { createLatestRenderQueue } from '../src/charts/latest-render-queue.js';
 
 const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -276,6 +277,7 @@ test('local JavaScript imports resolve and are included in the offline app shell
     'BTCUSD_Market_Mechanics_Lab_Fixed.html',
     'src/app/import-controller.js',
     'src/ui/mobile-quick-actions.js',
+    'src/charts/latest-render-queue.js',
     'src/ingestion/zip-reader.js',
     'src/ingestion/csv-parser.js',
     'src/data/packed-trade-rows.js',
@@ -386,4 +388,41 @@ test('mobile quick-action controller wires import, charts, replay, and filters',
   dispose();
   chartsButton.trigger();
   assert.equal(presets.length, 1, 'disposal removes the click listeners');
+});
+
+
+test('chart render queue keeps only the newest pending request per chart', async () => {
+  let releaseFirst;
+  const firstGate = new Promise(resolve => { releaseFirst = resolve; });
+  const rendered = [];
+  const afterRendered = [];
+  const queue = createLatestRenderQueue({
+    async render(_key, _target, request) {
+      rendered.push(request.value);
+      if (request.value === 1) await firstGate;
+    },
+    afterRender(_key, _target, request) { afterRendered.push(request.value); }
+  });
+  const target = {};
+  const first = queue.enqueue('priceChart', target, { value: 1 });
+  const second = queue.enqueue('priceChart', target, { value: 2 });
+  const third = queue.enqueue('priceChart', target, { value: 3 });
+  assert.deepEqual(rendered, [1]);
+  releaseFirst();
+  await Promise.all([first, second, third]);
+  assert.deepEqual(rendered, [1, 3]);
+  assert.deepEqual(afterRendered, [1, 3]);
+});
+
+test('chart render queue rejects a terminal render error and recovers for the next request', async () => {
+  const rendered = [];
+  const queue = createLatestRenderQueue({
+    async render(_key, _target, request) {
+      rendered.push(request.value);
+      if (request.value === 'bad') throw new Error('synthetic render failure');
+    }
+  });
+  await assert.rejects(queue.enqueue('flowChart', {}, { value: 'bad' }), /synthetic render failure/);
+  await queue.enqueue('flowChart', {}, { value: 'good' });
+  assert.deepEqual(rendered, ['bad', 'good']);
 });
