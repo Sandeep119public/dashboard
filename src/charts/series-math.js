@@ -121,14 +121,14 @@ function rollingRatio(delta, volume, window, times, step) {
   return out;
 }
 
-function median(values) {
+export function median(values) {
   const sorted = values.filter(value => value !== null && Number.isFinite(value)).sort((a, b) => a - b);
   if (!sorted.length) return null;
   const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
-function pearson(xs, ys) {
+export function pearson(xs, ys) {
   const n = Math.min(xs.length, ys.length);
   if (n < 3) return null;
   let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0, count = 0;
