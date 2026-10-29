@@ -47,7 +47,7 @@ const cacheVersion = Number(/btc-mechanics-shell-v(\d+)/.exec(serviceWorker)?.[1
 assert.ok(cacheVersion >= 23, 'service-worker cache version must be bumped for changed shell assets');
 
 test('inline browser module parses as valid JavaScript', () => {
-  const match = html.match(/<script type="module">([\\s\\S]*?)<\\/script>/);
+  const match = html.match(/<script type="module">([\s\S]*?)<\/script>/);
   assert.ok(match, 'the inline module script must exist');
   const checkDir = mkdtempSync(resolve(tmpdir(), 'btc-mechanics-module-check-'));
   const checkPath = resolve(checkDir, 'dashboard-inline.mjs');
