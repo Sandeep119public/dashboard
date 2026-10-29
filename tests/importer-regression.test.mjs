@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { zipCsvEntries, zipEntryStream } from '../src/ingestion/zip-reader.js';
 import { PackedTradeRows } from '../src/data/packed-trade-rows.js';
 import { aggregateDay } from '../src/data/day-aggregator.js';
+import { readTradeFiles } from '../src/app/import-controller.js';
 
 const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', import.meta.url), 'utf8');
 assert.match(html, /<script type="module">/);
@@ -215,4 +216,31 @@ test('streaming CSV parser honors injected cancellation', async () => {
   const { parseCsvStreamByDay } = await import('../src/ingestion/csv-parser.js');
   const stream = new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode(sampleCsv)); } });
   await assert.rejects(parseCsvStreamByDay(stream, 'fixture.csv', null, () => true), /Import cancelled by user/);
+});
+
+
+test('import controller reads CSV files and reports progress without DOM access', async () => {
+  const events = [];
+  const file = new Blob([sampleCsv]);
+  Object.defineProperty(file, 'name', { value: 'fixture.csv' });
+  const days = await readTradeFiles([file], {
+    barSteps: { '1m': 60 },
+    histLabels: ['tiny'],
+    onProgress: event => events.push(event)
+  });
+  assert.deepEqual([...days.keys()], ['2026-08-01', '2026-08-02']);
+  assert.equal(days.get('2026-08-01').metrics.row_count, 2);
+  assert.ok(events.some(event => event.type === 'csv' && event.fileName === 'fixture.csv'));
+  assert.ok(events.some(event => event.type === 'rows' && event.rows > 0));
+});
+
+test('import controller rejects overlapping dates in a single batch', async () => {
+  const a = new Blob([sampleCsv]); Object.defineProperty(a, 'name', { value: 'a.csv' });
+  const b = new Blob([sampleCsv]); Object.defineProperty(b, 'name', { value: 'b.csv' });
+  await assert.rejects(readTradeFiles([a, b], { barSteps: { '1m': 60 }, histLabels: ['tiny'] }), /More than one selected file contains 2026-08-01/);
+});
+
+test('import controller honors cancellation before reading the next file', async () => {
+  const file = new Blob([sampleCsv]); Object.defineProperty(file, 'name', { value: 'fixture.csv' });
+  await assert.rejects(readTradeFiles([file], { shouldCancel: () => true }), /Import cancelled by user/);
 });
