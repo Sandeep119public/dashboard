@@ -515,7 +515,6 @@ function rebuildCombined(){
    coverage.textContent=msg;
  }
 }
-const yieldToUi=()=>new Promise(resolve=>setTimeout(resolve,0));
 function syncImportControls(){
  const cancel=$('cancelImport');if(cancel){cancel.hidden=!importRunning;cancel.disabled=importCancelRequested;cancel.textContent=importCancelRequested?'Cancelling…':'Cancel import';}
  const mobile=document.querySelector('[data-mobile-action="import"]');
@@ -570,7 +569,6 @@ function plot(id,traces,layout){
  return promise;
 }
 function axisTickFormat(){return $('startDate').value!==$('endDate').value?'%b %d<br>%H:%M':'%H:%M';}
-function axisHoverTime(){return $('startDate').value!==$('endDate').value?'%Y-%m-%d %H:%M:%S':'%H:%M:%S';}
 function subsetBars(tf,w){
  const key=tf+'|'+w.s+'|'+w.e;if(subsetCache.has(key))return subsetCache.get(key);
  const source=B[tf],step=BAR_STEPS[tf]||60,lo=lowerBoundTime(source.t,w.s),hi=upperBoundTime(source.t,w.e),count=Math.max(0,hi-lo);
@@ -620,7 +618,6 @@ function tradeWeightedAverageForSubset(sub){
  }
  return {values:out,exact};
 }
-function sum(a,ids){let s=0;ids.forEach(i=>s+=Number(a[i]||0));return s;}
 function rollingRatio(d,v,window,times,step){const out=new Array(d.length);let sd=0,sv=0,segmentStart=0;const w=Math.max(1,Number(window)||1);for(let i=0;i<d.length;i++){if(i>0&&times&&times[i]-times[i-1]>step*1.5){sd=0;sv=0;segmentStart=i;}sd+=Number(d[i]||0);sv+=Number(v[i]||0);const remove=i-w;if(remove>=segmentStart){sd-=Number(d[remove]||0);sv-=Number(v[remove]||0);}out[i]=sv?sd/sv*100:0;}return out;}
 function setMetric(id,value,cls){const el=$(id);el.textContent=value;el.className='value '+(cls||'neutral');}
 function updateKpis(w){
@@ -635,7 +632,6 @@ function updateKpis(w){
  setMetric('kImb',(imb>0?'+':'')+imb.toFixed(2)+'%',imb>0?'positive':imb<0?'negative':'neutral');$('kImbHint').textContent='net flow / executed size';
  return true;
 }
-function ema(values,period){const out=[];if(!values.length)return out;const alpha=2/(period+1);let prev=Number(values[0]);for(let i=0;i<values.length;i++){const v=Number(values[i]);prev=i===0?v:(Number.isFinite(v)?v*alpha+prev*(1-alpha):prev);out.push(prev);}return out;}
 function updatePrice(tf,w,threshold){
  const sub=subsetBars(tf,w),x=sub.x,ids=sub.ids,xx=ids.map(i=>dtMs(x.t[i]));
  const closes=ids.map(i=>x.c[i]),highs=ids.map(i=>x.h[i]),lows=ids.map(i=>x.l[i]),vols=ids.map(i=>Number(x.v[i]||0));
@@ -801,7 +797,6 @@ async function loadWorkspaceFile(file){
 }
 
 const STUDIO_PANEL_NAMES={priceChart:'Price + large executions',flowChart:'Executed flow',cvdChart:'Cumulative volume delta',profileChart:'Volume-at-price profile',sizeChart:'Trade-size distribution',hourChart:'Activity by hour',eventChart:'Large-trade follow-through',leadLagChart:'Flow lead-lag',regimeChart:'Hourly regime map'};
-function studioCards(){return Array.from(document.querySelectorAll('.chartcard')).filter(card=>card.querySelector&&card.querySelector('.plot'));}
 function studioCardFor(id){const p=$(id);return p&&p.closest?p.closest('.chartcard'):null;}
 function resizeStudioCharts(){if(typeof Plotly==='undefined'||!Plotly.Plots||!Plotly.Plots.resize)return;document.querySelectorAll('.plot').forEach(p=>{if(p.offsetParent!==null&&p.data)try{Plotly.Plots.resize(p);}catch(_){}});}
 function applyStudioLayout(){
