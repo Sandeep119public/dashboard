@@ -78,12 +78,12 @@ async function parseCsvStreamByDay(readable,sourceName,onProgress,shouldCancel=(
   while(!done){if(shouldCancel())throw new Error('Import cancelled by user.');const item=await reader.read();done=item.done;if(item.value)pending+=decoder.decode(item.value,{stream:!done});else if(done)pending+=decoder.decode();
    let lineStart=0,lf;
    while((lf=pending.indexOf('\n',lineStart))!==-1){parser.pushLine(pending.slice(lineStart,lf));lineStart=lf+1;
-    if(parser.rowCount-lastYieldRows>=25000){lastYieldRows=parser.rowCount;if(onProgress)onProgress(parser.rowCount,parser.currentDate,sourceName);await yieldToUi();if(importCancelRequested)throw new Error('Import cancelled by user.');}
+    if(parser.rowCount-lastYieldRows>=25000){lastYieldRows=parser.rowCount;if(onProgress)onProgress(parser.rowCount,parser.currentDate,sourceName);await yieldToUi();if(shouldCancel())throw new Error('Import cancelled by user.');}
    }
    pending=pending.slice(lineStart);
    if(done&&pending.length){parser.pushLine(pending);pending='';}
   }
-  if(importCancelRequested)throw new Error('Import cancelled by user.');return parser.finish();
+  if(shouldCancel())throw new Error('Import cancelled by user.');return parser.finish();
  }catch(err){try{await reader.cancel(err);}catch(_){}throw err;}finally{try{reader.releaseLock();}catch(_){}}
 }
 
