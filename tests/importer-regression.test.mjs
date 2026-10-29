@@ -9,6 +9,7 @@ import { aggregateDay } from '../src/data/day-aggregator.js';
 import { readTradeFiles } from '../src/app/import-controller.js';
 import { bindMobileQuickActions } from '../src/ui/mobile-quick-actions.js';
 import { createLatestRenderQueue } from '../src/charts/latest-render-queue.js';
+import { createBarSubsetter } from '../src/charts/bar-subsetter.js';
 
 const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -279,6 +280,7 @@ test('local JavaScript imports resolve and are included in the offline app shell
     'src/app/import-controller.js',
     'src/ui/mobile-quick-actions.js',
     'src/charts/latest-render-queue.js',
+    'src/charts/bar-subsetter.js',
     'src/ingestion/zip-reader.js',
     'src/ingestion/csv-parser.js',
     'src/data/packed-trade-rows.js',
@@ -426,4 +428,89 @@ test('chart render queue rejects a terminal render error and recovers for the ne
   await assert.rejects(queue.enqueue('flowChart', {}, { value: 'bad' }), /synthetic render failure/);
   await queue.enqueue('flowChart', {}, { value: 'good' });
   assert.deepEqual(rendered, ['bad', 'good']);
+});
+
+
+function makeBarSeries(records) {
+  const fields = ['t', 'o', 'h', 'l', 'c', 'v', 'n', 'b', 's', 'd', 'pv'];
+  return Object.fromEntries(fields.map(field => [field, records.map(record => record[field])]));
+}
+
+function sampleBars(times) {
+  return makeBarSeries(times.map((t, i) => ({
+    t, o: 100 + i, h: 101 + i, l: 99 + i, c: 100 + i,
+    v: i + 1, n: i + 1, b: i + 2, s: i, d: 2,
+    pv: (100 + i) * (i + 1)
+  })));
+}
+
+test('bar subsetter applies inclusive time bounds and can invalidate cached data', () => {
+  let bars = { '1m': sampleBars([0, 60, 120, 180, 240]) };
+  const subsetter = createBarSubsetter({ getBars: () => bars, barSteps: { '1m': 60 }, maxRenderPoints: 10 });
+  const window = { s: 60, e: 180 };
+  const first = subsetter.subsetBars('1m', window);
+  assert.deepEqual(first.ids, [1, 2, 3]);
+  assert.equal(first.sourceLo, 1);
+  assert.equal(first.sourceHi, 4);
+  assert.equal(first.compressed, false);
+  assert.strictEqual(subsetter.subsetBars('1m', window), first);
+
+  const replacement = sampleBars([100, 160, 220, 280, 340]);
+  bars = { '1m': replacement };
+  assert.strictEqual(subsetter.subsetBars('1m', window), first, 'cached data is reused until explicitly invalidated');
+  subsetter.clearCache();
+  const refreshed = subsetter.subsetBars('1m', window);
+  assert.notStrictEqual(refreshed, first);
+  assert.strictEqual(refreshed.source, replacement);
+  assert.deepEqual(refreshed.ids, [0, 1]);
+});
+
+test('bar subsetter downsamples while preserving OHLCV, trade counts and price-volume sums', () => {
+  const source = sampleBars([0, 60, 120, 180, 240, 300]);
+  const subsetter = createBarSubsetter({ getBars: () => ({ '1m': source }), barSteps: { '1m': 60 }, maxRenderPoints: 2 });
+  const result = subsetter.subsetBars('1m', { s: 0, e: 300 });
+  assert.equal(result.compressed, true);
+  assert.equal(result.groupSize, 3);
+  assert.deepEqual(result.x.t, [120, 300]);
+  assert.deepEqual(result.x.o, [100, 103]);
+  assert.deepEqual(result.x.h, [103, 106]);
+  assert.deepEqual(result.x.l, [99, 102]);
+  assert.deepEqual(result.x.c, [102, 105]);
+  assert.deepEqual(result.x.v, [6, 15]);
+  assert.deepEqual(result.x.n, [6, 15]);
+  assert.deepEqual(result.x.b, [9, 18]);
+  assert.deepEqual(result.x.s, [3, 12]);
+  assert.deepEqual(result.x.d, [6, 6]);
+  assert.deepEqual(result.x.pv, [608, 1562]);
+  assert.deepEqual(result.ends, [2, 5]);
+  assert.deepEqual(result.ids, [0, 1]);
+});
+
+test('bar subsetter preserves gaps and midnight boundaries when grouping long ranges', () => {
+  const times = [0, 60, 600, 660, 86340, 86400, 86460, 86520];
+  const source = sampleBars(times);
+  const subsetter = createBarSubsetter({ getBars: () => ({ '1m': source }), barSteps: { '1m': 60 }, maxRenderPoints: 2 });
+  const result = subsetter.subsetBars('1m', { s: 0, e: 86520 });
+  assert.equal(result.compressed, true);
+  assert.deepEqual(result.x.t, [60, 660, 86340, 86520]);
+  assert.deepEqual(result.x.v, [3, 7, 5, 21]);
+  assert.deepEqual(result.breakBefore, [false, true, true, false]);
+  assert.equal(result.x.t[2] < 86400, true, 'a group must not merge across the midnight boundary');
+  assert.equal(result.x.t[3] >= 86400, true);
+});
+
+test('bar subsetter enforces a bounded least-recently-used cache', () => {
+  const source = sampleBars([0, 60, 120, 180]);
+  const subsetter = createBarSubsetter({ getBars: () => ({ '1m': source }), barSteps: { '1m': 60 }, maxRenderPoints: 10, cacheLimit: 2 });
+  subsetter.subsetBars('1m', { s: 0, e: 0 });
+  subsetter.subsetBars('1m', { s: 60, e: 60 });
+  subsetter.subsetBars('1m', { s: 120, e: 120 });
+  assert.equal(subsetter.cacheSize, 2);
+  assert.deepEqual(subsetter.subsetBars('1m', { s: 60, e: 60 }).ids, [1]);
+  assert.equal(subsetter.cacheSize, 2);
+});
+
+test('bar subsetter reports a missing timeframe with a readable error', () => {
+  const subsetter = createBarSubsetter({ getBars: () => ({}), barSteps: { '1m': 60 } });
+  assert.throws(() => subsetter.subsetBars('1m', { s: 0, e: 60 }), /No bar series is available/);
 });
