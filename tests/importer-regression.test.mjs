@@ -8,10 +8,12 @@ import { readTradeFiles } from '../src/app/import-controller.js';
 
 const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', import.meta.url), 'utf8');
 assert.match(html, /<script type="module">/);
-assert.match(html, /import \{ zipCsvEntries, zipEntryStream \} from '\.\/src\/ingestion\/zip-reader\.js'/);
-assert.match(html, /import \{ PackedTradeRows \} from '\.\/src\/data\/packed-trade-rows\.js'/);
+assert.match(html, /import \{ readTradeFiles \} from '\.\/src\/app\/import-controller\.js'/);
+assert.doesNotMatch(html, /import \{ (?:zipCsvEntries|PackedTradeRows|parseCsvStreamByDay)/);
 assert.match(html, /window\.DATA = DATA;/);
-assert.ok(html.includes("import { parseCsvStreamByDay } from './src/ingestion/csv-parser.js'"));
+assert.match(html, /name="description"/);
+assert.match(html, /:focus-visible/);
+assert.match(html, /safe-area-inset-bottom/);
 
 function makeZip({ name = 'trades.csv', localName = name, comment = Buffer.alloc(0), data = 'timestamp,price,size,buyer_role,product_symbol\n2026-08-01 00:00:00,60000,1,taker,BTCUSD\n' } = {}) {
   const filename = Buffer.from(name);
