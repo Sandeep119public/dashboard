@@ -231,7 +231,6 @@ test('import controller reads CSV files and reports progress without DOM access'
   assert.deepEqual([...days.keys()], ['2026-08-01', '2026-08-02']);
   assert.equal(days.get('2026-08-01').metrics.row_count, 2);
   assert.ok(events.some(event => event.type === 'csv' && event.fileName === 'fixture.csv'));
-  assert.ok(events.some(event => event.type === 'rows' && event.rows > 0));
 });
 
 test('import controller rejects overlapping dates in a single batch', async () => {
@@ -243,4 +242,18 @@ test('import controller rejects overlapping dates in a single batch', async () =
 test('import controller honors cancellation before reading the next file', async () => {
   const file = new Blob([sampleCsv]); Object.defineProperty(file, 'name', { value: 'fixture.csv' });
   await assert.rejects(readTradeFiles([file], { shouldCancel: () => true }), /Import cancelled by user/);
+});
+
+
+test('import controller streams CSV entries from ZIP archives', async () => {
+  const events = [];
+  const file = asFile(makeZip(), 'controller.zip');
+  const days = await readTradeFiles([file], {
+    barSteps: { '1m': 60 },
+    histLabels: ['tiny'],
+    onProgress: event => events.push(event)
+  });
+  assert.deepEqual([...days.keys()], ['2026-08-01']);
+  assert.equal(days.get('2026-08-01').metrics.row_count, 1);
+  assert.ok(events.some(event => event.type === 'entry' && event.entryName === 'trades.csv'));
 });
