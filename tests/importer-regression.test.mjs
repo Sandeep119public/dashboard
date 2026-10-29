@@ -30,6 +30,14 @@ assert.match(html, /window\.DATA = DATA;/);
 assert.match(html, /name="description"/);
 assert.match(html, /:focus-visible/);
 assert.match(html, /safe-area-inset-bottom/);
+assert.match(html, /location\.protocol!=='file:'/);
+assert.match(html, /id='fileProtocolNotice'/);
+assert.match(html, /safe-area-inset-right/);
+assert.match(html, /\.panel-action\{min-height:44px;min-width:44px/);
+assert.match(html, /id="stampDate">No data loaded</);
+assert.match(html, /swHost==='localhost'/);
+const cacheVersion = Number(/btc-mechanics-shell-v(\d+)/.exec(serviceWorker)?.[1]);
+assert.ok(cacheVersion >= 18, 'service-worker cache version must be bumped for changed shell assets');
 
 function makeZip({ name = 'trades.csv', localName = name, comment = Buffer.alloc(0), data = 'timestamp,price,size,buyer_role,product_symbol\n2026-08-01 00:00:00,60000,1,taker,BTCUSD\n' } = {}) {
   const filename = Buffer.from(name);
@@ -228,6 +236,38 @@ test('CSV parser preserves quoted commas in unused columns', async () => {
   const csv = 'product_symbol,price,size,timestamp,buyer_role,note\nBTCUSD,60000,1,2026-08-01 00:00:00,taker,"large, normal print"\n';
   const days = parseCsvByDay(csv);
   assert.equal(days.get('2026-08-01').metrics.row_count, 1);
+});
+
+test('CSV parser handles CRLF, mixed case, duplicate seconds and fractional timestamps', async () => {
+  const { parseCsvByDay, parseTradeTimestamp } = await import('../src/ingestion/csv-parser.js');
+  const parsedStamp = parseTradeTimestamp('2026-08-01 00:00:00.123456');
+  assert.equal(parsedStamp.date, '2026-08-01');
+  assert.equal(parsedStamp.sec, 0.123456);
+
+  const csv = [
+    'product_symbol,price,size,timestamp,buyer_role',
+    'btcusd,60000.10,1.5,2026-08-01 00:00:00.123456,TAKER',
+    ' btcusd , 60000.20 , 2.5 , 2026-08-01 00:00:00.123456 , maker ',
+    'BTCUSD,60001.50,300,2026-08-01 00:02:00.999999,taker'
+  ].join('\r\n') + '\r\n';
+  const day = parseCsvByDay(csv).get('2026-08-01');
+  assert.equal(day.metrics.row_count, 3);
+  assert.deepEqual(day.bars['1m'].t, [0, 120]);
+  assert.equal(day.bars['1m'].n[0], 2);
+  assert.equal(day.bars['1m'].c[0], 60000.2);
+  assert.equal(day.bars['1m'].v[0], 4);
+  assert.equal(day.bars['1m'].d[0], -1);
+  assert.equal(day.metrics.minute_flow_return_corr, null);
+  assert.equal(day.events.t[0], 120.999999);
+});
+
+test('CSV parser rejects malformed quoting, blank numbers and blank timestamps', async () => {
+  const { parseCsvByDay } = await import('../src/ingestion/csv-parser.js');
+  const header = 'product_symbol,price,size,timestamp,buyer_role,note\n';
+  assert.throws(() => parseCsvByDay(header + 'BTCUSD,60000,1,2026-08-01 00:00:00,taker,"unterminated\n'), /Malformed CSV quoting/);
+  assert.throws(() => parseCsvByDay(header + 'BTCUSD,,1,2026-08-01 00:00:00,taker,ok\n'), /Invalid price/);
+  assert.throws(() => parseCsvByDay(header + 'BTCUSD,60000,,2026-08-01 00:00:00,taker,ok\n'), /Invalid size/);
+  assert.throws(() => parseCsvByDay(header + 'BTCUSD,60000,1,,taker,ok\n'), /Missing timestamp/);
 });
 
 test('streaming CSV parser honors injected cancellation', async () => {
@@ -688,7 +728,7 @@ test('lead-lag engine sends data once and accepts worker results', async () => {
     terminate() { this.terminated = true; }
   }
   let fakeWorker;
-  const engine = createLeadLagEngine({ workerFactory: () => (fakeWorker = new FakeWorker()) });
+  const engine = createLeadLagEngine({ workerFactory: () => (fakeWorker = new FakeWorker()), maxMainThreadBars: 0 });
   const bars = makeLeadLagBars();
   engine.setData(bars);
   const options = { start: 60, end: 600, lookback: 2 };
@@ -712,7 +752,7 @@ test('lead-lag engine falls back to the main thread when a worker fails', async 
     onmessageerror = null;
   }
   let worker;
-  const engine = createLeadLagEngine({ workerFactory: () => (worker = new FailingWorker()) });
+  const engine = createLeadLagEngine({ workerFactory: () => (worker = new FailingWorker()), maxMainThreadBars: 0 });
   const bars = makeLeadLagBars();
   engine.setData(bars);
   const options = { start: 60, end: 600, lookback: 2 };
@@ -720,4 +760,146 @@ test('lead-lag engine falls back to the main thread when a worker fails', async 
   assert.deepEqual(result, computeLeadLag(bars, options));
   assert.equal(engine.workerActive, false);
   assert.equal(worker.terminated, true);
+});
+
+test('lead-lag engine times out a silent worker and falls back', async () => {
+  class SilentWorker {
+    constructor() { this.onmessage = null; this.onerror = null; this.onmessageerror = null; this.computeMessages = 0; }
+    postMessage(message) { if (message.type === 'compute') this.computeMessages++; }
+    terminate() { this.terminated = true; }
+  }
+  let worker;
+  const engine = createLeadLagEngine({ workerFactory: () => (worker = new SilentWorker()), timeoutMs: 20, maxMainThreadBars: 0 });
+  const bars = makeLeadLagBars();
+  engine.setData(bars);
+  const options = { start: 60, end: 600, lookback: 2 };
+  assert.deepEqual(await engine.compute(options), computeLeadLag(bars, options));
+  assert.equal(worker.computeMessages, 1);
+  assert.equal(worker.terminated, true);
+  assert.equal(engine.workerActive, false);
+  assert.equal(engine.lastMode, 'fallback');
+  engine.dispose();
+});
+
+test('lead-lag engine recreates a worker after a transient failure', async () => {
+  class FlakyWorker {
+    constructor() {
+      this.onmessage = null; this.onerror = null; this.onmessageerror = null;
+      this.calculator = createLeadLagCalculator(); this.revision = 0; this.failNextCompute = true;
+    }
+    postMessage(message) {
+      if (message.type === 'set-data') {
+        this.calculator.setData(message.bars); this.revision = message.revision;
+        queueMicrotask(() => this.onmessage?.({ data: { type: 'ready', revision: this.revision } }));
+        return;
+      }
+      if (message.type !== 'compute') return;
+      if (this.failNextCompute) {
+        this.failNextCompute = false;
+        queueMicrotask(() => this.onerror?.(new Error('synthetic transient failure')));
+        return;
+      }
+      queueMicrotask(() => {
+        const result = this.calculator.compute(message);
+        this.onmessage?.({ data: { id: message.id, revision: this.revision, result } });
+      });
+    }
+    terminate() { this.terminated = true; }
+  }
+  const workers = [];
+  const engine = createLeadLagEngine({
+    workerFactory: () => {
+      const worker = new FlakyWorker();
+      worker.failNextCompute = workers.length === 0;
+      workers.push(worker);
+      return worker;
+    },
+    maxMainThreadBars: 0
+  });
+  const bars = makeLeadLagBars();
+  const options = { start: 60, end: 600, lookback: 2 };
+  engine.setData(bars);
+  assert.deepEqual(await engine.compute(options), computeLeadLag(bars, options));
+  assert.equal(engine.workerActive, false);
+  assert.equal(workers[0].terminated, true);
+
+  engine.setData(bars);
+  assert.deepEqual(await engine.compute(options), computeLeadLag(bars, options));
+  assert.equal(workers.length, 2);
+  assert.equal(engine.workerActive, true);
+  assert.equal(engine.lastMode, 'worker');
+  engine.dispose();
+});
+
+test('lead-lag engine rejects a stale worker revision and uses local data', async () => {
+  class StaleWorker {
+    constructor() { this.onmessage = null; this.onerror = null; this.onmessageerror = null; }
+    postMessage(message) {
+      if (message.type === 'set-data') {
+        queueMicrotask(() => this.onmessage?.({ data: { type: 'ready', revision: message.revision } }));
+        return;
+      }
+      if (message.type === 'compute') {
+        queueMicrotask(() => this.onmessage?.({ data: { id: message.id, revision: message.revision - 1, result: { counts: [999] } } }));
+      }
+    }
+    terminate() { this.terminated = true; }
+  }
+  const engine = createLeadLagEngine({ workerFactory: () => new StaleWorker(), maxMainThreadBars: 0 });
+  const bars = makeLeadLagBars();
+  engine.setData(bars);
+  const options = { start: 60, end: 600, lookback: 2 };
+  assert.deepEqual(await engine.compute(options), computeLeadLag(bars, options));
+  assert.equal(engine.workerActive, true);
+  engine.dispose();
+});
+
+test('lead-lag engine keeps small windows on the main thread and honors the adaptive threshold', async () => {
+  class CountingWorker {
+    constructor() { this.onmessage = null; this.onerror = null; this.onmessageerror = null; this.calculator = createLeadLagCalculator(); this.revision = 0; this.computeMessages = 0; }
+    postMessage(message) {
+      if (message.type === 'set-data') {
+        this.calculator.setData(message.bars); this.revision = message.revision;
+        queueMicrotask(() => this.onmessage?.({ data: { type: 'ready', revision: this.revision } }));
+        return;
+      }
+      if (message.type === 'compute') {
+        this.computeMessages++;
+        queueMicrotask(() => this.onmessage?.({ data: { id: message.id, revision: this.revision, result: this.calculator.compute(message) } }));
+      }
+    }
+    terminate() { this.terminated = true; }
+  }
+  let worker;
+  const engine = createLeadLagEngine({ workerFactory: () => (worker = new CountingWorker()) });
+  const bars = makeLeadLagBars();
+  engine.setData(bars);
+  const options = { start: 60, end: 600, lookback: 2 };
+  assert.deepEqual(await engine.compute(options), computeLeadLag(bars, options));
+  assert.equal(worker.computeMessages, 0);
+  assert.equal(engine.lastMode, 'main');
+
+  const forced = createLeadLagEngine({ workerFactory: () => (worker = new CountingWorker()), maxMainThreadBars: 0 });
+  forced.setData(bars);
+  assert.deepEqual(await forced.compute(options), computeLeadLag(bars, options));
+  assert.equal(worker.computeMessages, 1);
+  assert.equal(forced.lastMode, 'worker');
+  engine.dispose();
+  forced.dispose();
+});
+
+test('lead-lag engine resolves pending work and rejects new work after dispose', async () => {
+  class SilentWorker {
+    constructor() { this.onmessage = null; this.onerror = null; this.onmessageerror = null; }
+    postMessage() {}
+    terminate() { this.terminated = true; }
+  }
+  const engine = createLeadLagEngine({ workerFactory: () => new SilentWorker(), timeoutMs: 1000, maxMainThreadBars: 0 });
+  const bars = makeLeadLagBars();
+  engine.setData(bars);
+  const options = { start: 60, end: 600, lookback: 2 };
+  const pending = engine.compute(options);
+  engine.dispose();
+  assert.deepEqual(await pending, computeLeadLag(bars, options));
+  await assert.rejects(engine.compute(options), /data has not been loaded/);
 });

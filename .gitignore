@@ -1,0 +1,9 @@
+# Local market-data archives are large and are not source code.
+*.csv.zip
+futures-trades-monthly-*.csv.zip
+
+# Local tooling and generated artifacts.
+node_modules/
+mobile-after-import.png
+.DS_Store
+Thumbs.db

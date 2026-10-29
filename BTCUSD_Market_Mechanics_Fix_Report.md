@@ -120,3 +120,54 @@ The daily aggregation path now stores transient trade records in a packed four-c
 - Added regression coverage for exact minute horizons, missing-minute gaps, main-thread results, worker protocol, and worker-failure fallback.
 - Bumped the service-worker app-shell cache to `btc-mechanics-shell-v16` and included all worker dependencies in the offline shell.
 - Node regression tests pass for this code path; browser-level worker behavior and performance have not yet been measured on a physical Android device. The worker uses structured cloning for one-time series transfer per data rebuild, so the benefit for small datasets may be limited.
+
+## Performance, worker hardening and mobile audit (2026-10-29)
+
+### Measured import and aggregation changes
+
+The common Binance CSV layout now uses a range-based timestamp parser, a numeric date-key cache, a five-column fast path, exact decimal parsing for up to 15 significant digits, and allocation-free role/symbol checks. Unusual rows (quotes, timezones, extra columns, whitespace) still use the general parser. Daily aggregation now scans the packed trade buffer once for every timeframe, uses direct buffer offsets, a numeric profile key, a `Uint8Array` for active seconds, one merged profile/metrics/event pass, and native numeric sorting for quantiles.
+
+Node 20, August archive (`futures-trades-monthly-BTCUSD-2026-08.csv.zip`):
+
+| Measurement | Before | After |
+| --- | ---: | ---: |
+| ZIP directory + parse + daily aggregation | 16.58 s | 7.67–7.75 s |
+| Peak RSS | 409 MB | 398–408 MB |
+| Combined 1-minute bars | 44,573 | 44,573 |
+| Full-month lead/lag (lookback 5) | 31.5 ms | 31.5 ms |
+| Workspace JSON | 57.3 MB | 57.3 MB |
+
+The 66 MB compressed input is included in both RSS figures. The CPU profile before the change was dominated by `pushLine` (38.1%), `parseTradeTimestamp` (18.5%) and `aggregateDay` (15.9%); those paths were the optimization targets.
+
+### Output equivalence
+
+The previous and current parsers/aggregators were run over the same inputs and compared with SHA-256 over every day object (metrics, all timeframe bars, profile, histogram, labels and events). All **31 days / 7,440,458 rows** matched exactly. A **5,003-row synthetic fixture** covering CRLF, quoted fields, lowercase symbols/roles, duplicate seconds, missing minutes, out-of-order rows and fractional timestamps also matched exactly. This is stronger than comparing row counts alone and confirms the fast paths did not change numeric results.
+
+### Worker behavior in a real browser
+
+Chromium, real module worker, 44,640 synthetic one-minute bars:
+
+- Worker creation is lazy; `setData` took about 2.3 ms and transfers the four arrays once per revision.
+- First full-month compute took 38.8 ms including worker startup; the second took 20.7 ms. A fresh main-thread calculator took 20.9 ms on the same data.
+- Worker and main-thread results matched the reference exactly.
+- A result for an old revision was rejected; the fresh result matched the new data.
+- Constructor failure and a worker URL that fails to load both fell back to the main thread.
+- `dispose()` terminated the worker and deactivated the engine.
+
+The engine now keeps windows of 4,000 or fewer bars on the main thread, uses a 5-second timeout, recreates a failed worker on the next `setData` (up to three consecutive failures), and labels results as `worker` or `main thread` in the lead/lag caption. Node tests cover timeout fallback, transient-failure recovery, stale revisions, adaptive dispatch and disposal.
+
+### Browser UI and mobile checks
+
+Full August import through the real file input completed in **7.5 s** in 360×780 mobile emulation (Android UA, 3× DPR) and about **10.8 s** on desktop in the earlier baseline run. After import, mobile JS heap was **152.2 MB**, DOM nodes **21,205**, `scrollWidth` equaled the 360 px viewport (no horizontal overflow), and there were no console or page errors. The "Import complete" status now persists after chart rendering.
+
+Full-lab rendering still draws all nine charts once (about 351 ms of Plotly work total in this run). A threshold change now redraws only `priceChart` and `eventChart`; a lead/lag lookback change redraws only `leadLagChart`. Replay at 12× applied 84 cursor relayouts in four seconds (previously debounce could starve the cursor).
+
+Mobile CSS now uses right/left safe-area insets on the fixed action bar, gives panel actions, buttons, replay controls, speed/scrubber and panel chips at least 44 px targets, and enlarges checkboxes and Plotly modebar buttons. A Chromium audit at 360×780 found **0 visible controls below 44×44** across 83 controls after import. The initial no-data stamp now reads "No data loaded" instead of claiming 314,107 prints while the shipped embedded `DATA` is empty.
+
+A `file://` banner explains that the app must be served over HTTP because browsers block modules and workers on local files. The service worker now registers on localhost/127.0.0.1 as well as HTTPS for local offline testing. With cache `btc-mechanics-shell-v18`, Chromium cached all 17 shell entries plus Plotly and reloaded the app with the network offline: the title, nine panel chips, chart guides and price-flow preset initialized with no console errors. These checks used Chromium emulation; a physical Samsung Galaxy A35 run remains outstanding.
+
+### Remaining limitations
+
+- GitHub push and deployment could not be verified because the local `gh` token is invalid; no CI result or live deployment is claimed.
+- Physical Android device testing, battery/thermal behavior and low-memory device behavior remain outstanding.
+- The source still does not define buyer-role semantics, timestamp timezone or size units; order-book liquidity cannot be reconstructed from trade prints.
