@@ -97,3 +97,11 @@ The daily aggregation path now stores transient trade records in a packed four-c
 - Added synthetic regression fixtures for inclusive time windows, cache invalidation, volume/trade/delta/price-volume preservation during downsampling, missing-data gaps, UTC midnight boundaries, and cache-size limits.
 - Added the new module to the service-worker shell and advanced its cache version to `btc-mechanics-shell-v13`.
 - These unit tests guard the data transformation logic. They are not a substitute for browser visual regression or testing on a physical Android device.
+
+## Chart series math extraction (2026-10-29)
+
+- Moved rolling imbalance, gap-separating line-array generation, EMA, and trade-weighted price calculations into `src/charts/series-math.js`.
+- The series module has no DOM or Plotly dependency; the page injects its epoch-millisecond timestamp converter.
+- Added six regression tests for rolling-ratio gap resets, compressed group endpoint mapping, null line breaks, EMA warm-up and gap resets, daily trade-weighted price resets, legacy HLC3 fallback labeling, and invalid arguments.
+- Added the module to the service-worker app shell and advanced its cache version to `btc-mechanics-shell-v14`.
+- This validates calculation contracts under Node. Browser visual regression and physical Android performance tests remain outstanding.
