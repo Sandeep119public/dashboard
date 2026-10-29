@@ -202,3 +202,16 @@ test('streaming CSV parser handles chunk boundaries across headers and rows', as
   assert.deepEqual([...days.keys()], ['2026-08-01', '2026-08-02']);
   assert.equal(days.get('2026-08-01').metrics.row_count, 2);
 });
+
+test('CSV parser preserves quoted commas in unused columns', async () => {
+  const { parseCsvByDay } = await import('../src/ingestion/csv-parser.js');
+  const csv = 'product_symbol,price,size,timestamp,buyer_role,note\\nBTCUSD,60000,1,2026-08-01 00:00:00,taker,"large, normal print"\\n';
+  const days = parseCsvByDay(csv);
+  assert.equal(days.get('2026-08-01').metrics.row_count, 1);
+});
+
+test('streaming CSV parser honors injected cancellation', async () => {
+  const { parseCsvStreamByDay } = await import('../src/ingestion/csv-parser.js');
+  const stream = new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode(sampleCsv)); } });
+  await assert.rejects(parseCsvStreamByDay(stream, 'fixture.csv', null, () => true), /Import cancelled by user/);
+});
