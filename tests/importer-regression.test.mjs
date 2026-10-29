@@ -10,6 +10,7 @@ import { readTradeFiles } from '../src/app/import-controller.js';
 import { bindMobileQuickActions } from '../src/ui/mobile-quick-actions.js';
 import { createLatestRenderQueue } from '../src/charts/latest-render-queue.js';
 import { createBarSubsetter } from '../src/charts/bar-subsetter.js';
+import { createChartSeriesMath } from '../src/charts/series-math.js';
 
 const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -281,6 +282,7 @@ test('local JavaScript imports resolve and are included in the offline app shell
     'src/ui/mobile-quick-actions.js',
     'src/charts/latest-render-queue.js',
     'src/charts/bar-subsetter.js',
+    'src/charts/series-math.js',
     'src/ingestion/zip-reader.js',
     'src/ingestion/csv-parser.js',
     'src/data/packed-trade-rows.js',
@@ -513,4 +515,82 @@ test('bar subsetter keeps its cache within the configured size limit', () => {
 test('bar subsetter reports a missing timeframe with a readable error', () => {
   const subsetter = createBarSubsetter({ getBars: () => ({}), barSteps: { '1m': 60 } });
   assert.throws(() => subsetter.subsetBars('1m', { s: 0, e: 60 }), /No bar series is available/);
+});
+
+
+test('chart series math keeps rolling imbalance separate across data gaps', () => {
+  const math = createChartSeriesMath({ toTimestamp: value => value * 1000 });
+  const delta = [2, -1, 3, 1];
+  const volume = [4, 2, 6, 2];
+  const times = [0, 60, 600, 660];
+  const result = math.rollingRatio(delta, volume, 2, times, 60);
+  assert.equal(result.length, 4);
+  assert.equal(result[0], 50);
+  assert.ok(Math.abs(result[1] - (1 / 6 * 100)) < 1e-10);
+  assert.equal(result[2], 50);
+  assert.equal(result[3], 50);
+});
+
+test('chart series math maps compressed rolling imbalance to source group endpoints', () => {
+  const math = createChartSeriesMath({ toTimestamp: value => value * 1000 });
+  const source = makeBarSeries([
+    { t: 0, o: 1, h: 1, l: 1, c: 1, v: 4, n: 1, b: 3, s: 1, d: 2, pv: 4 },
+    { t: 60, o: 1, h: 1, l: 1, c: 1, v: 2, n: 1, b: 0, s: 1, d: -1, pv: 2 },
+    { t: 600, o: 1, h: 1, l: 1, c: 1, v: 6, n: 1, b: 5, s: 2, d: 3, pv: 6 },
+    { t: 660, o: 1, h: 1, l: 1, c: 1, v: 2, n: 1, b: 2, s: 1, d: 1, pv: 2 }
+  ]);
+  const subset = { source, sourceLo: 0, sourceHi: 4, step: 60, compressed: true, ends: [1, 3] };
+  const result = math.subsetRollingRatio(subset, 2);
+  assert.equal(result.length, 2);
+  assert.ok(Math.abs(result[0] - (1 / 6 * 100)) < 1e-10);
+  assert.equal(result[1], 50);
+});
+
+test('chart line arrays insert null breaks at gaps and use the injected time converter', () => {
+  const math = createChartSeriesMath({ toTimestamp: value => value * 1000 });
+  const source = sampleBars([0, 60, 600]);
+  const subset = { x: source, ids: [0, 1, 2], breakBefore: [false, false, true] };
+  const result = math.lineArrays(subset, [10, 11, 12]);
+  assert.deepEqual(result.x, [0, 60000, 330000, 600000]);
+  assert.deepEqual(result.y, [10, 11, null, 12]);
+});
+
+test('EMA calculation resets across gaps and includes available historical warm-up', () => {
+  const math = createChartSeriesMath({ toTimestamp: value => value * 1000 });
+  const source = sampleBars([0, 60, 120, 180, 600, 660, 720]);
+  source.c = [10, 12, 14, 16, 100, 102, 104];
+  const subset = { source, sourceLo: 2, sourceHi: 7, ids: [2, 3, 4, 5, 6], compressed: false, step: 60 };
+  const result = math.emaForSubset(subset, 2);
+  assert.equal(result.length, 5);
+  assert.ok(Math.abs(result[0] - 13.1111111111) < 1e-8);
+  assert.ok(Math.abs(result[1] - 15.0370370370) < 1e-8);
+  assert.equal(result[2], 100, 'EMA restarts after a sufficiently large timestamp gap');
+  assert.ok(Math.abs(result[3] - 101.3333333333) < 1e-8);
+  assert.ok(Math.abs(result[4] - 103.1111111111) < 1e-8);
+});
+
+test('trade-weighted price resets daily and identifies legacy HLC3 fallback', () => {
+  const math = createChartSeriesMath({ toTimestamp: value => value * 1000 });
+  const source = makeBarSeries([
+    { t: 86340, o: 100, h: 110, l: 90, c: 100, v: 2, n: 1, b: 1, s: 1, d: 0, pv: 200 },
+    { t: 86400, o: 200, h: 210, l: 190, c: 200, v: 4, n: 1, b: 3, s: 1, d: 2, pv: 800 },
+    { t: 86460, o: 300, h: 310, l: 290, c: 300, v: 2, n: 1, b: 2, s: 0, d: 2, pv: 800 }
+  ]);
+  const subset = { source, sourceLo: 0, sourceHi: 3, ids: [0, 1, 2], compressed: false };
+  const exact = math.tradeWeightedAverageForSubset(subset);
+  assert.equal(exact.exact, true);
+  assert.deepEqual(exact.values, [100, 200, 800 / 3]);
+
+  const legacySource = makeBarSeries([
+    { t: 0, o: 100, h: 110, l: 90, c: 100, v: 2, n: 1, b: 1, s: 1, d: 0, pv: null }
+  ]);
+  const legacy = math.tradeWeightedAverageForSubset({ source: legacySource, sourceLo: 0, sourceHi: 1, ids: [0], compressed: false });
+  assert.equal(legacy.exact, false);
+  assert.deepEqual(legacy.values, [100]);
+});
+
+test('chart series math rejects missing time converters and invalid EMA periods', () => {
+  assert.throws(() => createChartSeriesMath(), /requires a toTimestamp function/);
+  const math = createChartSeriesMath({ toTimestamp: value => value });
+  assert.throws(() => math.emaForSubset({ source: sampleBars([0]), sourceLo: 0, sourceHi: 1, ids: [0], step: 60 }, 0), /EMA period must be positive/);
 });
