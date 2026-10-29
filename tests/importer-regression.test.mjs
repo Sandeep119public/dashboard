@@ -7,6 +7,7 @@ import { zipCsvEntries, zipEntryStream } from '../src/ingestion/zip-reader.js';
 import { PackedTradeRows } from '../src/data/packed-trade-rows.js';
 import { aggregateDay } from '../src/data/day-aggregator.js';
 import { readTradeFiles } from '../src/app/import-controller.js';
+import { bindMobileQuickActions } from '../src/ui/mobile-quick-actions.js';
 
 const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -274,6 +275,7 @@ test('local JavaScript imports resolve and are included in the offline app shell
   const sourceFiles = [
     'BTCUSD_Market_Mechanics_Lab_Fixed.html',
     'src/app/import-controller.js',
+    'src/ui/mobile-quick-actions.js',
     'src/ingestion/zip-reader.js',
     'src/ingestion/csv-parser.js',
     'src/data/packed-trade-rows.js',
@@ -301,4 +303,87 @@ test('local JavaScript imports resolve and are included in the offline app shell
       assert.ok(shellPaths.has(relativePath), `${sourceFile} imports ${relativePath}, but it is missing from the service-worker precache`);
     }
   }
+});
+
+
+test('mobile quick-action controller wires import, charts, replay, and filters', () => {
+  const buttons = ['import', 'charts', 'replay', 'filters'].map(action => {
+    let clickHandler = null;
+    const attributes = {};
+    return {
+      dataset: { mobileAction: action },
+      addEventListener(type, handler) { if (type === 'click') clickHandler = handler; },
+      removeEventListener(type, handler) { if (type === 'click' && clickHandler === handler) clickHandler = null; },
+      trigger() { clickHandler?.(); },
+      setAttribute(name, value) { attributes[name] = value; },
+      getAttribute(name) { return attributes[name] ?? null; }
+    };
+  });
+  const [importButton, chartsButton, replayButton, filtersButton] = buttons;
+  const bar = { querySelectorAll: selector => selector === '[data-mobile-action]' ? buttons : [] };
+  const scrolls = [];
+  const scrollTarget = name => ({ name, scrollIntoView(options) { scrolls.push({ name, options }); } });
+  const chartCard = scrollTarget('chart-card');
+  let plot = null;
+  const plotElement = { closest: selector => selector === '.chartcard' ? chartCard : null };
+  const replayTarget = scrollTarget('replay');
+  const controlsTarget = scrollTarget('controls');
+  let advancedOpen = false;
+  const documentRef = {
+    body: { classList: { contains: name => name === 'show-advanced' && advancedOpen } },
+    querySelector(selector) {
+      if (selector === '.chartcard:not(.panel-hidden) .plot') return plot;
+      if (selector === '.sectionhead') return scrollTarget('sectionhead');
+      if (selector === '.replay-box') return replayTarget;
+      if (selector === '.controls') return controlsTarget;
+      return null;
+    }
+  };
+  const scheduled = [];
+  const windowRef = {
+    matchMedia: () => ({ matches: true }),
+    setTimeout(callback, delay) { scheduled.push({ callback, delay }); }
+  };
+  let importRunning = false;
+  let pickerClicks = 0;
+  let cancelRequests = 0;
+  let presets = [];
+  let resizeCalls = 0;
+  const advancedToggle = { click() { advancedOpen = !advancedOpen; } };
+
+  const dispose = bindMobileQuickActions({
+    bar, documentRef, windowRef,
+    isImportRunning: () => importRunning,
+    requestImportCancel: () => { cancelRequests++; },
+    fileInput: { click() { pickerClicks++; } },
+    applyQuestionPreset: (...args) => { presets.push(args); plot = plotElement; },
+    resizeStudioCharts: () => { resizeCalls++; },
+    advancedToggle
+  });
+
+  importButton.trigger();
+  assert.equal(pickerClicks, 1);
+  importRunning = true;
+  importButton.trigger();
+  assert.equal(cancelRequests, 1);
+  assert.equal(pickerClicks, 1);
+
+  chartsButton.trigger();
+  assert.deepEqual(presets, [['price-flow', true]]);
+  assert.ok(scrolls.some(item => item.name === 'chart-card'));
+  assert.equal(scheduled[0].delay, 180);
+  scheduled[0].callback();
+  assert.equal(resizeCalls, 1);
+
+  replayButton.trigger();
+  assert.ok(scrolls.some(item => item.name === 'replay'));
+
+  filtersButton.trigger();
+  assert.equal(filtersButton.getAttribute('aria-expanded'), 'true');
+  assert.ok(scrolls.some(item => item.name === 'controls'));
+  assert.ok(scrolls.every(item => item.options.behavior === 'auto'));
+
+  dispose();
+  chartsButton.trigger();
+  assert.equal(presets.length, 1, 'disposal removes the click listeners');
 });
