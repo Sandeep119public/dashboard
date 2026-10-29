@@ -10,6 +10,7 @@ const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', i
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 assert.match(html, /<script type="module">/);
 assert.match(html, /<title>BTCUSD Market Mechanics Lab<\/title>/);
+assert.doesNotMatch(html, /\b(?:yieldToUi|axisHoverTime|studioCards)\s*=|function\s+(?:sum|ema)\s*\(/);
 assert.doesNotMatch(html, /Accuracy-Fixed Edition/);
 assert.match(index, /BTCUSD_Market_Mechanics_Lab_Fixed\.html/);
 assert.match(html, /import \{ readTradeFiles \} from '\.\/src\/app\/import-controller\.js'/);
