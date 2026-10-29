@@ -65,3 +65,11 @@ The daily aggregation path now stores transient trade records in a packed four-c
 - This is the first modularization slice; orchestration, aggregation, chart rendering, and UI state remain in the main HTML pending separate tested extractions.
 
 - Extracted day-level OHLCV/profile/metrics/event aggregation into `src/data/day-aggregator.js`; the module accepts bar-step and histogram-label configuration and has a focused OHLCV/signed-flow regression test.
+
+
+## CSV parser extraction (2026-10-29)
+
+- Moved CSV row parsing, timestamp validation/UTC normalization, BTCUSD schema checks, per-day buffering, and incremental stream processing into `src/ingestion/csv-parser.js`.
+- Injected cancellation and aggregation configuration rather than reading DOM or global import state from the parser module.
+- Wired the existing import flow to the module and added regression coverage for timezone offsets, invalid dates, schema/role/symbol validation, daily OHLCV and signed flow, and stream chunk boundaries.
+- Updated the service-worker cache version and precached the parser module for offline app-shell use.
