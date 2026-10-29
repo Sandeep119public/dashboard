@@ -121,6 +121,28 @@ function rollingRatio(delta, volume, window, times, step) {
   return out;
 }
 
+function median(values) {
+  const sorted = values.filter(value => value !== null && Number.isFinite(value)).sort((a, b) => a - b);
+  if (!sorted.length) return null;
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function pearson(xs, ys) {
+  const n = Math.min(xs.length, ys.length);
+  if (n < 3) return null;
+  let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0, count = 0;
+  for (let i = 0; i < n; i++) {
+    const x = xs[i], y = ys[i];
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y; count++;
+  }
+  if (count < 3) return null;
+  const covariance = sxy - sx * sy / count;
+  const varianceX = sxx - sx * sx / count, varianceY = syy - sy * sy / count;
+  return varianceX > 0 && varianceY > 0 ? covariance / Math.sqrt(varianceX * varianceY) : null;
+}
+
 function lowerBoundTime(times, target) {
   let lo = 0, hi = times.length;
   while (lo < hi) {
@@ -140,6 +162,8 @@ export function createChartSeriesMath({ toTimestamp } = {}) {
     lineArrays: (subset, values) => lineArrays(subset, values, toTimestamp),
     emaForSubset,
     tradeWeightedAverageForSubset,
-    rollingRatio
+    rollingRatio,
+    median,
+    pearson
   };
 }
