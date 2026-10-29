@@ -14,6 +14,7 @@ const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', i
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const serviceWorker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 const repoRoot = fileURLToPath(new URL('../', import.meta.url));
+assert.doesNotMatch(serviceWorker, /cacheIfSuccessful/, 'do not reintroduce the unused service-worker helper');
 assert.match(html, /<script type="module">/);
 assert.match(html, /<title>BTCUSD Market Mechanics Lab<\/title>/);
 assert.doesNotMatch(html, /\b(?:yieldToUi|axisHoverTime|studioCards)\s*=|function\s+(?:sum|ema)\s*\(/);
