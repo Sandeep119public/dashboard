@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { zipCsvEntries, zipEntryStream } from '../src/ingestion/zip-reader.js';
 import { PackedTradeRows } from '../src/data/packed-trade-rows.js';
 import { aggregateDay } from '../src/data/day-aggregator.js';
@@ -8,6 +10,8 @@ import { readTradeFiles } from '../src/app/import-controller.js';
 
 const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const serviceWorker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+const repoRoot = fileURLToPath(new URL('../', import.meta.url));
 assert.match(html, /<script type="module">/);
 assert.match(html, /<title>BTCUSD Market Mechanics Lab<\/title>/);
 assert.doesNotMatch(html, /\b(?:yieldToUi|axisHoverTime|studioCards)\s*=|function\s+(?:sum|ema)\s*\(/);
@@ -263,4 +267,38 @@ test('import controller streams CSV entries from ZIP archives', async () => {
   assert.deepEqual([...days.keys()], ['2026-08-01']);
   assert.equal(days.get('2026-08-01').metrics.row_count, 1);
   assert.ok(events.some(event => event.type === 'entry' && event.entryName === 'trades.csv'));
+});
+
+
+test('local JavaScript imports resolve and are included in the offline app shell', () => {
+  const sourceFiles = [
+    'BTCUSD_Market_Mechanics_Lab_Fixed.html',
+    'src/app/import-controller.js',
+    'src/ingestion/zip-reader.js',
+    'src/ingestion/csv-parser.js',
+    'src/data/packed-trade-rows.js',
+    'src/data/day-aggregator.js'
+  ];
+  const shellMatch = /const SHELL = \[([\s\S]*?)\];/.exec(serviceWorker);
+  assert.ok(shellMatch, 'service worker must declare its precache shell');
+  const shellPaths = new Set(
+    [...shellMatch[1].matchAll(/new URL\(['"]([^'"]+)['"],\s*ROOT\)/g)]
+      .map(match => match[1].replace(/^\.\//, ''))
+  );
+
+  for (const shellPath of shellPaths) {
+    if (!shellPath) continue;
+    assert.ok(existsSync(resolve(repoRoot, shellPath)), `service worker precaches missing path: ${shellPath}`);
+  }
+
+  for (const sourceFile of sourceFiles) {
+    const source = readFileSync(resolve(repoRoot, sourceFile), 'utf8');
+    for (const match of source.matchAll(/\bfrom\s+['"]([.]{1,2}\/[^'"]+)['"]/g)) {
+      const specifier = match[1];
+      const targetPath = fileURLToPath(new URL(specifier, new URL(sourceFile, new URL('../', import.meta.url))));
+      assert.ok(existsSync(targetPath), `${sourceFile} imports missing module ${specifier}`);
+      const relativePath = relative(repoRoot, targetPath).split(sep).join('/');
+      assert.ok(shellPaths.has(relativePath), `${sourceFile} imports ${relativePath}, but it is missing from the service-worker precache`);
+    }
+  }
 });
