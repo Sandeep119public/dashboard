@@ -10,6 +10,7 @@ assert.match(html, /<script type="module">/);
 assert.match(html, /import \{ zipCsvEntries, zipEntryStream \} from '\.\/src\/ingestion\/zip-reader\.js'/);
 assert.match(html, /import \{ PackedTradeRows \} from '\.\/src\/data\/packed-trade-rows\.js'/);
 assert.match(html, /window\.DATA = DATA;/);
+assert.match(html, /import \\{ parseCsvStreamByDay \\} from '\\.\\/src\\/ingestion\\/csv-parser\\.js'/);
 
 function makeZip({ name = 'trades.csv', localName = name, comment = Buffer.alloc(0), data = 'timestamp,price,size,buyer_role,product_symbol\n2026-08-01 00:00:00,60000,1,taker,BTCUSD\n' } = {}) {
   const filename = Buffer.from(name);
