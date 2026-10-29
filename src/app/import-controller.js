@@ -26,7 +26,7 @@ export async function readTradeFiles(files, {
 
   for (const file of selected) {
     if (isCancelled(shouldCancel)) throw new Error('Import cancelled by user.');
-    if (/\\.zip$/i.test(file.name)) {
+    if (/\.zip$/i.test(file.name)) {
       const entries = await zipCsvEntries(file);
       for (const entry of entries) {
         if (isCancelled(shouldCancel)) throw new Error('Import cancelled by user.');
