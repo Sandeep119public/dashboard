@@ -111,3 +111,12 @@ The daily aggregation path now stores transient trade records in a packed four-c
 - Moved median aggregation for large-trade follow-through and Pearson correlation used by the flow lead-lag view into `src/charts/series-math.js`.
 - Added regression checks for odd/even medians, missing observations, perfect positive/negative correlations, zero variance, and insufficient samples.
 - Advanced the service-worker shell cache to `btc-mechanics-shell-v15` so installed clients can refresh the modified calculation module.
+
+## Worker-backed flow lead/lag analysis (2026-10-29)
+
+- Added `src/charts/lead-lag.js`, a reusable calculator that maintains prefix sums for the loaded one-minute data and recomputes correlations for selected ranges/lookbacks.
+- Added `src/charts/lead-lag.worker.js` and `src/charts/lead-lag-engine.js`; the dedicated module worker receives the one-minute arrays once per combined-data revision, then accepts compact range/lookback requests.
+- Switched the dashboard's lead/lag panel to the worker engine. If module workers are unavailable or fail, the engine routes pending work through the same calculator on the main thread.
+- Added regression coverage for exact minute horizons, missing-minute gaps, main-thread results, worker protocol, and worker-failure fallback.
+- Bumped the service-worker app-shell cache to `btc-mechanics-shell-v16` and included all worker dependencies in the offline shell.
+- Node regression tests pass for this code path; browser-level worker behavior and performance have not yet been measured on a physical Android device. The worker uses structured cloning for one-time series transfer per data rebuild, so the benefit for small datasets may be limited.
