@@ -11,6 +11,8 @@ import { bindMobileQuickActions } from '../src/ui/mobile-quick-actions.js';
 import { createLatestRenderQueue } from '../src/charts/latest-render-queue.js';
 import { createBarSubsetter } from '../src/charts/bar-subsetter.js';
 import { createChartSeriesMath } from '../src/charts/series-math.js';
+import { createLeadLagCalculator, computeLeadLag } from '../src/charts/lead-lag.js';
+import { createLeadLagEngine } from '../src/charts/lead-lag-engine.js';
 
 const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -283,6 +285,9 @@ test('local JavaScript imports resolve and are included in the offline app shell
     'src/charts/latest-render-queue.js',
     'src/charts/bar-subsetter.js',
     'src/charts/series-math.js',
+    'src/charts/lead-lag.js',
+    'src/charts/lead-lag-engine.js',
+    'src/charts/lead-lag.worker.js',
     'src/ingestion/zip-reader.js',
     'src/ingestion/csv-parser.js',
     'src/data/packed-trade-rows.js',
@@ -294,6 +299,10 @@ test('local JavaScript imports resolve and are included in the offline app shell
     [...shellMatch[1].matchAll(/new URL\(['"]([^'"]+)['"],\s*ROOT\)/g)]
       .map(match => match[1].replace(/^\.\//, ''))
   );
+
+  const leadLagEngineSource = readFileSync(resolve(repoRoot, 'src/charts/lead-lag-engine.js'), 'utf8');
+  assert.match(leadLagEngineSource, /new URL\(['"]\.\/lead-lag\.worker\.js['"],\s*import\.meta\.url\)/);
+  assert.ok(shellPaths.has('src/charts/lead-lag.worker.js'), 'lead/lag worker must be available offline');
 
   for (const shellPath of shellPaths) {
     if (!shellPath) continue;
@@ -610,4 +619,105 @@ test('Pearson correlation handles positive, negative, invalid and degenerate sam
   assert.equal(math.pearson([1, 2, 3, NaN], [2, 4, 6, 100]), 1);
   assert.equal(math.pearson([1, 1, 1], [2, 3, 4]), null);
   assert.equal(math.pearson([1, 2], [2, 4]), null);
+});
+
+
+function makeLeadLagBars(times = Array.from({ length: 16 }, (_, i) => i * 60)) {
+  return {
+    t: times,
+    c: times.map((_, i) => 100 + [0, 1, -1, 3, 2, 5, 4, 7, 5, 8, 6, 9, 8, 11, 10, 13][i % 16]),
+    d: times.map((_, i) => [2, -1, 3, 1, -2, 4, -1, 2, 5, -3, 1, 4, -2, 3, -1, 2][i % 16]),
+    v: times.map((_, i) => [4, 2, 6, 3, 5, 8, 4, 7, 9, 5, 3, 8, 4, 6, 5, 7][i % 16])
+  };
+}
+
+test('lead-lag calculator enforces exact minute horizons and requested time bounds', () => {
+  const bars = makeLeadLagBars();
+  const calculator = createLeadLagCalculator();
+  assert.equal(calculator.setData(bars), 16);
+  assert.equal(calculator.length, 16);
+  const result = calculator.compute({ start: 120, end: 600, lookback: 3 });
+  assert.deepEqual(result.horizons, ['Same bar', '+1m', '+5m', '+15m', '+30m', '+60m']);
+  assert.deepEqual(result.counts, [9, 8, 4, 0, 0, 0]);
+  assert.equal(result.forwardSamples, 12);
+  assert.ok(result.correlations.slice(0, 3).every(value => value === null || Number.isFinite(value)));
+});
+
+test('lead-lag calculator does not build lookback windows across missing minutes', () => {
+  const bars = makeLeadLagBars([0, 60, 120, 600, 660, 720, 780, 840]);
+  const calculator = createLeadLagCalculator();
+  calculator.setData(bars);
+  const result = calculator.compute({ start: 0, end: 840, lookback: 3 });
+  assert.equal(result.counts[0], 3);
+  assert.equal(result.counts[1], 2);
+  assert.equal(result.counts[2], 0);
+});
+
+test('worker-disabled lead-lag engine returns the same result as the calculator', async () => {
+  const bars = makeLeadLagBars();
+  const engine = createLeadLagEngine({ workerFactory: () => null });
+  engine.setData(bars);
+  assert.equal(engine.workerActive, false);
+  const options = { start: 60, end: 600, lookback: 2 };
+  assert.deepEqual(await engine.compute(options), computeLeadLag(bars, options));
+  engine.dispose();
+});
+
+test('lead-lag engine sends data once and accepts worker results', async () => {
+  class FakeWorker {
+    constructor() { this.onmessage = null; this.onerror = null; this.onmessageerror = null; this.calculator = createLeadLagCalculator(); this.revision = 0; this.messages = []; }
+    postMessage(message) {
+      this.messages.push(message);
+      if (message.type === 'set-data') {
+        this.calculator.setData(message.bars);
+        this.revision = message.revision;
+        queueMicrotask(() => this.onmessage?.({ data: { type: 'ready', revision: this.revision } }));
+        return;
+      }
+      if (message.type === 'compute') {
+        queueMicrotask(() => {
+          try {
+            const result = this.calculator.compute(message);
+            this.onmessage?.({ data: { id: message.id, revision: this.revision, result } });
+          } catch (error) {
+            this.onmessage?.({ data: { id: message.id, revision: this.revision, error: error.message } });
+          }
+        });
+      }
+    }
+    terminate() { this.terminated = true; }
+  }
+  let fakeWorker;
+  const engine = createLeadLagEngine({ workerFactory: () => (fakeWorker = new FakeWorker()) });
+  const bars = makeLeadLagBars();
+  engine.setData(bars);
+  const options = { start: 60, end: 600, lookback: 2 };
+  const result = await engine.compute(options);
+  assert.deepEqual(result, computeLeadLag(bars, options));
+  assert.equal(fakeWorker.messages.filter(message => message.type === 'set-data').length, 1);
+  assert.equal(fakeWorker.messages.filter(message => message.type === 'compute').length, 1);
+  assert.equal(engine.workerActive, true);
+  engine.dispose();
+  assert.equal(fakeWorker.terminated, true);
+});
+
+test('lead-lag engine falls back to the main thread when a worker fails', async () => {
+  class FailingWorker {
+    postMessage(message) {
+      if (message.type === 'compute') queueMicrotask(() => this.onerror?.(new Error('synthetic worker failure')));
+    }
+    terminate() { this.terminated = true; }
+    onmessage = null;
+    onerror = null;
+    onmessageerror = null;
+  }
+  let worker;
+  const engine = createLeadLagEngine({ workerFactory: () => (worker = new FailingWorker()) });
+  const bars = makeLeadLagBars();
+  engine.setData(bars);
+  const options = { start: 60, end: 600, lookback: 2 };
+  const result = await engine.compute(options);
+  assert.deepEqual(result, computeLeadLag(bars, options));
+  assert.equal(engine.workerActive, false);
+  assert.equal(worker.terminated, true);
 });
