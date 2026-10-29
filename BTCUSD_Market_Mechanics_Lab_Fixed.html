@@ -490,11 +490,18 @@ let M = DATA.metrics, B = DATA.bars, E = DATA.events, P = DATA.profile, HIST = D
 let BASE = Date.UTC(2026,8,1,0,0,0);
 const DAYS = new Map(DATA.metrics&&Number(DATA.metrics.row_count||0)>0?[[DATA.metrics.date,DATA]]:[]);
 const BAR_STEPS = {'10s':10,'1m':60,'5m':300,'15m':900,'1h':3600};
+// 10-second bars are the largest combined series (~32 MB on a full month) and are
+// only needed when that interval is selected, so they are built on first use.
+const EAGER_TIMEFRAMES = ['1m','5m','15m','1h'];
 const HIST_BUCKETS = [9,24,49,99,219,671,999,1999,Infinity];
 let focusIndices=[], focusTimeSec=null, replayHandle=null, draggedPanel=null, focusLineTimer=null, pendingFocusLineTime=null;
+let COMBINED_DATES=[];
 // Performance caches are invalidated whenever combined data is rebuilt.
 
-const { subsetBars, clearCache: clearSubsetCache } = createBarSubsetter({ getBars:()=>B, barSteps:BAR_STEPS, maxRenderPoints:3200, cacheLimit:8 });
+const barSubsetter = createBarSubsetter({ getBars:()=>B, barSteps:BAR_STEPS, maxRenderPoints:3200, cacheLimit:8 });
+const clearSubsetCache = barSubsetter.clearCache;
+function ensureBars(tf){ if(!B[tf]) B[tf]=buildCombinedBars(tf); return B[tf]; }
+const subsetBars = (tf, window) => { ensureBars(tf); return barSubsetter.subsetBars(tf, window); };
 let refreshTimer=null, refreshRequestId=0, importRunning=false, importCancelRequested=false, pendingRefreshIds=null, pendingFullRefresh=false;
 const dateEpoch = date => {const a=String(date).slice(0,10).split('-').map(Number);return Date.UTC(a[0],a[1]-1,a[2]);};
 const dateOffset = date => (dateEpoch(date)-BASE)/1000;
@@ -508,20 +515,28 @@ function updateDateBounds(resetRange=false){
  if(resetRange||!$('endDate').value||$('endDate').value<lo||$('endDate').value>hi)$('endDate').value=hi;
  if($('startDate').value>$('endDate').value)$('startDate').value=$('endDate').value;
 }
+// Build one combined timeframe from the retained per-day aggregates. Used for
+// timeframes that were not part of the eager rebuild, such as 10-second bars.
+function buildCombinedBars(tf){
+ const z={t:[],o:[],h:[],l:[],c:[],v:[],n:[],b:[],s:[],d:[],pv:[]};
+ for(const date of COMBINED_DATES){const a=DAYS.get(date).bars[tf],off=dateOffset(date);
+  for(let i=0;i<a.t.length;i++){z.t.push(Number(a.t[i])+off);for(const k of ['o','h','l','c','v','n','b','s','d'])z[k].push(a[k][i]);z.pv.push(a.pv&&a.pv.length===a.t.length&&a.pv[i]!==null&&a.pv[i]!==undefined?Number(a.pv[i]):null);}}
+ return z;
+}
 function rebuildCombined(){
  const dates=[...DAYS.keys()].sort();if(!dates.length)return;
  BASE=dateEpoch(dates[0]);
- const bars={};for(const tf of Object.keys(BAR_STEPS)){bars[tf]={t:[],o:[],h:[],l:[],c:[],v:[],n:[],b:[],s:[],d:[],pv:[]};}
+ const bars={};for(const tf of EAGER_TIMEFRAMES){bars[tf]={t:[],o:[],h:[],l:[],c:[],v:[],n:[],b:[],s:[],d:[],pv:[]};}
  const profile={m:[],p:[],v:[],d:[]},events={t:[],p:[],s:[],r:[],r1:[],r5:[],r15:[]};const hist=new Float32Array(dates.length*1440*DATA.hist_labels.length);
  let rowCount=0,total=0,buy=0,sell=0,high=-Infinity,low=Infinity,maxSize=0,firstPrice=null,lastPrice=null;
  for(let dayIndex=0;dayIndex<dates.length;dayIndex++){const date=dates[dayIndex],day=DAYS.get(date);const off=dateOffset(date);const dm=day.metrics||{};rowCount+=Number(dm.row_count||0);total+=Number(dm.total_size||0);buy+=Number(dm.buy_size||0);sell+=Number(dm.sell_size||0);high=Math.max(high,Number(dm.high||-Infinity));low=Math.min(low,Number(dm.low||Infinity));maxSize=Math.max(maxSize,Number(dm.max_size||0));
   if(firstPrice===null)firstPrice=Number(dm.start_price||day.bars['1m'].o.find(v=>v!==null));lastPrice=Number(dm.end_price||day.bars['1m'].c.filter(v=>v!==null).slice(-1)[0]);
-  for(const tf of Object.keys(BAR_STEPS)){const a=day.bars[tf],z=bars[tf];for(let i=0;i<a.t.length;i++){z.t.push(Number(a.t[i])+off);for(const k of ['o','h','l','c','v','n','b','s','d'])z[k].push(a[k][i]);z.pv.push(a.pv&&a.pv.length===a.t.length&&a.pv[i]!==null&&a.pv[i]!==undefined?Number(a.pv[i]):null);}}
+  for(const tf of EAGER_TIMEFRAMES){const a=day.bars[tf],z=bars[tf];for(let i=0;i<a.t.length;i++){z.t.push(Number(a.t[i])+off);for(const k of ['o','h','l','c','v','n','b','s','d'])z[k].push(a[k][i]);z.pv.push(a.pv&&a.pv.length===a.t.length&&a.pv[i]!==null&&a.pv[i]!==undefined?Number(a.pv[i]):null);}}
   const pp=day.profile;for(let i=0;i<pp.m.length;i++){profile.m.push(Number(pp.m[i])+off/60);profile.p.push(pp.p[i]);profile.v.push(pp.v[i]);profile.d.push(pp.d[i]);}
   const ee=day.events;for(let i=0;i<ee.t.length;i++){events.t.push(Number(ee.t[i])+off);for(const k of ['p','s','r','r1','r5','r15'])events[k].push(ee[k][i]);}
   const histOffset=dayIndex*1440*DATA.hist_labels.length;for(let hi=0;hi<day.hist.length;hi++)hist[histOffset+hi]=day.hist[hi];
  }
- B=bars;P=profile;E=events;HIST=hist;HIST_DATES=dates.slice();clearSubsetCache();leadLagEngine.setData(B['1m']);
+ B=bars;P=profile;E=events;HIST=hist;HIST_DATES=dates.slice();COMBINED_DATES=dates.slice();clearSubsetCache();leadLagEngine.setData(B['1m']);
  const delta=buy-sell, datesSpan=dates.length===1?dates[0]:dates[0]+' → '+dates[dates.length-1];
  M={date:datesSpan,row_count:rowCount,total_size:total,buy_size:buy,sell_size:sell,delta,imbalance_pct:total?delta/total*100:0,max_size:maxSize,start_price:firstPrice||0,end_price:lastPrice||0,high:high===-Infinity?0:high,low:low===Infinity?0:low,return_pct:firstPrice?(lastPrice/firstPrice-1)*100:0,range_pct:low>0?(high/low-1)*100:0};
  const x=B['1m'];let prev=null,prevT=null,arrFlow=[],arrRet=[];for(let i=0;i<x.t.length;i++){if(x.c[i]!==null&&x.o[i]!==null){if(prev!==null&&prev!==0&&x.t[i]>prevT&&x.t[i]-prevT===60){arrFlow.push(Number(x.d[i]||0));arrRet.push((x.c[i]/prev-1)*100);}prev=x.c[i];prevT=x.t[i];}}
@@ -703,7 +718,7 @@ function downloadBlob(blob,filename){
 function csvCell(v){const s=v===null||v===undefined?'':String(v);return '"'+s.replace(/"/g,'""')+'"';}
 function downloadCsv(filename,rows){const text=rows.map(r=>r.map(csvCell).join(',')).join('\r\n');downloadBlob(new Blob(['\ufeff',text],{type:'text/csv;charset=utf-8'}),filename);}
 function exportSelectedBars(){
- const tf=$('tf').value,w=getWindow(),x=B[tf],lo=lowerBoundTime(x.t,w.s),hi=upperBoundTime(x.t,w.e),ids=Array.from({length:Math.max(0,hi-lo)},(_,j)=>lo+j);
+ const tf=$('tf').value,w=getWindow(),x=ensureBars(tf),lo=lowerBoundTime(x.t,w.s),hi=upperBoundTime(x.t,w.e),ids=Array.from({length:Math.max(0,hi-lo)},(_,j)=>lo+j);
  if(!ids.length){$('status').textContent='No bars in the selected window to export.';return;}
  const rows=[['timestamp_utc_assumed','interval','open','high','low','close','executed_size_units','trade_print_count','buyer_taker_size_proxy','buyer_maker_size_proxy','net_signed_size_proxy','flow_imbalance_pct','price_x_size_sum']];
  for(const i of ids){const v=Number(x.v[i]||0),d=Number(x.d[i]||0);rows.push([dt(x.t[i]).toISOString(),tf,x.o[i],x.h[i],x.l[i],x.c[i],v,x.n[i],x.b[i],x.s[i],d,v?d/v*100:0,x.pv&&x.pv[i]!==null&&x.pv[i]!==undefined?x.pv[i]:'']);}

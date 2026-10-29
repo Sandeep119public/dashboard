@@ -1,8 +1,8 @@
-# Memory profile and workspace-export optimization
+# Memory profile and optimization report
 
 ## Scope
 
-- Commit measured: `c144be2890fcc4780c1d284094acdbec1a3f1234` (`c144be2`, the deployed revision).
+- Commit measured: `c144be2890fcc4780c1d284094acdbec1a3f1234` (`c144be2`, the deployed revision). The array-duplication audit in the final section was measured against `1469e5208561f6bee86e999526d5a3beb148e5c2` (`1469e52`) plus the uncommitted lazy-10-second change described there.
 - Dataset: `futures-trades-monthly-BTCUSD-2026-08.csv.zip`, 66,245,295 bytes compressed, 391,774,302 bytes uncompressed, **7,440,458 rows across 31 days**.
 - Node: v20.18.0, win32 x64. Browser: Chrome 156.0.8078.48, 1366×900, `--enable-precise-memory-info`.
 - No push or deployment was performed. The working tree contains the measured changes only.
@@ -87,7 +87,7 @@ Deltas: combined build adds **+70.4 MB of array backing stores** and **+4.1 MB o
 
 1. **Stream workspace JSON directly into gzip — implemented.** Removes the whole-payload string, its Blob copy, and the associated peak. Estimated impact: large (Node peak RSS −234 MB; browser live heap −62 MB). Risk: low; output is byte-identical and covered by tests.
 2. **Stream gzip decompression and release text/document before rebuild — implemented.** Avoids the extra compressed-buffer Blob and removes the JSON text/document from the reachable set while combined arrays are rebuilt. Estimated impact: modest (−5 to −20 MB browser peak). Risk: low.
-3. **Eliminate per-day/combined duplication — not implemented.** About **70 MB** of retained array storage is duplicated because `rebuildCombined()` copies every per-day bar/profile/event array into flat combined arrays. The per-day copies are required for workspace export, date replacement, and partial imports, so removing them needs a lifecycle audit or a chunked/typed-array view. Impact: high; risk: high.
+3. **Eliminate per-day/combined duplication — partially implemented.** About **70 MB** of retained array storage is duplicated because `rebuildCombined()` copies every per-day bar/profile/event array into flat combined arrays. The per-day copies are required for workspace export, date replacement, and partial imports, so wholesale removal is unsafe. The follow-up audit (final section) measured each combined component and implemented the largest low-risk slice: the combined 10-second timeframe is now built lazily, saving **32.4 MB** retained and about **50 MB** of rebuild peak. Profile/event/histogram laziness and typed-array views remain open. Impact: high; risk: high for the remaining slices.
 4. **Reduce aggregation temporary allocation — not implemented.** `aggregateDay` accounts for 720 MB and the parser for 513 MB of sampled allocation. Reusing per-timeframe accumulators or building bars from typed columns could lower peak RSS. Impact: high; risk: medium-high because bar insertion order and exact numeric output must be preserved.
 5. **Avoid per-row line slicing in the CSV stream — not implemented.** The fast path still creates one short string per row (`pending.slice`). Parsing directly from the pending buffer with offsets could cut allocation churn. Impact: medium; risk: medium.
 6. **Convert profile/event/histogram columns to typed arrays — not implemented.** Could save several MB of retained heap, but JSON serialization shape and `.push`-based consumers would need changes. Impact: low-medium; risk: medium.
@@ -154,14 +154,99 @@ The synthetic fixture includes non-ASCII histogram labels (`1–9`), two days, n
 
 The parse-time improvement is mostly from avoiding the compressed-buffer Blob. Releasing `text`/`doc` before rebuild is a reachability improvement; its peak effect depends on when V8 collects, so it is not claimed as a fixed 114 MB saving. The unavoidable `JSON.parse` string/document peak remains.
 
+## Implemented optimization 3: lazy combined 10-second timeframe
+
+### Lifecycle and reference graph
+
+The audit started at import and followed every retained array:
+
+1. `PackedTradeRows` stores one day of prints in a `Float64Array` (four columns per row). It is temporary and released after aggregation.
+2. `aggregateDay()` produces the per-day source of truth: `day.bars[tf]` for five timeframes (11 arrays each), `day.profile` (4 arrays), `day.events` (7 arrays), and `day.hist` (a `Float32Array`). These objects are held in `DAYS`.
+3. `rebuildCombined()` copies every per-day array into flat combined arrays `B/P/E/HIST`, adding a day offset to timestamps.
+4. Charts read the combined arrays through `subsetBars`; `B['1m']` also feeds metrics, KPI, focus, and lead/lag, and `B['1h']` feeds the hour/regime panels.
+5. Workspace export serializes `DAYS` (the per-day arrays), so those cannot be dropped. Replacement merges incoming days into `DAYS` and rebuilds the combined arrays.
+
+Because workspace export, date replacement, and partial imports all depend on the per-day arrays, the combined representation cannot be removed. The safe question is which combined series must exist eagerly.
+
+### Measured component cost (Node, after GC)
+
+| Combined component | Retained MB | Bars/items |
+|---|---:|---:|
+| profile | 11.78 | 331,860 |
+| events | 24.79 | 374,692 |
+| hist | ~0 (external `Float32Array`) | 401,760 |
+| bars 1m | 4.29 | 44,573 |
+| bars 5m | 0.83 | 8,916 |
+| bars 15m | 0.28 | 2,973 |
+| bars 1h | 0.07 | 744 |
+| **bars 10s** | **32.44** | **263,735** |
+| Total | **74.58** | |
+
+Fresh heap snapshots at `1469e52` reproduced the baseline: **91.64 MB** after import and **166.31 MB** after the combined build. The 10-second series is 77% of the combined bar cost and 43% of the total combined cost, while the default view is 1-minute.
+
+### Ranked options
+
+1. **Build the combined 10-second timeframe lazily — implemented.** Largest single series, unused by the default view, and easy to gate at the two consumers (`subsetBars` and bar export). Expected benefit 32.4 MB retained. Risk low.
+2. **Build profile only when the profile panel is visible.** Profile retains 11.78 MB and is not needed for the default price-flow preset. Risk medium: several panels and event calculations read `P`; each would need `ensureProfile()`.
+3. **Build events lazily.** Events retain 24.79 MB but feed the default price-chart markers, so they are needed at startup. Lower value unless markers also become lazy.
+4. **Typed-array combined columns.** Could reduce per-element overhead, but charts and export expect ordinary arrays with `null` gaps; conversion risk is high for modest gain.
+5. **Index per-day arrays directly instead of building combined arrays.** Removes duplication but changes every chart, binary-search, and export consumer. Too risky for this pass.
+
+### Change
+
+`BTCUSD_Market_Mechanics_Lab_Fixed.html` now:
+
+- Defines `EAGER_TIMEFRAMES = ['1m','5m','15m','1h']`; `rebuildCombined()` builds only those.
+- Records the combined date order in `COMBINED_DATES`.
+- Adds `buildCombinedBars(tf)`, which reproduces the original copy loop for one timeframe.
+- Adds `ensureBars(tf)`, which builds and caches a missing timeframe on demand.
+- Wraps `subsetBars` and routes `exportSelectedBars` through `ensureBars(tf)`.
+
+`sw.js` cache name is bumped to `btc-mechanics-shell-v20` because the shell HTML changed. The workspace format, per-day arrays, timestamps, day offsets, and the four eager timeframes are untouched.
+
+### Node before/after
+
+| Measurement | Eager all | Lazy 10s |
+|---|---:|---:|
+| Retained heap after combined build | 133.62 MB | **101.22 MB** |
+| Combined retained delta | 41.70 MB | **9.30 MB** |
+| Peak RSS during rebuild | 328.4 MB | **275.8 MB** |
+| Rebuild duration | 226 ms | **156 ms** |
+
+A repeat run gave 133.64 → 101.24 MB retained, 328.8 → 278.4 MB peak, and 219 → 155 ms. The 10-second arrays were then built in isolation and compared with the eager output: **263,735 bars**, identical in every field, SHA-256 `f75bba2d309b2784c15af0871965ab2435f71e758d39db2c4c1e5a5b4cd59886`.
+
+### Browser before/after
+
+| Measurement | Old (eager) | New (lazy) |
+|---|---:|---:|
+| Heap after import + GC | **152.5 MB** | **118.8 MB** |
+| Heap after selecting 10 seconds | 155.2 MB | 155.0 MB |
+| 10-second CSV export | 33,990,238 bytes | 33,990,238 bytes |
+| Export SHA-256 | `cf06305d…b7ef1b` | `cf06305d…b7ef1b` |
+| Page/console errors | 0 | 0 |
+
+The lazy series costs about **36 MB** the first time 10 seconds is selected; the total then matches the old eager footprint. The saving applies to the default 1-minute view and any session that never opens the 10-second timeframe.
+
+### Full browser workflow
+
+On the real archive with the lazy build:
+
+- First import: 119 MB retained, 31 days, 7,440,458 prints, charts rendered.
+- Timeframe cycle `5m → 15m → 1h → 10s → 1m`: every badge and candle count correct, no errors; 10 seconds showed 263,735 source bars.
+- First 10-second export: SHA-256 matched the reference.
+- Workspace save: 2.1 s, 21,139,243 bytes.
+- Reload + restore: 5.1 s, 31 dates, 98.9 MB retained (no 10-second series yet), restored 10-second export matched the reference byte-for-byte.
+- Repeated import of the same 31 days: replacement succeeded, 31 days retained, export matched again, heap stayed at ~154 MB because 10 seconds was the active selection.
+
 ## Equivalence and regression results
 
 - Real dataset: 31/31 day hashes and 7,440,458 rows match the pre-change reference exactly; **0 diffs**.
 - Synthetic edge-case fixture: 3/3 day hashes and 5,003 rows match exactly; **0 diffs**.
-- Workspace export: text and gzip byte-identical on all 31 days.
-- `node --test tests/importer-regression.test.mjs`: **53/53 pass, 0 fail**.
-- Browser save/load/import: no page errors or console errors; 31 dates and 7,440,458 prints restored.
-- Offline shell: cache `btc-mechanics-shell-v19`, 19 entries, reload with network offline initializes 9 panel chips and the price-flow preset with no errors.
+- Lazy vs eager combined 10-second bars: identical fields, **263,735 bars**, SHA-256 `f75bba2d…4cd59886`.
+- Workspace export: text and gzip byte-identical on all 31 days; the exported 10-second CSV is identical before and after restore and after replacement.
+- `node --test tests/importer-regression.test.mjs`: **54/54 pass, 0 fail** (including a new lazy-timeframe source test).
+- Browser save/load/import/replacement: no page errors or console errors; 31 dates and 7,440,458 prints restored.
+- Offline shell: cache `btc-mechanics-shell-v20`, 19 entries, reload with network offline initializes 9 panel chips and the price-flow preset with no errors.
 - Worker checks: results match reference, stale revisions rejected, timeout/fallback/dispose behavior unchanged.
 - `node --check` passes for the inline module, `workspace-export.js`, `sw.js`, and the test file.
 
@@ -173,13 +258,15 @@ The parse-time improvement is mostly from avoiding the compressed-buffer Blob. R
 - Node peak RSS includes V8 heap growth and native gzip/zlib buffers; absolute values differ from the browser.
 - The 66 MB input buffer in the snapshot runs inflates snapshot totals; snapshot deltas, not totals, are used for attribution.
 - Physical Samsung Galaxy A35 testing remains outstanding.
-- The largest retained opportunity, the ~70 MB per-day/combined duplication, was deliberately not changed because its consumers and lifecycle have not been fully audited.
+- The lazy 10-second series is rebuilt after every import or workspace restore; a session that keeps 10 seconds selected pays the same ~36 MB as before. The saving is specifically for sessions that use the default or other eager timeframes.
+- The first 10-second selection adds about 86–105 ms in Node (a similar one-time cost in the browser) while the series is built. This is a latency-for-memory trade, not a free reduction.
+- Profile (11.78 MB) and events (24.79 MB) remain eager. Events feed the default price-chart markers; profile laziness would need an `ensureProfile()` at every consumer.
 
 ## Files changed
 
 - `src/app/workspace-export.js` — new streaming JSON exporter and legacy text fallback.
-- `BTCUSD_Market_Mechanics_Lab_Fixed.html` — imports the exporter; streaming save; streaming gzip load; releases text/document before rebuild.
-- `sw.js` — precaches `workspace-export.js`; cache bumped to `btc-mechanics-shell-v19`.
-- `tests/importer-regression.test.mjs` — 2 new workspace-export tests plus source/cache assertions (51 → 53 tests).
+- `BTCUSD_Market_Mechanics_Lab_Fixed.html` — imports the exporter; streaming save; streaming gzip load; releases text/document before rebuild; lazy combined 10-second timeframe with `EAGER_TIMEFRAMES`, `buildCombinedBars()`, `ensureBars()`, and wrapped `subsetBars`.
+- `sw.js` — precaches `workspace-export.js`; cache bumped to `btc-mechanics-shell-v20`.
+- `tests/importer-regression.test.mjs` — workspace-export tests, source/cache assertions, and a lazy-timeframe source test (51 → 54 tests).
 - `README.md` — memory-validation results and module/test-count updates.
 - `Memory_Profile_Report.md` — this report.

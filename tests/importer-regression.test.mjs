@@ -44,6 +44,18 @@ assert.match(html, /text=null;[\s\S]{0,500}doc=null;[\s\S]{0,200}rebuildCombined
 const cacheVersion = Number(/btc-mechanics-shell-v(\d+)/.exec(serviceWorker)?.[1]);
 assert.ok(cacheVersion >= 19, 'service-worker cache version must be bumped for changed shell assets');
 
+test('combined 10-second bars are built lazily and stay out of the eager rebuild', () => {
+  assert.match(html, /const EAGER_TIMEFRAMES = \['1m','5m','15m','1h'\];/, 'eager timeframes must exclude 10-second bars');
+  assert.match(html, /function buildCombinedBars\(tf\)/, 'lazy combined builder must exist');
+  assert.match(html, /function ensureBars\(tf\)\{ if\(!B\[tf\]\) B\[tf\]=buildCombinedBars\(tf\); return B\[tf\]; \}/, 'ensureBars must build a missing timeframe on demand');
+  assert.match(html, /const subsetBars = \(tf, window\) => \{ ensureBars\(tf\); return barSubsetter\.subsetBars\(tf, window\); \}/, 'subsetBars must resolve lazy timeframes');
+  assert.match(html, /const bars=\{\};for\(const tf of EAGER_TIMEFRAMES\)/, 'eager rebuild must not build 10-second bars');
+  assert.match(html, /const tf=\$\('tf'\)\.value,w=getWindow\(\),x=ensureBars\(tf\)/, 'bar export must resolve lazy timeframes');
+  assert.match(html, /COMBINED_DATES=dates\.slice\(\)/, 'lazy builder must reuse the combined date order');
+  assert.doesNotMatch(html, /B\['10s'\]/, 'nothing may read combined 10-second bars eagerly');
+  assert.doesNotMatch(html, /for\(const tf of Object\.keys\(BAR_STEPS\)\)\{bars\[tf\]/, 'rebuild must iterate the eager list, not every step');
+});
+
 function makeZip({ name = 'trades.csv', localName = name, comment = Buffer.alloc(0), data = 'timestamp,price,size,buyer_role,product_symbol\n2026-08-01 00:00:00,60000,1,taker,BTCUSD\n' } = {}) {
   const filename = Buffer.from(name);
   const localFilename = Buffer.from(localName);
