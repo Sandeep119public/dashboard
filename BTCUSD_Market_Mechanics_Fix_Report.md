@@ -73,3 +73,11 @@ The daily aggregation path now stores transient trade records in a packed four-c
 - Injected cancellation and aggregation configuration rather than reading DOM or global import state from the parser module.
 - Wired the existing import flow to the module and added regression coverage for timezone offsets, invalid dates, schema/role/symbol validation, daily OHLCV and signed flow, and stream chunk boundaries.
 - Updated the service-worker cache version and precached the parser module for offline app-shell use.
+
+
+## Import controller extraction (2026-10-29)
+
+- Moved CSV/ZIP file iteration, ZIP-entry streaming coordination, per-batch duplicate-date checks, cancellation checks, and progress events into `src/app/import-controller.js`.
+- Kept UI rendering and final commit of successfully imported days in the page, passing cancellation, progress, bar-step, and histogram settings into the controller.
+- Added tests for standalone CSV imports, progress callbacks, duplicate-date rejection, and cancellation before parsing.
+- Bumped the service-worker shell cache and precached the controller module for offline use.
