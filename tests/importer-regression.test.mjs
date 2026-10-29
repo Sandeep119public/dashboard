@@ -599,7 +599,7 @@ test('chart series math rejects missing time converters and invalid EMA periods'
 test('median ignores missing values and handles odd/even samples', () => {
   const math = createChartSeriesMath({ toTimestamp: value => value });
   assert.equal(math.median([3, 1, 2]), 2);
-  assert.equal(math.median([8, null, 2, 4]), 3);
+  assert.equal(math.median([8, null, 2, 4, 6]), 5);
   assert.equal(math.median([null, NaN, Infinity]), null);
 });
 
