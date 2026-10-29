@@ -10,7 +10,7 @@ export async function readTradeFiles(files, {
   barSteps,
   histLabels
 } = {}) {
-  const selected = Array.from(files || []).filter(file => /\\.(csv|zip)$/i.test(file.name || ''));
+  const selected = Array.from(files || []).filter(file => /\.(csv|zip)$/i.test(file.name || ''));
   if (!selected.length) throw new Error('No .CSV or .ZIP trade files were found in that selection.');
 
   const incoming = new Map();
