@@ -105,3 +105,9 @@ The daily aggregation path now stores transient trade records in a packed four-c
 - Added six regression tests for rolling-ratio gap resets, compressed group endpoint mapping, null line breaks, EMA warm-up and gap resets, daily trade-weighted price resets, legacy HLC3 fallback labeling, and invalid arguments.
 - Added the module to the service-worker app shell and advanced its cache version to `btc-mechanics-shell-v14`.
 - This validates calculation contracts under Node. Browser visual regression and physical Android performance tests remain outstanding.
+
+## Chart statistics extraction update (2026-10-29)
+
+- Moved median aggregation for large-trade follow-through and Pearson correlation used by the flow lead-lag view into `src/charts/series-math.js`.
+- Added regression checks for odd/even medians, missing observations, perfect positive/negative correlations, zero variance, and insufficient samples.
+- Advanced the service-worker shell cache to `btc-mechanics-shell-v15` so installed clients can refresh the modified calculation module.
