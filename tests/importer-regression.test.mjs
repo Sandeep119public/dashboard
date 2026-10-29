@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { zipCsvEntries, zipEntryStream } from '../src/ingestion/zip-reader.js';
@@ -42,10 +44,23 @@ assert.doesNotMatch(html, /const text=JSON\.stringify\(payload\)/);
 assert.match(html, /file\.stream\(\)\.pipeThrough\(new DecompressionStream\('gzip'\)\)/, 'workspace import must stream gzip instead of buffering the file');
 assert.match(html, /text=null;[\s\S]{0,500}doc=null;[\s\S]{0,200}rebuildCombined\(\)/, 'workspace import must release text and document before rebuilding combined arrays');
 const cacheVersion = Number(/btc-mechanics-shell-v(\d+)/.exec(serviceWorker)?.[1]);
-assert.ok(cacheVersion >= 22, 'service-worker cache version must be bumped for changed shell assets');
+assert.ok(cacheVersion >= 23, 'service-worker cache version must be bumped for changed shell assets');
+
+test('inline browser module parses as valid JavaScript', () => {
+  const match = html.match(/<script type="module">([\\s\\S]*?)<\\/script>/);
+  assert.ok(match, 'the inline module script must exist');
+  const checkDir = mkdtempSync(resolve(tmpdir(), 'btc-mechanics-module-check-'));
+  const checkPath = resolve(checkDir, 'dashboard-inline.mjs');
+  try {
+    writeFileSync(checkPath, match[1], 'utf8');
+    execFileSync(process.execPath, ['--check', checkPath], { stdio: 'pipe' });
+  } finally {
+    rmSync(checkDir, { recursive: true, force: true });
+  }
+});
 
 test('UI copy matches the empty-data state and avoids stale sample-date claims', () => {
-  assert.ok(cacheVersion >= 22, 'changed UI shell requires a new service-worker cache version');
+  assert.ok(cacheVersion >= 23, 'changed UI shell requires a new service-worker cache version');
   assert.match(html, /id="startDate" type="date" value="" \/>/);
   assert.match(html, /id="endDate" type="date" value="" \/>/);
   assert.match(html, /id="dataStatus" class="data-status">No trade data loaded yet\. Add a daily CSV or ZIP file to begin\.<\/div>/);
