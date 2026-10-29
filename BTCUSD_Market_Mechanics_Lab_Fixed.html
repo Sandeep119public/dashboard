@@ -459,10 +459,12 @@ import { bindMobileQuickActions } from './src/ui/mobile-quick-actions.js';
 import { createLatestRenderQueue } from './src/charts/latest-render-queue.js';
 import { createBarSubsetter } from './src/charts/bar-subsetter.js';
 import { createChartSeriesMath } from './src/charts/series-math.js';
+import { createLeadLagEngine } from './src/charts/lead-lag-engine.js';
 (function(){
 'use strict';
 const DATA = window.DATA;
 const $ = id => document.getElementById(id);
+const leadLagEngine = createLeadLagEngine();
 let M = DATA.metrics, B = DATA.bars, E = DATA.events, P = DATA.profile, HIST = DATA.hist, HIST_LABELS = DATA.hist_labels, HIST_DATES=(Number(DATA.metrics.row_count||0)>0?[DATA.metrics.date]:[]);
 let BASE = Date.UTC(2026,8,1,0,0,0);
 const DAYS = new Map(DATA.metrics&&Number(DATA.metrics.row_count||0)>0?[[DATA.metrics.date,DATA]]:[]);
@@ -470,7 +472,7 @@ const BAR_STEPS = {'10s':10,'1m':60,'5m':300,'15m':900,'1h':3600};
 const HIST_BUCKETS = [9,24,49,99,219,671,999,1999,Infinity];
 let focusIndices=[], focusTimeSec=null, replayHandle=null, draggedPanel=null, focusLineTimer=null, pendingFocusLineTime=null;
 // Performance caches are invalidated whenever combined data is rebuilt.
-let leadPrefixSource=null, leadPrefixD=null, leadPrefixV=null;
+
 const { subsetBars, clearCache: clearSubsetCache } = createBarSubsetter({ getBars:()=>B, barSteps:BAR_STEPS, maxRenderPoints:3200, cacheLimit:8 });
 let refreshTimer=null, refreshRequestId=0, importRunning=false, importCancelRequested=false;
 const dateEpoch = date => {const a=String(date).slice(0,10).split('-').map(Number);return Date.UTC(a[0],a[1]-1,a[2]);};
@@ -498,7 +500,7 @@ function rebuildCombined(){
   const ee=day.events;for(let i=0;i<ee.t.length;i++){events.t.push(Number(ee.t[i])+off);for(const k of ['p','s','r','r1','r5','r15'])events[k].push(ee[k][i]);}
   const histOffset=dayIndex*1440*DATA.hist_labels.length;for(let hi=0;hi<day.hist.length;hi++)hist[histOffset+hi]=day.hist[hi];
  }
- B=bars;P=profile;E=events;HIST=hist;HIST_DATES=dates.slice();clearSubsetCache();leadPrefixSource=null;leadPrefixD=null;leadPrefixV=null;
+ B=bars;P=profile;E=events;HIST=hist;HIST_DATES=dates.slice();clearSubsetCache();leadLagEngine.setData(B['1m']);
  const delta=buy-sell, datesSpan=dates.length===1?dates[0]:dates[0]+' → '+dates[dates.length-1];
  M={date:datesSpan,row_count:rowCount,total_size:total,buy_size:buy,sell_size:sell,delta,imbalance_pct:total?delta/total*100:0,max_size:maxSize,start_price:firstPrice||0,end_price:lastPrice||0,high:high===-Infinity?0:high,low:low===Infinity?0:low,return_pct:firstPrice?(lastPrice/firstPrice-1)*100:0,range_pct:low>0?(high/low-1)*100:0};
  const x=B['1m'];let prev=null,prevT=null,arrFlow=[],arrRet=[];for(let i=0;i<x.t.length;i++){if(x.c[i]!==null&&x.o[i]!==null){if(prev!==null&&prev!==0&&x.t[i]>prevT&&x.t[i]-prevT===60){arrFlow.push(Number(x.d[i]||0));arrRet.push((x.c[i]/prev-1)*100);}prev=x.c[i];prevT=x.t[i];}}
@@ -551,7 +553,7 @@ const short = v => { const a=Math.abs(v); if(a>=1e9)return (v/1e9).toFixed(2)+'B
 const signed = (v,d=2) => (v>0?'+':'')+v.toFixed(d)+'%';
 const dt = sec => new Date(BASE + sec*1000);
 const dtMs = sec => BASE + sec*1000; // Plotly date axes accept epoch milliseconds; avoids per-point Date allocations.
-const { subsetRollingRatio, lineArrays, emaForSubset, tradeWeightedAverageForSubset, rollingRatio, median, pearson } = createChartSeriesMath({ toTimestamp: dtMs });
+const { subsetRollingRatio, lineArrays, emaForSubset, tradeWeightedAverageForSubset, rollingRatio, median } = createChartSeriesMath({ toTimestamp: dtMs });
 const timeLabel = sec => {const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=Math.floor(sec%60);return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+(s?':'+String(s).padStart(2,'0'):'');};
 const minuteOf = val => {if(!val)return 0;const a=val.split(':').map(Number);return a[0]*3600+a[1]*60;};
 const common = (extra={}) => Object.assign({paper_bgcolor:C.paper,plot_bgcolor:C.paper,font:{family:'Inter,system-ui,sans-serif',size:11,color:C.text},margin:{l:58,r:54,t:12,b:48},hovermode:'x unified',showlegend:true,legend:{orientation:'h',y:1.13,x:0,font:{size:10,color:C.muted}},xaxis:{gridcolor:C.grid,linecolor:C.grid,tickfont:{color:C.muted},zerolinecolor:C.grid},yaxis:{gridcolor:C.grid,linecolor:C.grid,tickfont:{color:C.muted},zerolinecolor:C.grid},uirevision:'market-lab'},extra);
@@ -643,29 +645,15 @@ function updateEvents(w,threshold){
 }
 
 function lowerBoundTime(times,target){let lo=0,hi=times.length;while(lo<hi){const mid=(lo+hi)>>1;if(times[mid]<target)lo=mid+1;else hi=mid;}return lo;}
-function updateLeadLag(w){
- const x=B['1m'],lookback=Number($('flowLookback').value),horizons=[['Same bar',0],['+1m',1],['+5m',5],['+15m',15],['+30m',30],['+60m',60]];
- const fs=[[],[],[],[],[],[]],rs=[[],[],[],[],[],[]],counts=[];
- if(leadPrefixSource!==x){leadPrefixD=new Float64Array(x.t.length+1);leadPrefixV=new Float64Array(x.t.length+1);for(let i=0;i<x.t.length;i++){leadPrefixD[i+1]=leadPrefixD[i]+Number(x.d[i]||0);leadPrefixV[i+1]=leadPrefixV[i]+Number(x.v[i]||0);}leadPrefixSource=x;}
- const prefixD=leadPrefixD,prefixV=leadPrefixV,rangeLo=lowerBoundTime(x.t,w.s),rangeHi=upperBoundTime(x.t,w.e);
- for(let i=rangeLo;i<rangeHi;i++){
-   if(!Number.isFinite(x.c[i]))continue;
-   const begin=lowerBoundTime(x.t,x.t[i]-Math.max(0,lookback-1)*60);if(i-begin+1!==lookback||x.t[i]-x.t[begin]!==Math.max(0,lookback-1)*60)continue;const vol=prefixV[i+1]-prefixV[begin],flow=vol?(prefixD[i+1]-prefixD[begin])/vol*100:null;
-   if(flow===null)continue;
-   if(i>0&&x.t[i]-x.t[i-1]===60&&x.c[i-1]){fs[0].push(flow);rs[0].push((x.c[i]/x.c[i-1]-1)*100);}
-   for(let h=1;h<horizons.length;h++){
-     const secs=horizons[h][1]*60,target=x.t[i]+secs,j=lowerBoundTime(x.t,target);
-     if(j>=x.t.length||x.t[j]>w.e||!Number.isFinite(x.c[j])||!x.c[i]||x.t[j]!==target)continue;
-     fs[h].push(flow);rs[h].push((x.c[j]/x.c[i]-1)*100);
-   }
- }
- const corr=horizons.map((_,i)=>pearson(fs[i],rs[i]));
- counts.push(...fs.map(a=>a.length));
- $('leadLagMeta').textContent='Trailing '+lookback+'m imbalance · '+nfmt(fs.slice(1).reduce((a,v)=>a+v.length,0))+' forward samples';
+async function updateLeadLag(w){
+ const requestId=refreshRequestId,lookback=Number($('flowLookback').value);
+ const result=await leadLagEngine.compute({start:w.s,end:w.e,lookback});
+ if(requestId!==refreshRequestId)return;
+ const horizons=result.horizons,corr=result.correlations,counts=result.counts;
+ $('leadLagMeta').textContent='Trailing '+lookback+'m imbalance · '+nfmt(result.forwardSamples)+' forward samples';
  const colors=corr.map(v=>v===null?'#52627a':v>=0?C.buy:C.sell);
- return plot('leadLagChart',[{type:'bar',name:'Pearson r',x:horizons.map(v=>v[0]),y:corr,marker:{color:colors,opacity:.88},customdata:counts,hovertemplate:'%{x}<br>Correlation %{y:.3f}<br>Pairs %{customdata:,}<extra></extra>'}],{xaxis:{title:'Return horizon after the flow measurement',gridcolor:C.grid},yaxis:{title:'Pearson correlation',range:[-1,1],gridcolor:C.grid,zeroline:true,zerolinecolor:'#91a3bb'},margin:{l:58,r:22,t:20,b:58},showlegend:false,hovermode:'closest',annotations:[{x:0,y:1.08,xref:'paper',yref:'paper',text:'+1 = positive association · −1 = negative association',showarrow:false,font:{size:10,color:C.muted},xanchor:'left'}]});
-}
-function updateRegimeHeatmap(w){
+ return plot('leadLagChart',[{type:'bar',name:'Pearson r',x:horizons,y:corr,marker:{color:colors,opacity:.88},customdata:counts,hovertemplate:'%{x}<br>Correlation %{y:.3f}<br>Pairs %{customdata:,}<extra></extra>'}],{xaxis:{title:'Return horizon after the flow measurement',gridcolor:C.grid},yaxis:{title:'Pearson correlation',range:[-1,1],gridcolor:C.grid,zeroline:true,zerolinecolor:'#91a3bb'},margin:{l:58,r:22,t:20,b:58},showlegend:false,hovermode:'closest',annotations:[{x:0,y:1.08,xref:'paper',yref:'paper',text:'+1 = positive association · −1 = negative association',showarrow:false,font:{size:10,color:C.muted},xanchor:'left'}]});
+}function updateRegimeHeatmap(w){
  const x=B['1h'],allDates=[...DAYS.keys()].sort(),start=selectedDates().start,end=selectedDates().end;
  const dates=allDates.filter(d=>d>=start&&d<=end),hours=Array.from({length:24},(_,i)=>String(i).padStart(2,'0')+':00');
  const values=new Map(),meta=new Map(),heatLo=lowerBoundTime(x.t,w.s),heatHi=upperBoundTime(x.t,w.e);
