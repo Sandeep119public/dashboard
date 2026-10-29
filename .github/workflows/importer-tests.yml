@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - 'BTCUSD_Market_Mechanics_Lab_Fixed.html'
+      - 'index.html'
+      - 'sw.js'
+      - 'manifest.webmanifest'
+      - 'icon.svg'
       - 'tests/**'
       - 'src/**'
       - 'package.json'
@@ -12,6 +16,10 @@ on:
   pull_request:
     paths:
       - 'BTCUSD_Market_Mechanics_Lab_Fixed.html'
+      - 'index.html'
+      - 'sw.js'
+      - 'manifest.webmanifest'
+      - 'icon.svg'
       - 'tests/**'
       - 'src/**'
       - 'package.json'
