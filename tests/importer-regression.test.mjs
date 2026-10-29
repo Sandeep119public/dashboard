@@ -44,6 +44,20 @@ assert.match(html, /text=null;[\s\S]{0,500}doc=null;[\s\S]{0,200}rebuildCombined
 const cacheVersion = Number(/btc-mechanics-shell-v(\d+)/.exec(serviceWorker)?.[1]);
 assert.ok(cacheVersion >= 19, 'service-worker cache version must be bumped for changed shell assets');
 
+test('UI copy matches the empty-data state and avoids stale sample-date claims', () => {
+  assert.ok(cacheVersion >= 21, 'changed UI shell requires a new service-worker cache version');
+  assert.match(html, /id="startDate" type="date" value="" \/>/);
+  assert.match(html, /id="endDate" type="date" value="" \/>/);
+  assert.match(html, /id="dataStatus" class="data-status">No trade data loaded yet\. Add a daily CSV or ZIP file to begin\.<\/div>/);
+  assert.doesNotMatch(html, /Loaded data: 2026-09-01 only|September 1, 2026 only|Only one date is embedded initially/);
+  assert.match(html, /thresholdMax/);
+  assert.match(html, /What this dataset cannot reveal/);
+  assert.match(html, /The source may omit timezone metadata/);
+  assert.match(html, /aria-label',expand\.title/);
+  assert.doesNotMatch(html, /date summary\/summaries|day\(s\)|Import trade data/);
+});
+
+
 test('combined 10-second bars are built lazily and stay out of the eager rebuild', () => {
   assert.match(html, /const EAGER_TIMEFRAMES = \['1m','5m','15m','1h'\];/, 'eager timeframes must exclude 10-second bars');
   assert.match(html, /function buildCombinedBars\(tf\)/, 'lazy combined builder must exist');

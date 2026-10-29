@@ -18,7 +18,7 @@ The dashboard includes responsive chart layouts, a compact mobile action bar, sa
 
 ## Import data
 
-Use **Add trade files (.CSV / .ZIP)** to import data. The importer supports Binance-style BTCUSD CSV files with columns `product_symbol,price,size,timestamp,buyer_role`, including a monthly ZIP containing one chronologically sorted CSV across multiple dates.
+Use **Add trade files (CSV or ZIP)** to import data. The importer supports Binance-style BTCUSD CSV files with columns `product_symbol,price,size,timestamp,buyer_role`, including a monthly ZIP containing one chronologically sorted CSV across multiple dates.
 
 Large ZIPs are streamed directly from the archive. The app reads the ZIP directory and decompresses the CSV incrementally, validates records, aggregates one day at a time, and reports progress. It does not keep the entire expanded CSV in one giant string. During aggregation, the active day's raw trades use a packed four-column numeric buffer rather than one JavaScript array object per trade, reducing intermediate object overhead for large imports.
 

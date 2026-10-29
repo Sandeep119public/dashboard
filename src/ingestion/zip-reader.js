@@ -23,7 +23,7 @@ async function zipCsvEntries(file){
   out.push({name,method,flags,compSize,uncompSize,localOff,directoryOffset:dirOffset});
  }
  if(off>directoryEnd)throw new Error('ZIP directory entries exceed the declared directory size in '+file.name+'.');
- if(!out.length)throw new Error('No .csv file found inside '+file.name+'.');
+ if(!out.length)throw new Error('No CSV file was found inside '+file.name+'.');
  return out;
 }
 async function zipEntryStream(file,entry){
@@ -37,7 +37,7 @@ async function zipEntryStream(file,entry){
  if(localName!==entry.name)throw new Error('ZIP local filename does not match its directory entry for '+entry.name+'.');
  const dataStart=entry.localOff+30+nameLen+extraLen,dataEnd=dataStart+entry.compSize;if(dataStart<entry.localOff+30||dataEnd>entry.directoryOffset||dataEnd>file.size)throw new Error('Compressed data bounds are invalid for '+entry.name+'.');
  let stream=file.slice(dataStart,dataEnd).stream();
- if(entry.method===8){if(typeof DecompressionStream==='undefined')throw new Error('This browser cannot stream-decompress ZIP files. Please use current Chrome or Edge.');try{stream=stream.pipeThrough(new DecompressionStream('deflate-raw'));}catch(err){throw new Error('This browser does not support raw DEFLATE ZIP streams. Please use current Chrome or Edge.');}}
+ if(entry.method===8){if(typeof DecompressionStream==='undefined')throw new Error('This browser cannot decompress ZIP files while streaming. Use a current version of Chrome or Edge instead.');try{stream=stream.pipeThrough(new DecompressionStream('deflate-raw'));}catch(err){throw new Error('This browser does not support raw DEFLATE ZIP streams. Use a current version of Chrome or Edge instead.');}}
  else if(entry.method!==0)throw new Error('ZIP compression method '+entry.method+' is not supported for '+entry.name+'.');
  return stream;
 }

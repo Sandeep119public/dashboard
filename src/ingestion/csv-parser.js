@@ -138,7 +138,7 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
  const flush=()=>{if(currentDate!==null&&rows.length){result.set(currentDate,aggregateDay(currentDate,rows,ordered,barSteps,histLabels));rows=new PackedTradeRows();ordered=true;lastSec=-Infinity;}};
  const commit=(date,sec,price,size,role)=>{
   if(currentDate===null)currentDate=date;
-  if(date!==currentDate){flush();if(result.has(date))throw new Error('Rows in '+date+' are not contiguous after timestamp normalization. Please import chronologically sorted trade CSVs.');currentDate=date;}
+  if(date!==currentDate){flush();if(result.has(date))throw new Error('Trades for '+date+' are not contiguous after timestamp normalization. Import CSV files with trades sorted chronologically.');currentDate=date;}
   if(sec<lastSec)ordered=false;lastSec=sec;rows.push(sec,price,size,role);rowCount++;
  };
  const pushGeneralLine=line=>{
@@ -184,7 +184,7 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
    const head=line.indexOf('"')<0?line.split(','):parseCsvRow(line);
    header=head.map(x=>x.trim().toLowerCase());
    idx={price:header.indexOf('price'),size:header.indexOf('size'),timestamp:header.indexOf('timestamp'),role:header.indexOf('buyer_role'),product:header.indexOf('product_symbol')};
-   if(idx.price<0||idx.size<0||idx.timestamp<0||idx.role<0)throw new Error('CSV needs price, size, timestamp and buyer_role columns.');
+   if(idx.price<0||idx.size<0||idx.timestamp<0||idx.role<0)throw new Error('The CSV must contain the price, size, timestamp, and buyer_role columns.');
    fastLayout=idx.product===0&&idx.price===1&&idx.size===2&&idx.timestamp===3&&idx.role===4&&header.length===5;
    return;
   }

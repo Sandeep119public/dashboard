@@ -11,14 +11,14 @@ export async function readTradeFiles(files, {
   histLabels
 } = {}) {
   const selected = Array.from(files || []).filter(file => /\.(csv|zip)$/i.test(file.name || ''));
-  if (!selected.length) throw new Error('No .CSV or .ZIP trade files were found in that selection.');
+  if (!selected.length) throw new Error('No CSV or ZIP trade files were found in that selection.');
 
   const incoming = new Map();
   const progress = (rows, date, name) => onProgress({ type: 'rows', rows, date, name });
   const acceptDays = days => {
     for (const [date, obj] of days) {
       if (incoming.has(date)) {
-        throw new Error('More than one selected file contains ' + date + '. Select a monthly archive by itself, or avoid overlapping CSV/ZIP files in one batch.');
+        throw new Error('More than one selected file contains trades for ' + date + '. Import the monthly archive by itself or remove overlapping CSV/ZIP files from the selection.');
       }
       incoming.set(date, obj);
     }
