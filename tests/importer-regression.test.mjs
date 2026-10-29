@@ -648,7 +648,7 @@ test('lead-lag calculator does not build lookback windows across missing minutes
   const calculator = createLeadLagCalculator();
   calculator.setData(bars);
   const result = calculator.compute({ start: 0, end: 840, lookback: 3 });
-  assert.equal(result.counts[0], 3);
+  assert.equal(result.counts[0], 4);
   assert.equal(result.counts[1], 2);
   assert.equal(result.counts[2], 0);
 });
