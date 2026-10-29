@@ -455,6 +455,7 @@ window.DATA = DATA;
 
 <script type="module">
 import { readTradeFiles } from './src/app/import-controller.js';
+import { bindMobileQuickActions } from './src/ui/mobile-quick-actions.js';
 (function(){
 'use strict';
 const DATA = window.DATA;
@@ -928,24 +929,17 @@ $('importFolder').addEventListener('click',()=>$('tradeFolder').click());$('trad
 $('reset').addEventListener('click',()=>{$('tf').value='1m';$('start').value='00:00';$('end').value='23:59';$('threshold').value='672';$('profileBin').value='10';$('smooth').value='10';$('flowLookback').value='5';setQuickRange('all');});
 
 function initMobileQuickActions(){
- const bar=$('mobileActionBar');if(!bar)return;
- const scrollToTarget=el=>{if(!el)return;const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;el.scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'});};
- bar.querySelectorAll('[data-mobile-action]').forEach(button=>button.addEventListener('click',()=>{
-  const action=button.dataset.mobileAction;
-  if(action==='import'){if(importRunning){requestImportCancel();return;}$('tradeFiles').click();return;}
-  if(action==='charts'){
-   let card=document.querySelector('.chartcard:not(.panel-hidden) .plot');
-   if(!card){applyQuestionPreset('price-flow',true);card=document.querySelector('.chartcard:not(.panel-hidden) .plot');}
-   scrollToTarget(card?card.closest('.chartcard'):document.querySelector('.sectionhead'));
-   setTimeout(resizeStudioCharts,180);return;
-  }
-  if(action==='replay'){scrollToTarget(document.querySelector('.replay-box'));return;}
-  if(action==='filters'){
-   const toggle=$('toggleAdvanced');if(toggle)toggle.click();
-   const expanded=document.body.classList.contains('show-advanced');button.setAttribute('aria-expanded',expanded?'true':'false');
-   if(expanded)scrollToTarget(document.querySelector('.controls'));
-  }
- }));
+ bindMobileQuickActions({
+  bar:$('mobileActionBar'),
+  documentRef:document,
+  windowRef:window,
+  isImportRunning:()=>importRunning,
+  requestImportCancel,
+  fileInput:$('tradeFiles'),
+  applyQuestionPreset,
+  resizeStudioCharts,
+  advancedToggle:$('toggleAdvanced')
+ });
 }
 let mobileResizeFrame=0;
 function scheduleResponsiveResize(){
