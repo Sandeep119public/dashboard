@@ -457,6 +457,7 @@ window.DATA = DATA;
 import { readTradeFiles } from './src/app/import-controller.js';
 import { bindMobileQuickActions } from './src/ui/mobile-quick-actions.js';
 import { createLatestRenderQueue } from './src/charts/latest-render-queue.js';
+import { createBarSubsetter } from './src/charts/bar-subsetter.js';
 (function(){
 'use strict';
 const DATA = window.DATA;
@@ -468,7 +469,8 @@ const BAR_STEPS = {'10s':10,'1m':60,'5m':300,'15m':900,'1h':3600};
 const HIST_BUCKETS = [9,24,49,99,219,671,999,1999,Infinity];
 let focusIndices=[], focusTimeSec=null, replayHandle=null, draggedPanel=null, focusLineTimer=null, pendingFocusLineTime=null;
 // Performance caches are invalidated whenever combined data is rebuilt.
-const MAX_RENDER_POINTS=3200; let subsetCache=new Map(), leadPrefixSource=null, leadPrefixD=null, leadPrefixV=null;
+let leadPrefixSource=null, leadPrefixD=null, leadPrefixV=null;
+const { subsetBars, clearCache: clearSubsetCache } = createBarSubsetter({ getBars:()=>B, barSteps:BAR_STEPS, maxRenderPoints:3200, cacheLimit:8 });
 let refreshTimer=null, refreshRequestId=0, importRunning=false, importCancelRequested=false;
 const dateEpoch = date => {const a=String(date).slice(0,10).split('-').map(Number);return Date.UTC(a[0],a[1]-1,a[2]);};
 const dateOffset = date => (dateEpoch(date)-BASE)/1000;
@@ -495,7 +497,7 @@ function rebuildCombined(){
   const ee=day.events;for(let i=0;i<ee.t.length;i++){events.t.push(Number(ee.t[i])+off);for(const k of ['p','s','r','r1','r5','r15'])events[k].push(ee[k][i]);}
   const histOffset=dayIndex*1440*DATA.hist_labels.length;for(let hi=0;hi<day.hist.length;hi++)hist[histOffset+hi]=day.hist[hi];
  }
- B=bars;P=profile;E=events;HIST=hist;HIST_DATES=dates.slice();subsetCache.clear();leadPrefixSource=null;leadPrefixD=null;leadPrefixV=null;
+ B=bars;P=profile;E=events;HIST=hist;HIST_DATES=dates.slice();clearSubsetCache();leadPrefixSource=null;leadPrefixD=null;leadPrefixV=null;
  const delta=buy-sell, datesSpan=dates.length===1?dates[0]:dates[0]+' → '+dates[dates.length-1];
  M={date:datesSpan,row_count:rowCount,total_size:total,buy_size:buy,sell_size:sell,delta,imbalance_pct:total?delta/total*100:0,max_size:maxSize,start_price:firstPrice||0,end_price:lastPrice||0,high:high===-Infinity?0:high,low:low===Infinity?0:low,return_pct:firstPrice?(lastPrice/firstPrice-1)*100:0,range_pct:low>0?(high/low-1)*100:0};
  const x=B['1m'];let prev=null,prevT=null,arrFlow=[],arrRet=[];for(let i=0;i<x.t.length;i++){if(x.c[i]!==null&&x.o[i]!==null){if(prev!==null&&prev!==0&&x.t[i]>prevT&&x.t[i]-prevT===60){arrFlow.push(Number(x.d[i]||0));arrRet.push((x.c[i]/prev-1)*100);}prev=x.c[i];prevT=x.t[i];}}
@@ -563,24 +565,6 @@ const plotQueue=createLatestRenderQueue({
 });
 function plot(id,traces,layout){return plotQueue.enqueue(id,$(id),{traces,layout});}
 function axisTickFormat(){return $('startDate').value!==$('endDate').value?'%b %d<br>%H:%M':'%H:%M';}
-function subsetBars(tf,w){
- const key=tf+'|'+w.s+'|'+w.e;if(subsetCache.has(key))return subsetCache.get(key);
- const source=B[tf],step=BAR_STEPS[tf]||60,lo=lowerBoundTime(source.t,w.s),hi=upperBoundTime(source.t,w.e),count=Math.max(0,hi-lo);
- const breaks=[];for(let i=lo;i<hi;i++)breaks.push(i>lo&&source.t[i]-source.t[i-1]>step*1.5);
- if(count<=MAX_RENDER_POINTS){const ids=Array.from({length:count},(_,i)=>lo+i),result={x:source,ids,source,sourceLo:lo,sourceHi:hi,ends:null,groupSize:1,compressed:false,breakBefore:breaks,step};cacheSubset(key,result);return result;}
- const x={t:[],o:[],h:[],l:[],c:[],v:[],n:[],b:[],s:[],d:[],pv:[]},ends=[],breakBefore=[],segments=[];
- let segmentStart=lo;for(let i=lo+1;i<hi;i++){const gap=source.t[i]-source.t[i-1]>step*1.5;const sessionBoundary=Math.floor(source.t[i]/86400)!==Math.floor(source.t[i-1]/86400);if(gap||sessionBoundary){segments.push([segmentStart,i]);segmentStart=i;}}segments.push([segmentStart,hi]);
- let groupSize=Math.max(1,Math.ceil(count/MAX_RENDER_POINTS));
- const estimatedPoints=()=>segments.reduce((n,seg)=>n+Math.ceil((seg[1]-seg[0])/groupSize),0);
- while(groupSize<count&&estimatedPoints()>MAX_RENDER_POINTS)groupSize++;
- const appendSegment=(segLo,segHi)=>{for(let start=segLo;start<segHi;start+=groupSize){const end=Math.min(segHi,start+groupSize);let high=-Infinity,low=Infinity,v=0,n=0,b=0,ss=0,d=0,pv=0;
-   for(let i=start;i<end;i++){if(Number.isFinite(source.h[i]))high=Math.max(high,source.h[i]);if(Number.isFinite(source.l[i]))low=Math.min(low,source.l[i]);v+=Number(source.v[i]||0);n+=Number(source.n[i]||0);b+=Number(source.b[i]||0);ss+=Number(source.s[i]||0);d+=Number(source.d[i]||0);pv+=source.pv&&source.pv[i]!==null&&source.pv[i]!==undefined?Number(source.pv[i]):0;}
-   x.t.push(source.t[end-1]);x.o.push(source.o[start]);x.h.push(high===-Infinity?null:high);x.l.push(low===Infinity?null:low);x.c.push(source.c[end-1]);x.v.push(v);x.n.push(n);x.b.push(b);x.s.push(ss);x.d.push(d);x.pv.push(pv);ends.push(end-1);breakBefore.push(start>lo&&source.t[start]-source.t[start-1]>step*1.5);
- }};
- for(const [segLo,segHi] of segments)appendSegment(segLo,segHi);
- const ids=Array.from({length:x.t.length},(_,i)=>i),result={x,ids,source,sourceLo:lo,sourceHi:hi,ends,groupSize,compressed:true,sourceCount:count,breakBefore,step};cacheSubset(key,result);return result;
-}
-function cacheSubset(key,value){subsetCache.set(key,value);if(subsetCache.size>8)subsetCache.delete(subsetCache.keys().next().value);}
 function upperBoundTime(times,target){let lo=0,hi=times.length;while(lo<hi){const mid=(lo+hi)>>1;if(times[mid]<=target)lo=mid+1;else hi=mid;}return lo;}
 function subsetRollingRatio(sub,window){
  const out=[];let sd=0,sv=0,next=0,segmentStart=sub.sourceLo;const source=sub.source,lo=sub.sourceLo,hi=sub.sourceHi,ends=sub.ends,w=Math.max(1,window),step=sub.step;
