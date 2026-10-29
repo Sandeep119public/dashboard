@@ -1,6 +1,6 @@
 /* Network-first app shell, cache-first chart library, offline fallback. */
 const CACHE_PREFIX = 'btc-mechanics-';
-const CACHE_NAME = 'btc-mechanics-shell-v14';
+const CACHE_NAME = 'btc-mechanics-shell-v15';
 const ROOT = self.registration.scope;
 const SHELL = [
   new URL('./', ROOT).href,
