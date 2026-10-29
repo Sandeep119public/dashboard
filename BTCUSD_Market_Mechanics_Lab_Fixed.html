@@ -495,7 +495,7 @@ function syncImportControls(){
 }
 function requestImportCancel(){if(!importRunning||importCancelRequested)return;importCancelRequested=true;syncImportControls();$('status').textContent='Cancellation requested. The importer will stop at the next safe parsing boundary; existing loaded data will be kept.';}
 async function importTradeFiles(files,sourceInputId='tradeFiles'){
- const input=$(sourceInputId);if(!files.length)return;files=Array.from(files).filter(f=>/\\.(csv|zip)$/i.test(f.name));if(!files.length){$('status').textContent='No .CSV or .ZIP trade files were found in that selection.';input.value='';return;}
+ const input=$(sourceInputId);if(!files.length)return;files=Array.from(files).filter(f=>/\.(csv|zip)$/i.test(f.name));if(!files.length){$('status').textContent='No .CSV or .ZIP trade files were found in that selection.';input.value='';return;}
  input.disabled=true;importRunning=true;importCancelRequested=false;syncImportControls();$('dataStatus').textContent='Streaming trade data and building multi-day bars. Monthly ZIP files are processed one day at a time to limit memory use.';$('status').textContent='';
  try{
   const incoming=await readTradeFiles(files,{
