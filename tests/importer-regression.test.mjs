@@ -205,7 +205,7 @@ test('streaming CSV parser handles chunk boundaries across headers and rows', as
 
 test('CSV parser preserves quoted commas in unused columns', async () => {
   const { parseCsvByDay } = await import('../src/ingestion/csv-parser.js');
-  const csv = 'product_symbol,price,size,timestamp,buyer_role,note\\nBTCUSD,60000,1,2026-08-01 00:00:00,taker,"large, normal print"\\n';
+  const csv = 'product_symbol,price,size,timestamp,buyer_role,note\nBTCUSD,60000,1,2026-08-01 00:00:00,taker,"large, normal print"\n';
   const days = parseCsvByDay(csv);
   assert.equal(days.get('2026-08-01').metrics.row_count, 1);
 });
