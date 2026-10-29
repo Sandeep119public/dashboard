@@ -19,12 +19,6 @@ const SHELL = [
 const isAppDocument = request => request.mode === 'navigate'
   || request.destination === 'document'
   || /\/(?:index\.html|BTCUSD_Market_Mechanics_Lab_Fixed\.html)$/.test(new URL(request.url).pathname);
-const cacheIfSuccessful = async (cache, request, response) => {
-  if (response && response.ok) {
-    try { await cache.put(request, response.clone()); } catch (_) {}
-  }
-  return response;
-};
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
