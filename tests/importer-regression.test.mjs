@@ -120,7 +120,7 @@ test('accepts a standard ZIP containing one CSV entry', async () => {
 });
 
 test('rejects a ZIP with no CSV entries', async () => {
-  await assert.rejects(zipCsvEntries(asFile(makeZip({ name: 'readme.txt' }))), /No \.csv file found/);
+  await assert.rejects(zipCsvEntries(asFile(makeZip({ name: 'readme.txt' }))), /No CSV file was found/);
 });
 
 test('rejects a central directory whose declared size is too short', async () => {
@@ -249,7 +249,7 @@ test('CSV parser rejects malformed roles, wrong symbols and missing columns', as
   const { parseCsvByDay } = await import('../src/ingestion/csv-parser.js');
   assert.throws(() => parseCsvByDay(sampleCsv.replace(',maker\n', ',unknown\n')), /Unknown buyer_role/);
   assert.throws(() => parseCsvByDay(sampleCsv.replace('BTCUSD,60000', 'ETHUSD,60000')), /for BTCUSD/);
-  assert.throws(() => parseCsvByDay('price,size,timestamp\n60000,1,2026-08-01 00:00:00\n'), /needs price, size, timestamp and buyer_role/);
+  assert.throws(() => parseCsvByDay('price,size,timestamp\n60000,1,2026-08-01 00:00:00\n'), /must contain the price, size, timestamp, and buyer_role columns/);
 });
 
 test('streaming CSV parser handles chunk boundaries across headers and rows', async () => {
@@ -325,7 +325,7 @@ test('import controller reads CSV files and reports progress without DOM access'
 test('import controller rejects overlapping dates in a single batch', async () => {
   const a = new Blob([sampleCsv]); Object.defineProperty(a, 'name', { value: 'a.csv' });
   const b = new Blob([sampleCsv]); Object.defineProperty(b, 'name', { value: 'b.csv' });
-  await assert.rejects(readTradeFiles([a, b], { barSteps: { '1m': 60 }, histLabels: ['tiny'] }), /More than one selected file contains 2026-08-01/);
+  await assert.rejects(readTradeFiles([a, b], { barSteps: { '1m': 60 }, histLabels: ['tiny'] }), /More than one selected file contains trades for 2026-08-01/);
 });
 
 test('import controller honors cancellation before reading the next file', async () => {
