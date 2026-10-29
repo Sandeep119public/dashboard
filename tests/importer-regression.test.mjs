@@ -499,7 +499,7 @@ test('bar subsetter preserves gaps and midnight boundaries when grouping long ra
   assert.equal(result.x.t[3] >= 86400, true);
 });
 
-test('bar subsetter enforces a bounded least-recently-used cache', () => {
+test('bar subsetter keeps its cache within the configured size limit', () => {
   const source = sampleBars([0, 60, 120, 180]);
   const subsetter = createBarSubsetter({ getBars: () => ({ '1m': source }), barSteps: { '1m': 60 }, maxRenderPoints: 10, cacheLimit: 2 });
   subsetter.subsetBars('1m', { s: 0, e: 0 });
