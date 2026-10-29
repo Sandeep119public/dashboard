@@ -81,3 +81,11 @@ The daily aggregation path now stores transient trade records in a packed four-c
 - Kept UI rendering and final commit of successfully imported days in the page, passing cancellation, progress, bar-step, and histogram settings into the controller.
 - Added tests for standalone CSV imports, progress callbacks, duplicate-date rejection, and cancellation before parsing.
 - Bumped the service-worker shell cache and precached the controller module for offline use.
+
+## UI controller and chart queue extraction (2026-10-29)
+
+- Extracted mobile import/chart/replay/filter shortcuts into `src/ui/mobile-quick-actions.js`. The module receives its browser elements and dashboard actions through arguments, allowing the routing behavior to be tested under Node without DOM globals.
+- Extracted per-chart rendering coordination into `src/charts/latest-render-queue.js`. In-flight renders are serialized and repeated pending refreshes collapse to the latest request for that chart.
+- Added regression tests for the mobile shortcuts, listener disposal, latest-wins queue behavior, render-error recovery, and local-module/offline-shell consistency.
+- Updated the service-worker shell cache to include both modules and advanced the cache version to `btc-mechanics-shell-v12`.
+- These are source-level regression tests, not a substitute for visual regression on desktop browsers or physical Android device testing.
