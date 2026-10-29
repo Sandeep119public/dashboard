@@ -339,7 +339,7 @@ input,select,button{color-scheme:dark}
     <div class="control advanced-control"><label for="profileBin">Price bucket width</label><select id="profileBin"><option value="5">$5</option><option value="10" selected>$10</option><option value="25">$25</option><option value="50">$50</option><option value="100">$100</option></select></div>
     <div class="control advanced-control"><label for="smooth">Smooth flow over</label><select id="smooth"><option value="3">3 bars</option><option value="10" selected>10 bars</option><option value="30">30 bars</option></select></div>
     <div class="control advanced-control"><label for="flowLookback">Lead/lag flow lookback</label><select id="flowLookback"><option value="1">1 minute</option><option value="5" selected>5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option></select></div>
-    <button class="btn subtle" id="reset" title="Return the date range, interval and research filters to their defaults">Reset filters</button>
+    <button class="btn subtle" id="reset" title="Return the date range, interval, and research filters to their defaults">Reset filters</button>
     <div id="status" class="status"></div>
     <div id="dataStatus" class="data-status">No trade data loaded yet. Add a daily CSV or ZIP file to begin.</div>
   </section>
@@ -385,7 +385,7 @@ input,select,button{color-scheme:dark}
     <div class="studio-controls">
       <div class="control"><label for="panelLayout">Panel grid</label><select id="panelLayout"><option value="2" selected>Two columns</option><option value="1">Single column</option><option value="3">Three columns</option></select></div>
       <div class="control"><label for="chartDensity">Chart height</label><select id="chartDensity"><option value="compact">Compact</option><option value="standard" selected>Standard</option><option value="large">Large</option></select></div>
-      <div class="control"><label for="priceStyle">Price rendering</label><select id="priceStyle"><option value="candles" selected>Candlesticks</option><option value="line">Close line</option></select></div>
+      <div class="control"><label for="priceStyle">Price display</label><select id="priceStyle"><option value="candles" selected>Candlesticks</option><option value="line">Close line</option></select></div>
       <div class="control"><label for="priceScale">Price scale</label><select id="priceScale"><option value="linear" selected>Linear</option><option value="log">Logarithmic</option></select></div>
       <div class="studio-toggles">
         <label class="studio-toggle"><input id="showLarge" type="checkbox" checked /> Large-trade markers</label>
@@ -464,7 +464,7 @@ input,select,button{color-scheme:dark}
       <ul><li><b>Role-to-side assumption:</b> <code>buyer_role=taker</code> is treated as buyer-initiated flow; <code>buyer_role=maker</code> as a sell-aggressor proxy. Verify this field's exchange-specific definition before using it for signals.</li><li><b>Size units:</b> preserved as supplied. The file does not define the contract multiplier, so size is not relabeled as BTC or USD notional.</li><li><b>Follow-through:</b> uses the first recorded trade at or after +1m, +5m and +15m, compared with the event's execution price. It is not a quote-mid impact measure.</li></ul>
     </div>
     <div class="note"><h3>What this dataset cannot reveal</h3>
-      <p>There is no order-book depth, best bid/ask, spread, queue position, cancellation feed or liquidation flag. Large executions can hint at aggressive activity, but they cannot prove that resting liquidity was thin or that a stop cascade occurred.</p>
+      <p>This dataset contains no order-book depth, best bid/ask, spread, queue position, cancellation feed, or liquidation flag. Large executions can suggest aggressive activity, but they cannot establish that resting liquidity was thin or that a stop cascade occurred.</p>
       <p>A filename that says “monthly” does not guarantee a full month of data; check the loaded date range before analysis. The source may omit timezone metadata. Unzoned timestamps are interpreted as UTC; explicit offsets are normalized to UTC. Confirm the source’s timezone convention before interpreting session times.</p>
       <p id="dataInsight"></p>
     </div>
@@ -612,7 +612,7 @@ function syncImportControls(){
 }
 function requestImportCancel(){if(!importRunning||importCancelRequested)return;importCancelRequested=true;syncImportControls();$('status').textContent='Cancellation requested. The importer will stop at the next safe parsing boundary; existing loaded data will be kept.';}
 async function importTradeFiles(files,sourceInputId='tradeFiles'){
- const input=$(sourceInputId);if(!files.length)return;files=Array.from(files).filter(f=>/\.(csv|zip)$/i.test(f.name));if(!files.length){$('status').textContent='No .CSV or .ZIP trade files were found in that selection.';input.value='';return;}
+ const input=$(sourceInputId);if(!files.length)return;files=Array.from(files).filter(f=>/\.(csv|zip)$/i.test(f.name));if(!files.length){$('status').textContent='No CSV or ZIP trade files were found in that selection.';input.value='';return;}
  input.disabled=true;importRunning=true;importCancelRequested=false;syncImportControls();$('dataStatus').textContent='Streaming trade data and building multi-day bars. Monthly ZIP files are processed one day at a time to limit memory use.';$('status').textContent='';
  try{
   const incoming=await readTradeFiles(files,{
@@ -662,7 +662,7 @@ function updateKpis(w){
  setMetric('kRange',nfmt(hi,1)+' / '+nfmt(lo,1),'neutral');$('kRangeHint').textContent=span.toFixed(2)+'% high-low span';
  setMetric('kTrades',nfmt(trades),'neutral');$('kTradesHint').textContent=(trades/Math.max(1,hiIx-loIx)).toFixed(1)+' prints per populated minute bar';
  setMetric('kSize',short(total),'neutral');$('kSizeHint').textContent=nfmt(trades?total/trades:0,1)+' average size units per print';
- setMetric('kDelta',(delta>0?'+':'')+short(delta),delta>0?'positive':delta<0?'negative':'neutral');$('kDeltaHint').textContent='signed size under role assumption';
+ setMetric('kDelta',(delta>0?'+':'')+short(delta),delta>0?'positive':delta<0?'negative':'neutral');$('kDeltaHint').textContent='signed size under the buyer-role assumption';
  setMetric('kImb',(imb>0?'+':'')+imb.toFixed(2)+'%',imb>0?'positive':imb<0?'negative':'neutral');$('kImbHint').textContent='net flow / executed size';
  return true;
 }
@@ -673,12 +673,12 @@ function updatePrice(tf,w,threshold){
  const tr=[];
  if(style==='line'){const ln=lineArrays(sub,closes);tr.push({type:'scattergl',mode:'lines',name:'Close',x:ln.x,y:ln.y,connectgaps:false,line:{color:C.blue,width:1.8},hovertemplate:'%{x|%Y-%m-%d %H:%M:%S}<br>Close %{y:.1f}<extra></extra>'});}
  else tr.push({type:'candlestick',name:'BTCUSD',x:xx,open:ids.map(i=>x.o[i]),high:highs,low:lows,close:closes,increasing:{line:{color:C.buy,width:1},fillcolor:C.buy},decreasing:{line:{color:C.sell,width:1},fillcolor:C.sell},whiskerwidth:.3,hovertemplate:'%{x|%Y-%m-%d %H:%M:%S}<br>O %{open:.1f} · H %{high:.1f}<br>L %{low:.1f} · C %{close:.1f}<extra></extra>'});
- if($('showEMA20')&&$('showEMA20').checked&&ids.length){const ln=lineArrays(sub,emaForSubset(sub,20));tr.push({type:'scattergl',mode:'lines',name:'EMA 20',x:ln.x,y:ln.y,connectgaps:false,line:{color:C.gold,width:1.4},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>EMA20 %{y:.2f}<extra></extra>'});}
- if($('showEMA50')&&$('showEMA50').checked&&ids.length){const ln=lineArrays(sub,emaForSubset(sub,50));tr.push({type:'scattergl',mode:'lines',name:'EMA 50',x:ln.x,y:ln.y,connectgaps:false,line:{color:C.purple,width:1.5},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>EMA50 %{y:.2f}<extra></extra>'});}
- if($('showVWAP')&&$('showVWAP').checked&&ids.length){const avg=tradeWeightedAverageForSubset(sub),ln=lineArrays(sub,avg.values),nm=avg.exact?'Trade-size-weighted price (loaded prints)':'Weighted-price proxy (legacy bars use HLC3)';tr.push({type:'scattergl',mode:'lines',name:nm,x:ln.x,y:ln.y,connectgaps:false,line:{color:'#f0a1ff',width:1.5,dash:'dot'},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Weighted price %{y:.2f}<extra></extra>'});}
+ if($('showEMA20')&&$('showEMA20').checked&&ids.length){const ln=lineArrays(sub,emaForSubset(sub,20));tr.push({type:'scattergl',mode:'lines',name:'EMA 20',x:ln.x,y:ln.y,connectgaps:false,line:{color:C.gold,width:1.4},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>EMA 20 %{y:.2f}<extra></extra>'});}
+ if($('showEMA50')&&$('showEMA50').checked&&ids.length){const ln=lineArrays(sub,emaForSubset(sub,50));tr.push({type:'scattergl',mode:'lines',name:'EMA 50',x:ln.x,y:ln.y,connectgaps:false,line:{color:C.purple,width:1.5},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>EMA 50 %{y:.2f}<extra></extra>'});}
+ if($('showVWAP')&&$('showVWAP').checked&&ids.length){const avg=tradeWeightedAverageForSubset(sub),ln=lineArrays(sub,avg.values),nm=avg.exact?'Trade-size-weighted price (loaded prints)':'Weighted-price proxy (legacy bars use HLC3)';tr.push({type:'scattergl',mode:'lines',name:nm,x:ln.x,y:ln.y,connectgaps:false,line:{color:'#f0a1ff',width:1.5,dash:'dot'},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Trade-size-weighted price %{y:.2f}<extra></extra>'});}
  const keep=[];if(!$('showLarge')||$('showLarge').checked){const lo=lowerBoundTime(E.t,w.s),hi=upperBoundTime(E.t,w.e);for(let i=lo;i<hi;i++)if(E.s[i]>=threshold)keep.push(i);}
  const markerLimit=1600;let visibleKeep=keep;if(keep.length>markerLimit){visibleKeep=keep.slice().sort((a,b)=>E.s[b]-E.s[a]).slice(0,markerLimit).sort((a,b)=>E.t[a]-E.t[b]);}
- for(const roleCode of [1,0]){const ev=visibleKeep.filter(i=>E.r[i]===roleCode);if(!ev.length)continue;tr.push({type:'scattergl',mode:'markers',name:roleCode===1?'Buyer is taker':'Buyer is maker*',x:ev.map(i=>dtMs(E.t[i])),y:ev.map(i=>E.p[i]),customdata:ev.map(i=>[nfmt(E.s[i]),roleCode===1?'taker':'maker',timeLabel(E.t[i])]),marker:{symbol:roleCode===1?'triangle-up':'triangle-down',color:roleCode===1?C.buy:C.sell,opacity:.72,size:ev.map(i=>Math.max(5,Math.min(17,4+Math.sqrt(E.s[i]/Math.max(1,threshold))*4))),line:{width:.4,color:'#07101c'}},hovertemplate:'%{customdata[2]}<br>Price %{y:.1f}<br>Size %{customdata[0]}<br>buyer_role=%{customdata[1]}<extra></extra>'});}
+ for(const roleCode of [1,0]){const ev=visibleKeep.filter(i=>E.r[i]===roleCode);if(!ev.length)continue;tr.push({type:'scattergl',mode:'markers',name:roleCode===1?'Buyer role: taker':'Buyer role: maker*',x:ev.map(i=>dtMs(E.t[i])),y:ev.map(i=>E.p[i]),customdata:ev.map(i=>[nfmt(E.s[i]),roleCode===1?'taker':'maker',timeLabel(E.t[i])]),marker:{symbol:roleCode===1?'triangle-up':'triangle-down',color:roleCode===1?C.buy:C.sell,opacity:.72,size:ev.map(i=>Math.max(5,Math.min(17,4+Math.sqrt(E.s[i]/Math.max(1,threshold))*4))),line:{width:.4,color:'#07101c'}},hovertemplate:'%{customdata[2]}<br>Price %{y:.1f}<br>Size %{customdata[0]}<br>Buyer role: %{customdata[1]}<extra></extra>'});}
  $('priceBadge').textContent=$('tf').selectedOptions[0].text+' · '+nfmt(sub.sourceCount||ids.length)+' source bars'+(sub.compressed?' · grouped ×'+sub.groupSize:'')+' · '+nfmt(keep.length)+' large prints'+(keep.length>visibleKeep.length?' · showing largest '+nfmt(visibleKeep.length):'')+(style==='line'?' · close line':'');
  return plot('priceChart',tr,{height:455,xaxis:{type:'date',gridcolor:C.grid,tickformat:axisTickFormat(),rangeslider:{visible:true,thickness:.08,bgcolor:'#091220',bordercolor:C.grid}},yaxis:{title:'Price',side:'right',type:$('priceScale')&&$('priceScale').value==='log'?'log':'linear',gridcolor:C.grid},margin:{l:58,r:65,t:16,b:48},hovermode:'x'});
 }
@@ -687,14 +687,14 @@ function updateFlow(tf,w){
  const b=ids.map(i=>x.b[i]),s=ids.map(i=>-x.s[i]),d=ids.map(i=>x.d[i]),v=ids.map(i=>x.v[i]);
  const imb=sub.compressed?subsetRollingRatio(sub,Number($('smooth').value)):rollingRatio(d,v,Number($('smooth').value),ids.map(i=>x.t[i]),BAR_STEPS[tf]),imbLine=lineArrays(sub,imb);
  return plot('flowChart',[
- {type:'bar',name:'Buyer taker size',x:xx,y:b,marker:{color:C.buy,opacity:.8},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Buy-side proxy %{y:,.0f}<extra></extra>'},
- {type:'bar',name:'Buyer maker size',x:xx,y:s,marker:{color:C.sell,opacity:.8},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Sell-side proxy %{customdata:,.0f}<extra></extra>',customdata:s.map(v=>-v)},
+ {type:'bar',name:'Buy-side proxy size',x:xx,y:b,marker:{color:C.buy,opacity:.8},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Buy-side proxy %{y:,.0f}<extra></extra>'},
+ {type:'bar',name:'Sell-side proxy size',x:xx,y:s,marker:{color:C.sell,opacity:.8},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Sell-side proxy %{customdata:,.0f}<extra></extra>',customdata:s.map(v=>-v)},
  {type:'scatter',mode:'lines',name:'Rolling imbalance',x:imbLine.x,y:imbLine.y,connectgaps:false,yaxis:'y2',line:{color:C.gold,width:1.8},hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Rolling imbalance %{y:.1f}%<extra></extra>'}
  ],{barmode:'relative',xaxis:{type:'date',gridcolor:C.grid,tickformat:axisTickFormat()},yaxis:{title:'Size units',zeroline:true,zerolinecolor:'#53647c'},yaxis2:{title:'Imbalance %',overlaying:'y',side:'right',range:[-100,100],showgrid:false,tickfont:{color:C.gold},titlefont:{color:C.gold}},margin:{l:62,r:60,t:16,b:46},hovermode:'x unified'});
 }
 function updateCvd(tf,w){
  const sub=subsetBars(tf,w),x=sub.x,ids=sub.ids;let acc=0;const cvd=ids.map(i=>(acc+=x.d[i]||0)),ln=lineArrays(sub,cvd);
- return plot('cvdChart',[{type:'scatter',mode:'lines',name:'CVD · selected-window cumulative',x:ln.x,y:ln.y,connectgaps:false,line:{color:C.purple,width:2},fill:'tozeroy',fillcolor:'rgba(170,156,255,.08)',hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>CVD %{y:,.0f}<extra></extra>'}],{xaxis:{type:'date',gridcolor:C.grid,tickformat:axisTickFormat()},yaxis:{title:'Cumulative signed size from range start',side:'right'},margin:{l:58,r:58,t:16,b:46},showlegend:false,hovermode:'x'});
+ return plot('cvdChart',[{type:'scatter',mode:'lines',name:'CVD · cumulative within selected window',x:ln.x,y:ln.y,connectgaps:false,line:{color:C.purple,width:2},fill:'tozeroy',fillcolor:'rgba(170,156,255,.08)',hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>CVD %{y:,.0f}<extra></extra>'}],{xaxis:{type:'date',gridcolor:C.grid,tickformat:axisTickFormat()},yaxis:{title:'Cumulative signed size from range start',side:'right'},margin:{l:58,r:58,t:16,b:46},showlegend:false,hovermode:'x'});
 }
 function updateProfile(w){
  const bin=Number($('profileBin').value), m0=Math.floor(w.s/60),m1=Math.floor(w.e/60);

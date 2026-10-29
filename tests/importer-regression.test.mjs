@@ -42,10 +42,10 @@ assert.doesNotMatch(html, /const text=JSON\.stringify\(payload\)/);
 assert.match(html, /file\.stream\(\)\.pipeThrough\(new DecompressionStream\('gzip'\)\)/, 'workspace import must stream gzip instead of buffering the file');
 assert.match(html, /text=null;[\s\S]{0,500}doc=null;[\s\S]{0,200}rebuildCombined\(\)/, 'workspace import must release text and document before rebuilding combined arrays');
 const cacheVersion = Number(/btc-mechanics-shell-v(\d+)/.exec(serviceWorker)?.[1]);
-assert.ok(cacheVersion >= 19, 'service-worker cache version must be bumped for changed shell assets');
+assert.ok(cacheVersion >= 22, 'service-worker cache version must be bumped for changed shell assets');
 
 test('UI copy matches the empty-data state and avoids stale sample-date claims', () => {
-  assert.ok(cacheVersion >= 21, 'changed UI shell requires a new service-worker cache version');
+  assert.ok(cacheVersion >= 22, 'changed UI shell requires a new service-worker cache version');
   assert.match(html, /id="startDate" type="date" value="" \/>/);
   assert.match(html, /id="endDate" type="date" value="" \/>/);
   assert.match(html, /id="dataStatus" class="data-status">No trade data loaded yet\. Add a daily CSV or ZIP file to begin\.<\/div>/);
@@ -54,7 +54,9 @@ test('UI copy matches the empty-data state and avoids stale sample-date claims',
   assert.match(html, /What this dataset cannot reveal/);
   assert.match(html, /The source may omit timezone metadata/);
   assert.match(html, /aria-label',expand\.title/);
-  assert.doesNotMatch(html, /date summary\/summaries|day\(s\)|Import trade data/);
+  assert.doesNotMatch(html, /date summary\/summaries|day\(s\)|Import trade data|No \.CSV or \.ZIP trade files were found|name:'Buyer taker size'|name:'Buyer maker size'|Buyer is taker|Buyer is maker\*|EMA20 %\{y|EMA50 %\{y|Timestamp hour as supplied|CVD · selected-window cumulative|Weighted price %\{y/);
+  assert.match(html, /name:'Buy-side proxy size'/);
+  assert.match(html, /name:'Sell-side proxy size'/);
 });
 
 
