@@ -475,6 +475,7 @@ window.DATA = DATA;
 </script>
 <script type="module">
 import { readTradeFiles } from './src/app/import-controller.js';
+import { createWorkspaceJsonStream, workspaceJsonText, workspaceMeta } from './src/app/workspace-export.js';
 import { bindMobileQuickActions } from './src/ui/mobile-quick-actions.js';
 import { createLatestRenderQueue } from './src/charts/latest-render-queue.js';
 import { createBarSubsetter } from './src/charts/bar-subsetter.js';
@@ -716,14 +717,16 @@ function exportLargeTrades(){
 }
 async function saveWorkspace(){
  $('status').textContent='Preparing a compressed workspace snapshot…';
- const dates=loadedDates(),payload={format:'BTCUSD-Market-Mechanics-Lab',version:1,exported_at:new Date().toISOString(),days:[...DAYS.entries()]};
- const text=JSON.stringify(payload);const first=dates[0]||'empty',last=dates[dates.length-1]||'empty';
+ const dates=loadedDates(),meta=workspaceMeta(),first=dates[0]||'empty',last=dates[dates.length-1]||'empty';
  try{
-   if(typeof CompressionStream!=='undefined'){
-     const stream=new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+   if(typeof CompressionStream!=='undefined'&&typeof ReadableStream!=='undefined'){
+     // Serialize one day at a time into gzip instead of building the whole
+     // 57 MB JSON string (114 MB in V8's two-byte representation) first.
+     const stream=createWorkspaceJsonStream(DAYS,meta).pipeThrough(new CompressionStream('gzip'));
      const blob=await new Response(stream).blob();downloadBlob(blob,'BTCUSD_Market_Mechanics_Workspace_'+first+'_to_'+last+'.json.gz');
      $('status').textContent='Saved workspace with '+dates.length+' loaded date(s), compressed as JSON.GZ.';
    }else{
+     const text=workspaceJsonText(DAYS,meta);
      downloadBlob(new Blob([text],{type:'application/json;charset=utf-8'}),'BTCUSD_Market_Mechanics_Workspace_'+first+'_to_'+last+'.json');
      $('status').textContent='Saved workspace as JSON with '+dates.length+' loaded date(s).';
    }
@@ -733,15 +736,21 @@ async function loadWorkspaceFile(file){
  let text;
  if(file.name.toLowerCase().endsWith('.gz')){
    if(typeof DecompressionStream==='undefined')throw new Error('This browser cannot decompress .gz workspaces. Load the uncompressed .json copy instead.');
-   const stream=new Blob([await file.arrayBuffer()]).stream().pipeThrough(new DecompressionStream('gzip'));text=await new Response(stream).text();
+   // Stream the uploaded file straight into gunzip instead of buffering it and copying it into a Blob.
+   const stream=file.stream().pipeThrough(new DecompressionStream('gzip'));text=await new Response(stream).text();
  }else text=await file.text();
- const doc=JSON.parse(text);if(doc.format!=='BTCUSD-Market-Mechanics-Lab'||!Array.isArray(doc.days))throw new Error('This is not a compatible Market Mechanics Lab workspace.');
+ let doc=JSON.parse(text);
+ // The parsed day objects are retained by DAYS; drop the 57 MB JSON text and the
+ // document wrapper before rebuilding so they cannot overlap with the new combined arrays.
+ text=null;
+ if(doc.format!=='BTCUSD-Market-Mechanics-Lab'||!Array.isArray(doc.days))throw new Error('This is not a compatible Market Mechanics Lab workspace.');
  let added=0;
  for(const entry of doc.days){
    if(!Array.isArray(entry)||entry.length!==2)continue;const [date,day]=entry;
    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(date))||!day||!day.metrics||!day.bars||!day.bars['1m']||!Array.isArray(day.hist)||!day.profile||!day.events)continue;
    DAYS.set(date,day);added++;
  }
+ doc=null;
  if(!added)throw new Error('No valid daily summaries were found in this workspace.');
  rebuildCombined();updateDateBounds(true);refresh();$('status').textContent='Loaded '+added+' date summary/summaries from workspace. Current data with matching dates was replaced.';
 }

@@ -7,6 +7,7 @@ import { zipCsvEntries, zipEntryStream } from '../src/ingestion/zip-reader.js';
 import { PackedTradeRows } from '../src/data/packed-trade-rows.js';
 import { aggregateDay } from '../src/data/day-aggregator.js';
 import { readTradeFiles } from '../src/app/import-controller.js';
+import { createWorkspaceJsonStream, workspaceJsonText, workspaceMeta, workspaceStreamText } from '../src/app/workspace-export.js';
 import { bindMobileQuickActions } from '../src/ui/mobile-quick-actions.js';
 import { createLatestRenderQueue } from '../src/charts/latest-render-queue.js';
 import { createBarSubsetter } from '../src/charts/bar-subsetter.js';
@@ -36,8 +37,12 @@ assert.match(html, /safe-area-inset-right/);
 assert.match(html, /\.panel-action\{min-height:44px;min-width:44px/);
 assert.match(html, /id="stampDate">No data loaded</);
 assert.match(html, /swHost==='localhost'/);
+assert.match(html, /createWorkspaceJsonStream\(DAYS,meta\)/, 'workspace export must stream day JSON instead of building one large string');
+assert.doesNotMatch(html, /const text=JSON\.stringify\(payload\)/);
+assert.match(html, /file\.stream\(\)\.pipeThrough\(new DecompressionStream\('gzip'\)\)/, 'workspace import must stream gzip instead of buffering the file');
+assert.match(html, /text=null;[\s\S]{0,500}doc=null;[\s\S]{0,200}rebuildCombined\(\)/, 'workspace import must release text and document before rebuilding combined arrays');
 const cacheVersion = Number(/btc-mechanics-shell-v(\d+)/.exec(serviceWorker)?.[1]);
-assert.ok(cacheVersion >= 18, 'service-worker cache version must be bumped for changed shell assets');
+assert.ok(cacheVersion >= 19, 'service-worker cache version must be bumped for changed shell assets');
 
 function makeZip({ name = 'trades.csv', localName = name, comment = Buffer.alloc(0), data = 'timestamp,price,size,buyer_role,product_symbol\n2026-08-01 00:00:00,60000,1,taker,BTCUSD\n' } = {}) {
   const filename = Buffer.from(name);
@@ -317,10 +322,45 @@ test('import controller streams CSV entries from ZIP archives', async () => {
 });
 
 
+function workspaceFixtureDays() {
+  const day = date => ({
+    metrics: { date, row_count: 3, start_price: 60000, end_price: 60001, return_pct: 0.0017, low: 59999, high: 60002, total_size: 6, buy_size: 4, sell_size: 2, delta: 2, imbalance_pct: 33.333, median_size: 1, p90: 3, p95: 3, p99: 3, max_size: 3, active_seconds_pct: 0.0035, minute_flow_return_corr: 0.12 },
+    bars: { '1m': { t: [0, 60], o: [60000, 60001], h: [60002, 60003], l: [59999, 60000], c: [60001, 60002], v: [3, 3], n: [2, 1], b: [2, 2], s: [1, 1], d: [1, 1], pv: [180000, 180003] } },
+    profile: { m: [0, 1], p: [12000, 12001], v: [2, 3], d: [1, -1] },
+    hist: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    hist_labels: ['1–9', '10–24', '25–49', '50–99', '100–219', '220–671', '672–999', '1k–1.9k', '2k+'],
+    events: { t: [0.5], p: [60000], s: [300], r: [1], r1: [0.1], r5: [null], r15: [null] }
+  });
+  return new Map([['2026-08-01', day('2026-08-01')], ['2026-08-02', day('2026-08-02')]]);
+}
+
+test('workspace export streams byte-identical JSON and gzip content', async () => {
+  const days = workspaceFixtureDays();
+  const meta = workspaceMeta('2026-10-29T00:00:00.000Z');
+  const expected = JSON.stringify({ format: meta.format, version: meta.version, exported_at: meta.exported_at, days: [...days.entries()] });
+  assert.equal(workspaceJsonText(days, meta), expected);
+  assert.equal(await workspaceStreamText(days, meta), expected);
+  const parsed = JSON.parse(expected);
+  assert.equal(parsed.format, 'BTCUSD-Market-Mechanics-Lab');
+  assert.equal(parsed.version, 1);
+  assert.equal(parsed.days.length, 2);
+  assert.equal(parsed.days[0][1].hist_labels[0], '1–9');
+  const compressed = await new Response(createWorkspaceJsonStream(days, meta).pipeThrough(new CompressionStream('gzip'))).arrayBuffer();
+  const roundTrip = await new Response(new Blob([compressed]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  assert.equal(roundTrip, expected, 'streamed gzip must decompress to the exact legacy JSON text');
+});
+
+test('workspace export emits a valid empty payload', async () => {
+  const meta = workspaceMeta('2026-10-29T00:00:00.000Z');
+  const expected = JSON.stringify({ format: meta.format, version: meta.version, exported_at: meta.exported_at, days: [] });
+  assert.equal(await workspaceStreamText(new Map(), meta), expected);
+});
+
 test('local JavaScript imports resolve and are included in the offline app shell', () => {
   const sourceFiles = [
     'BTCUSD_Market_Mechanics_Lab_Fixed.html',
     'src/app/import-controller.js',
+    'src/app/workspace-export.js',
     'src/ui/mobile-quick-actions.js',
     'src/charts/latest-render-queue.js',
     'src/charts/bar-subsetter.js',
