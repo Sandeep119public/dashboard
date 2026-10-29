@@ -458,6 +458,7 @@ import { readTradeFiles } from './src/app/import-controller.js';
 import { bindMobileQuickActions } from './src/ui/mobile-quick-actions.js';
 import { createLatestRenderQueue } from './src/charts/latest-render-queue.js';
 import { createBarSubsetter } from './src/charts/bar-subsetter.js';
+import { createChartSeriesMath } from './src/charts/series-math.js';
 (function(){
 'use strict';
 const DATA = window.DATA;
@@ -550,6 +551,7 @@ const short = v => { const a=Math.abs(v); if(a>=1e9)return (v/1e9).toFixed(2)+'B
 const signed = (v,d=2) => (v>0?'+':'')+v.toFixed(d)+'%';
 const dt = sec => new Date(BASE + sec*1000);
 const dtMs = sec => BASE + sec*1000; // Plotly date axes accept epoch milliseconds; avoids per-point Date allocations.
+const { subsetRollingRatio, lineArrays, emaForSubset, tradeWeightedAverageForSubset, rollingRatio } = createChartSeriesMath({ toTimestamp: dtMs });
 const timeLabel = sec => {const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=Math.floor(sec%60);return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+(s?':'+String(s).padStart(2,'0'):'');};
 const minuteOf = val => {if(!val)return 0;const a=val.split(':').map(Number);return a[0]*3600+a[1]*60;};
 const common = (extra={}) => Object.assign({paper_bgcolor:C.paper,plot_bgcolor:C.paper,font:{family:'Inter,system-ui,sans-serif',size:11,color:C.text},margin:{l:58,r:54,t:12,b:48},hovermode:'x unified',showlegend:true,legend:{orientation:'h',y:1.13,x:0,font:{size:10,color:C.muted}},xaxis:{gridcolor:C.grid,linecolor:C.grid,tickfont:{color:C.muted},zerolinecolor:C.grid},yaxis:{gridcolor:C.grid,linecolor:C.grid,tickfont:{color:C.muted},zerolinecolor:C.grid},uirevision:'market-lab'},extra);
@@ -566,37 +568,6 @@ const plotQueue=createLatestRenderQueue({
 function plot(id,traces,layout){return plotQueue.enqueue(id,$(id),{traces,layout});}
 function axisTickFormat(){return $('startDate').value!==$('endDate').value?'%b %d<br>%H:%M':'%H:%M';}
 function upperBoundTime(times,target){let lo=0,hi=times.length;while(lo<hi){const mid=(lo+hi)>>1;if(times[mid]<=target)lo=mid+1;else hi=mid;}return lo;}
-function subsetRollingRatio(sub,window){
- const out=[];let sd=0,sv=0,next=0,segmentStart=sub.sourceLo;const source=sub.source,lo=sub.sourceLo,hi=sub.sourceHi,ends=sub.ends,w=Math.max(1,window),step=sub.step;
- for(let i=lo;i<hi;i++){if(i>lo&&source.t[i]-source.t[i-1]>step*1.5){sd=0;sv=0;segmentStart=i;}sd+=Number(source.d[i]||0);sv+=Number(source.v[i]||0);const remove=i-w;if(remove>=segmentStart){sd-=Number(source.d[remove]||0);sv-=Number(source.v[remove]||0);}if(sub.compressed){if(next<ends.length&&i===ends[next]){out.push(sv?sd/sv*100:0);next++;}}else{out.push(sv?sd/sv*100:0);}}
- return out;
-}
-function lineArrays(sub,values){
- const xs=[],ys=[],ids=sub.ids;
- for(let k=0;k<ids.length;k++){
-  if(k>0&&sub.breakBefore&&sub.breakBefore[k]){const ta=sub.x.t[ids[k-1]],tb=sub.x.t[ids[k]];xs.push(dtMs(ta+(tb-ta)/2));ys.push(null);}
-  xs.push(dtMs(sub.x.t[ids[k]]));ys.push(values[k]===undefined?null:values[k]);
- }
- return {x:xs,y:ys};
-}
-function emaForSubset(sub,period){
- const source=sub.source,lo=Math.max(0,sub.sourceLo-period*5),hi=sub.sourceHi,targets=new Set(sub.compressed?sub.ends:sub.ids),out=[];const alpha=2/(period+1);let prev=null;
- for(let i=lo;i<hi;i++){if(i>lo&&source.t[i]-source.t[i-1]>sub.step*1.5)prev=null;const v=Number(source.c[i]);if(!Number.isFinite(v))continue;prev=prev===null?v:v*alpha+prev*(1-alpha);if(i>=sub.sourceLo&&targets.has(i))out.push(prev);}
- return out;
-}
-function tradeWeightedAverageForSubset(sub){
- const source=sub.source,hi=sub.sourceHi;if(sub.sourceLo>=hi)return {values:[],exact:true};
- const firstDay=Math.floor(source.t[sub.sourceLo]/86400),scanLo=lowerBoundTime(source.t,firstDay*86400),targets=new Set(sub.compressed?sub.ends:sub.ids),out=[];let day=-1,pv=0,vv=0,exact=true;
- for(let i=scanLo;i<hi;i++){
-  const dayKey=Math.floor(source.t[i]/86400);if(dayKey!==day){day=dayKey;pv=0;vv=0;}
-  const vol=Number(source.v[i]||0),rawPV=source.pv&&source.pv.length===source.t.length?source.pv[i]:null;
-  if(rawPV!==null&&rawPV!==undefined&&Number.isFinite(Number(rawPV)))pv+=Number(rawPV);
-  else {const typ=(Number(source.h[i])+Number(source.l[i])+Number(source.c[i]))/3;pv+=typ*vol;if(vol>0)exact=false;}
-  vv+=vol;if(i>=sub.sourceLo&&targets.has(i))out.push(vv?pv/vv:null);
- }
- return {values:out,exact};
-}
-function rollingRatio(d,v,window,times,step){const out=new Array(d.length);let sd=0,sv=0,segmentStart=0;const w=Math.max(1,Number(window)||1);for(let i=0;i<d.length;i++){if(i>0&&times&&times[i]-times[i-1]>step*1.5){sd=0;sv=0;segmentStart=i;}sd+=Number(d[i]||0);sv+=Number(v[i]||0);const remove=i-w;if(remove>=segmentStart){sd-=Number(d[remove]||0);sv-=Number(v[remove]||0);}out[i]=sv?sd/sv*100:0;}return out;}
 function setMetric(id,value,cls){const el=$(id);el.textContent=value;el.className='value '+(cls||'neutral');}
 function updateKpis(w){
  const x=B['1m'],loIx=lowerBoundTime(x.t,w.s),hiIx=upperBoundTime(x.t,w.e),ids=Array.from({length:Math.max(0,hiIx-loIx)},(_,j)=>loIx+j);
