@@ -1,6 +1,6 @@
 /* Network-first app shell, cache-first chart library, offline fallback. */
 const CACHE_PREFIX = 'btc-mechanics-';
-const CACHE_NAME = 'btc-mechanics-shell-v10';
+const CACHE_NAME = 'btc-mechanics-shell-v11';
 const ROOT = self.registration.scope;
 const SHELL = [
   new URL('./', ROOT).href,
@@ -11,6 +11,7 @@ const SHELL = [
   new URL('./src/ingestion/zip-reader.js', ROOT).href,
   new URL('./src/ingestion/csv-parser.js', ROOT).href,
   new URL('./src/app/import-controller.js', ROOT).href,
+  new URL('./src/ui/mobile-quick-actions.js', ROOT).href,
   new URL('./src/data/packed-trade-rows.js', ROOT).href,
   new URL('./src/data/day-aggregator.js', ROOT).href
 ];
