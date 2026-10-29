@@ -456,6 +456,7 @@ window.DATA = DATA;
 <script type="module">
 import { readTradeFiles } from './src/app/import-controller.js';
 import { bindMobileQuickActions } from './src/ui/mobile-quick-actions.js';
+import { createLatestRenderQueue } from './src/charts/latest-render-queue.js';
 (function(){
 'use strict';
 const DATA = window.DATA;
@@ -551,24 +552,16 @@ const timeLabel = sec => {const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/6
 const minuteOf = val => {if(!val)return 0;const a=val.split(':').map(Number);return a[0]*3600+a[1]*60;};
 const common = (extra={}) => Object.assign({paper_bgcolor:C.paper,plot_bgcolor:C.paper,font:{family:'Inter,system-ui,sans-serif',size:11,color:C.text},margin:{l:58,r:54,t:12,b:48},hovermode:'x unified',showlegend:true,legend:{orientation:'h',y:1.13,x:0,font:{size:10,color:C.muted}},xaxis:{gridcolor:C.grid,linecolor:C.grid,tickfont:{color:C.muted},zerolinecolor:C.grid},yaxis:{gridcolor:C.grid,linecolor:C.grid,tickfont:{color:C.muted},zerolinecolor:C.grid},uirevision:'market-lab'},extra);
 const config = {responsive:true,displaylogo:false,scrollZoom:true,modeBarButtonsToRemove:['lasso2d','select2d','autoScale2d']};
-const plotQueue=new Map();
-function plot(id,traces,layout){
- const el=$(id),state=plotQueue.get(id)||{running:false,pending:null,waiters:[]};
- const request={traces,layout};
- if(state.running){state.pending=request;const promise=new Promise(resolve=>state.waiters.push(resolve));plotQueue.set(id,state);return promise;}
- state.running=true;plotQueue.set(id,state);
- const run=async req=>{
-   let current=req;
-   while(current){
-     try{await Plotly.react(el,current.traces,common(current.layout),config);}catch(err){if(!state.pending)throw err;}
-     if(['priceChart','flowChart','cvdChart'].includes(id)&&el&&typeof el.on==='function'&&!el.__focusLinked){el.__focusLinked=true;el.on('plotly_click',ev=>{if(ev&&ev.points&&ev.points[0]&&ev.points[0].x!==undefined){const raw=ev.points[0].x instanceof Date?ev.points[0].x.getTime():Number(ev.points[0].x);setFocusByTime((raw-BASE)/1000);}});}
-     current=state.pending;state.pending=null;
-   }
-   state.running=false;const waiters=state.waiters.splice(0);waiters.forEach(resolve=>resolve());
- };
- const promise=run(request).catch(err=>{state.running=false;state.pending=null;const waiters=state.waiters.splice(0);waiters.forEach(resolve=>resolve());throw err;});
- return promise;
-}
+const plotQueue=createLatestRenderQueue({
+ render:(id,el,request)=>Plotly.react(el,request.traces,common(request.layout),config),
+ afterRender:(id,el)=>{
+  if(['priceChart','flowChart','cvdChart'].includes(id)&&el&&typeof el.on==='function'&&!el.__focusLinked){
+   el.__focusLinked=true;
+   el.on('plotly_click',ev=>{if(ev&&ev.points&&ev.points[0]&&ev.points[0].x!==undefined){const raw=ev.points[0].x instanceof Date?ev.points[0].x.getTime():Number(ev.points[0].x);setFocusByTime((raw-BASE)/1000);}});
+  }
+ }
+});
+function plot(id,traces,layout){return plotQueue.enqueue(id,$(id),{traces,layout});}
 function axisTickFormat(){return $('startDate').value!==$('endDate').value?'%b %d<br>%H:%M':'%H:%M';}
 function subsetBars(tf,w){
  const key=tf+'|'+w.s+'|'+w.e;if(subsetCache.has(key))return subsetCache.get(key);
