@@ -551,7 +551,7 @@ const short = v => { const a=Math.abs(v); if(a>=1e9)return (v/1e9).toFixed(2)+'B
 const signed = (v,d=2) => (v>0?'+':'')+v.toFixed(d)+'%';
 const dt = sec => new Date(BASE + sec*1000);
 const dtMs = sec => BASE + sec*1000; // Plotly date axes accept epoch milliseconds; avoids per-point Date allocations.
-const { subsetRollingRatio, lineArrays, emaForSubset, tradeWeightedAverageForSubset, rollingRatio } = createChartSeriesMath({ toTimestamp: dtMs });
+const { subsetRollingRatio, lineArrays, emaForSubset, tradeWeightedAverageForSubset, rollingRatio, median, pearson } = createChartSeriesMath({ toTimestamp: dtMs });
 const timeLabel = sec => {const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=Math.floor(sec%60);return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+(s?':'+String(s).padStart(2,'0'):'');};
 const minuteOf = val => {if(!val)return 0;const a=val.split(':').map(Number);return a[0]*3600+a[1]*60;};
 const common = (extra={}) => Object.assign({paper_bgcolor:C.paper,plot_bgcolor:C.paper,font:{family:'Inter,system-ui,sans-serif',size:11,color:C.text},margin:{l:58,r:54,t:12,b:48},hovermode:'x unified',showlegend:true,legend:{orientation:'h',y:1.13,x:0,font:{size:10,color:C.muted}},xaxis:{gridcolor:C.grid,linecolor:C.grid,tickfont:{color:C.muted},zerolinecolor:C.grid},yaxis:{gridcolor:C.grid,linecolor:C.grid,tickfont:{color:C.muted},zerolinecolor:C.grid},uirevision:'market-lab'},extra);
@@ -635,7 +635,6 @@ function updateHours(w){
  {type:'scatter',mode:'lines+markers',name:'Net signed flow',x:xx,y:ids.map(i=>x.d[i]),yaxis:'y2',line:{color:C.gold,width:2},marker:{size:4},connectgaps:false,hovertemplate:'%{x|%Y-%m-%d %H:%M}<br>Net flow %{y:,.0f}<extra></extra>'}
  ],{xaxis:{type:'date',title:'Timestamp hour as supplied',gridcolor:C.grid,tickformat:axisTickFormat()},yaxis:{title:'Trade prints',gridcolor:C.grid},yaxis2:{title:'Net signed size',overlaying:'y',side:'right',showgrid:false,tickfont:{color:C.gold}},margin:{l:58,r:65,t:16,b:46},hovermode:'x unified'});
 }
-function median(arr){const a=arr.filter(v=>v!==null&&Number.isFinite(v)).sort((x,y)=>x-y);if(!a.length)return null;const h=Math.floor(a.length/2);return a.length%2?a[h]:(a[h-1]+a[h])/2;}
 function updateEvents(w,threshold){
  const roles=[1,0], horizons=[['+1m','r1'],['+5m','r5'],['+15m','r15']],eventLo=lowerBoundTime(E.t,w.s),eventHi=upperBoundTime(E.t,w.e);
  const traces=roles.map(rc=>{const med=[],means=[],ns=[];for(const [lab,k] of horizons){const vals=[];for(let i=eventLo;i<eventHi;i++)if(E.s[i]>=threshold&&E.r[i]===rc&&E[k][i]!==null)vals.push(E[k][i]);med.push(median(vals));means.push(vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null);ns.push(vals.length);}
@@ -643,12 +642,6 @@ function updateEvents(w,threshold){
  return plot('eventChart',traces,{barmode:'group',xaxis:{title:'Horizon after large trade'},yaxis:{title:'Median price change (%)',zeroline:true,zerolinecolor:'#6f8197',gridcolor:C.grid},margin:{l:62,r:25,t:16,b:48},hovermode:'x unified'});
 }
 
-function pearson(xs,ys){
- const n=Math.min(xs.length,ys.length);if(n<3)return null;
- let sx=0,sy=0,sxx=0,syy=0,sxy=0,k=0;
- for(let i=0;i<n;i++){const x=xs[i],y=ys[i];if(!Number.isFinite(x)||!Number.isFinite(y))continue;sx+=x;sy+=y;sxx+=x*x;syy+=y*y;sxy+=x*y;k++;}
- if(k<3)return null;const cov=sxy-sx*sy/k,vx=sxx-sx*sx/k,vy=syy-sy*sy/k;return vx>0&&vy>0?cov/Math.sqrt(vx*vy):null;
-}
 function lowerBoundTime(times,target){let lo=0,hi=times.length;while(lo<hi){const mid=(lo+hi)>>1;if(times[mid]<target)lo=mid+1;else hi=mid;}return lo;}
 function updateLeadLag(w){
  const x=B['1m'],lookback=Number($('flowLookback').value),horizons=[['Same bar',0],['+1m',1],['+5m',5],['+15m',15],['+30m',30],['+60m',60]];
