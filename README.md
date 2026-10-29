@@ -6,6 +6,10 @@ Interactive trade-flow research dashboard for BTCUSD price action, executed volu
 
 Open [BTCUSD_Market_Mechanics_Lab_Fixed.html](BTCUSD_Market_Mechanics_Lab_Fixed.html) in a modern browser. The GitHub Pages copy loads Plotly from its official CDN, so an internet connection is required.
 
+## Mobile and accessibility
+
+The dashboard includes responsive chart layouts, a compact mobile action bar, safe-area-aware spacing for phones, keyboard-visible focus outlines, dark native form controls, and support for users who prefer reduced motion or higher contrast. These changes are CSS and metadata improvements; they do not replace testing on physical Android devices at different zoom levels and orientations.
+
 ## Import data
 
 Use **Add trade files (.CSV / .ZIP)** to import data. The importer supports Binance-style BTCUSD CSV files with columns `product_symbol,price,size,timestamp,buyer_role`, including a monthly ZIP containing one chronologically sorted CSV across multiple dates.
