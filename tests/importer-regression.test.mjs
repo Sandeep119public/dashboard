@@ -594,3 +594,20 @@ test('chart series math rejects missing time converters and invalid EMA periods'
   const math = createChartSeriesMath({ toTimestamp: value => value });
   assert.throws(() => math.emaForSubset({ source: sampleBars([0]), sourceLo: 0, sourceHi: 1, ids: [0], step: 60 }, 0), /EMA period must be positive/);
 });
+
+
+test('median ignores missing values and handles odd/even samples', () => {
+  const math = createChartSeriesMath({ toTimestamp: value => value });
+  assert.equal(math.median([3, 1, 2]), 2);
+  assert.equal(math.median([8, null, 2, 4]), 3);
+  assert.equal(math.median([null, NaN, Infinity]), null);
+});
+
+test('Pearson correlation handles positive, negative, invalid and degenerate samples', () => {
+  const math = createChartSeriesMath({ toTimestamp: value => value });
+  assert.equal(math.pearson([1, 2, 3, 4], [2, 4, 6, 8]), 1);
+  assert.equal(math.pearson([1, 2, 3, 4], [8, 6, 4, 2]), -1);
+  assert.equal(math.pearson([1, 2, 3, NaN], [2, 4, 6, 100]), 1);
+  assert.equal(math.pearson([1, 1, 1], [2, 3, 4]), null);
+  assert.equal(math.pearson([1, 2], [2, 4]), null);
+});
