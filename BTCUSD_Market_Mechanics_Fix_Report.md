@@ -89,3 +89,11 @@ The daily aggregation path now stores transient trade records in a packed four-c
 - Added regression tests for the mobile shortcuts, listener disposal, latest-wins queue behavior, render-error recovery, and local-module/offline-shell consistency.
 - Updated the service-worker shell cache to include both modules and advanced the cache version to `btc-mechanics-shell-v12`.
 - These are source-level regression tests, not a substitute for visual regression on desktop browsers or physical Android device testing.
+
+## Chart windowing and downsampling extraction (2026-10-29)
+
+- Extracted time-range selection, bounded subset caching, gap segmentation, and OHLCV downsampling into `src/charts/bar-subsetter.js`.
+- The subsetter receives the combined bar series through a getter, so it follows imports that rebuild the aggregate data; the page explicitly clears its cache after rebuilding.
+- Added synthetic regression fixtures for inclusive time windows, cache invalidation, volume/trade/delta/price-volume preservation during downsampling, missing-data gaps, UTC midnight boundaries, and cache-size limits.
+- Added the new module to the service-worker shell and advanced its cache version to `btc-mechanics-shell-v13`.
+- These unit tests guard the data transformation logic. They are not a substitute for browser visual regression or testing on a physical Android device.
