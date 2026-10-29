@@ -157,3 +157,48 @@ test('aggregates trade rows into stable OHLCV bars and signed flow', () => {
   assert.equal(result.bars['1m'].d[1], 2);
   assert.deepEqual(result.hist_labels, ['tiny']);
 });
+
+const sampleCsv = [
+  'product_symbol,price,size,timestamp,buyer_role',
+  'BTCUSD,60000,2,2026-08-01 00:00:00,taker',
+  'BTCUSD,60002,3,2026-08-01 00:00:30,maker',
+  'BTCUSD,60001,4,2026-08-02 00:00:00,taker'
+].join('\n') + '\n';
+
+test('CSV parser normalizes timestamp offsets and validates date boundaries', async () => {
+  const { parseTradeTimestamp } = await import('../src/ingestion/csv-parser.js');
+  assert.deepEqual(parseTradeTimestamp('2026-08-01 01:00:00+01:00'), { date: '2026-08-01', sec: 0 });
+  assert.deepEqual(parseTradeTimestamp('2026-08-01 00:00:00Z'), { date: '2026-08-01', sec: 0 });
+  assert.throws(() => parseTradeTimestamp('2026-02-30 00:00:00'), /Invalid calendar date/);
+});
+
+test('CSV parser aggregates sorted rows by date and preserves OHLCV and signed flow', async () => {
+  const { parseCsvByDay } = await import('../src/ingestion/csv-parser.js');
+  const days = parseCsvByDay(sampleCsv);
+  assert.deepEqual([...days.keys()], ['2026-08-01', '2026-08-02']);
+  const day = days.get('2026-08-01');
+  assert.equal(day.metrics.row_count, 2);
+  assert.equal(day.bars['1m'].o[0], 60000);
+  assert.equal(day.bars['1m'].h[0], 60002);
+  assert.equal(day.bars['1m'].l[0], 60000);
+  assert.equal(day.bars['1m'].c[0], 60002);
+  assert.equal(day.bars['1m'].v[0], 5);
+  assert.equal(day.bars['1m'].d[0], -1);
+});
+
+test('CSV parser rejects malformed roles, wrong symbols and missing columns', async () => {
+  const { parseCsvByDay } = await import('../src/ingestion/csv-parser.js');
+  assert.throws(() => parseCsvByDay(sampleCsv.replace(',maker\n', ',unknown\n')), /Unknown buyer_role/);
+  assert.throws(() => parseCsvByDay(sampleCsv.replace('BTCUSD,60000', 'ETHUSD,60000')), /for BTCUSD/);
+  assert.throws(() => parseCsvByDay('price,size,timestamp\n60000,1,2026-08-01 00:00:00\n'), /needs price, size, timestamp and buyer_role/);
+});
+
+test('streaming CSV parser handles chunk boundaries across headers and rows', async () => {
+  const { parseCsvStreamByDay } = await import('../src/ingestion/csv-parser.js');
+  const encoder = new TextEncoder();
+  const chunks = [sampleCsv.slice(0, 11), sampleCsv.slice(11, 49), sampleCsv.slice(49, 88), sampleCsv.slice(88)].map(s => encoder.encode(s));
+  const stream = new ReadableStream({ start(controller) { for (const chunk of chunks) controller.enqueue(chunk); controller.close(); } });
+  const days = await parseCsvStreamByDay(stream, 'fixture.csv', null, () => false);
+  assert.deepEqual([...days.keys()], ['2026-08-01', '2026-08-02']);
+  assert.equal(days.get('2026-08-01').metrics.row_count, 2);
+});
