@@ -7,7 +7,11 @@ import { aggregateDay } from '../src/data/day-aggregator.js';
 import { readTradeFiles } from '../src/app/import-controller.js';
 
 const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', import.meta.url), 'utf8');
+const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 assert.match(html, /<script type="module">/);
+assert.match(html, /<title>BTCUSD Market Mechanics Lab<\/title>/);
+assert.doesNotMatch(html, /Accuracy-Fixed Edition/);
+assert.match(index, /BTCUSD_Market_Mechanics_Lab_Fixed\.html/);
 assert.match(html, /import \{ readTradeFiles \} from '\.\/src\/app\/import-controller\.js'/);
 assert.doesNotMatch(html, /import \{ (?:zipCsvEntries|PackedTradeRows|parseCsvStreamByDay)/);
 assert.match(html, /window\.DATA = DATA;/);
