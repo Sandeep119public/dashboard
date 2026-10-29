@@ -426,10 +426,7 @@ window.DATA = DATA;
 </nav>
 
 <script type="module">
-import { zipCsvEntries, zipEntryStream } from './src/ingestion/zip-reader.js';
-import { parseCsvStreamByDay } from './src/ingestion/csv-parser.js';
-import { PackedTradeRows } from './src/data/packed-trade-rows.js';
-import { aggregateDay } from './src/data/day-aggregator.js';
+import { readTradeFiles } from './src/app/import-controller.js';
 (function(){
 'use strict';
 const DATA = window.DATA;
@@ -498,24 +495,24 @@ function syncImportControls(){
 }
 function requestImportCancel(){if(!importRunning||importCancelRequested)return;importCancelRequested=true;syncImportControls();$('status').textContent='Cancellation requested. The importer will stop at the next safe parsing boundary; existing loaded data will be kept.';}
 async function importTradeFiles(files,sourceInputId='tradeFiles'){
- const input=$(sourceInputId);if(!files.length)return;files=files.filter(f=>/\.(csv|zip)$/i.test(f.name));if(!files.length){$('status').textContent='No .CSV or .ZIP trade files were found in that selection.';input.value='';return;}
+ const input=$(sourceInputId);if(!files.length)return;files=Array.from(files).filter(f=>/\\.(csv|zip)$/i.test(f.name));if(!files.length){$('status').textContent='No .CSV or .ZIP trade files were found in that selection.';input.value='';return;}
  input.disabled=true;importRunning=true;importCancelRequested=false;syncImportControls();$('dataStatus').textContent='Streaming trade data and building multi-day bars. Monthly ZIP files are processed one day at a time to limit memory use.';$('status').textContent='';
  try{
-  const incoming=new Map();
-  const progress=(rows,date,name)=>{$('status').textContent='Reading '+name+': '+nfmt(rows)+' trades processed'+(date?' · current date '+date:'')+'. Data is streamed; the full decompressed CSV is not kept in memory.';};
-  const acceptDays=days=>{for(const [date,obj] of days){if(incoming.has(date))throw new Error('More than one selected file contains '+date+'. Select a monthly archive by itself, or avoid overlapping CSV/ZIP files in one batch.');incoming.set(date,obj);}};
-  for(const file of files){
-   if(importCancelRequested)throw new Error('Import cancelled by user.');
-   if(file.name.toLowerCase().endsWith('.zip')){
-    const entries=await zipCsvEntries(file);for(const entry of entries){if(importCancelRequested)throw new Error('Import cancelled by user.');$('dataStatus').textContent='Streaming '+file.name+' → '+entry.name+' ('+nfmt(entry.uncompSize)+' uncompressed bytes). Large monthly archives may take a few minutes; progress updates appear below.';const stream=await zipEntryStream(file,entry);const days=await parseCsvStreamByDay(stream,entry.name,progress,()=>importCancelRequested,{barSteps:BAR_STEPS,histLabels:DATA.hist_labels});acceptDays(days);}
-   }else{
-    $('dataStatus').textContent='Streaming '+file.name+' without loading the complete CSV into memory.';const days=await parseCsvStreamByDay(file.stream(),file.name,progress,()=>importCancelRequested,{barSteps:BAR_STEPS,histLabels:DATA.hist_labels});acceptDays(days);
+  const incoming=await readTradeFiles(files,{
+   shouldCancel:()=>importCancelRequested,
+   barSteps:BAR_STEPS,
+   histLabels:DATA.hist_labels,
+   onProgress:event=>{
+    if(event.type==='rows')$('status').textContent='Reading '+event.name+': '+nfmt(event.rows)+' trades processed'+(event.date?' · current date '+event.date:'')+'. Data is streamed; the full decompressed CSV is not kept in memory.';
+    else if(event.type==='entry')$('dataStatus').textContent='Streaming '+event.fileName+' → '+event.entryName+' ('+nfmt(event.uncompressedBytes)+' uncompressed bytes). Large monthly archives may take a few minutes; progress updates appear below.';
+    else if(event.type==='csv')$('dataStatus').textContent='Streaming '+event.fileName+' without loading the complete CSV into memory.';
    }
-  }
+  });
   if(importCancelRequested)throw new Error('Import cancelled by user.');for(const [date,obj] of incoming)DAYS.set(date,obj);rebuildCombined();updateDateBounds(true);refresh();$('status').textContent='Import complete: '+nfmt(M.row_count)+' total trade prints loaded across '+DAYS.size+' day(s).';$('dataStatus').textContent='Imported '+incoming.size+' date'+(incoming.size===1?'':'s')+' from '+files.length+' file'+(files.length===1?'':'s')+'. '+DAYS.size+' day(s) and '+nfmt(M.row_count)+' prints are now loaded. Monthly ZIPs are streamed and aggregated one date at a time. Matching dates were replaced, not double-counted. Unzoned timestamps are assumed UTC; explicit offsets are normalized to UTC.';
  }catch(err){if(err&&err.message==='Import cancelled by user.'){$('status').textContent='Import cancelled. Existing loaded data was preserved.';$('dataStatus').textContent='Import cancelled before committing the new batch; previously loaded dates remain available.';}else{$('status').textContent='Import failed: '+(err&&err.message?err.message:String(err));$('dataStatus').textContent='Import failed; current loaded data was kept. If this archive uses ZIP64 or unsupported compression, extract the CSV and import it directly in current Chrome/Edge.';}}
  finally{importRunning=false;importCancelRequested=false;input.disabled=false;input.value='';syncImportControls();}
 }
+
 const C = {bg:'#0f1727',paper:'#0f1727',text:'#dce7f5',muted:'#91a3bb',grid:'#203047',buy:'#48d6ad',sell:'#ff7e87',gold:'#f3c969',blue:'#88b8ff',purple:'#aa9cff'};
 const nfmt = (v, digs=0) => Number(v).toLocaleString('en-US',{maximumFractionDigits:digs,minimumFractionDigits:0});
 const short = v => { const a=Math.abs(v); if(a>=1e9)return (v/1e9).toFixed(2)+'B'; if(a>=1e6)return (v/1e6).toFixed(2)+'M'; if(a>=1e3)return (v/1e3).toFixed(1)+'k'; return nfmt(v,1); };
