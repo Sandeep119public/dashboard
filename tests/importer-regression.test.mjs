@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { deflateRawSync } from 'node:zlib';
 import { existsSync, readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, relative, resolve, sep } from 'node:path';
@@ -44,7 +45,7 @@ assert.doesNotMatch(html, /const text=JSON\.stringify\(payload\)/);
 assert.match(html, /file\.stream\(\)\.pipeThrough\(new DecompressionStream\('gzip'\)\)/, 'workspace import must stream gzip instead of buffering the file');
 assert.match(html, /text=null;[\s\S]{0,500}doc=null;[\s\S]{0,200}rebuildCombined\(\)/, 'workspace import must release text and document before rebuilding combined arrays');
 const cacheVersion = Number(/btc-mechanics-shell-v(\d+)/.exec(serviceWorker)?.[1]);
-assert.ok(cacheVersion >= 23, 'service-worker cache version must be bumped for changed shell assets');
+assert.ok(cacheVersion >= 24, 'service-worker cache version must be bumped for changed shell assets');
 
 test('inline browser module parses as valid JavaScript', () => {
   const match = html.match(/<script type="module">([\s\S]*?)<\/script>/);
@@ -60,7 +61,7 @@ test('inline browser module parses as valid JavaScript', () => {
 });
 
 test('UI copy matches the empty-data state and avoids stale sample-date claims', () => {
-  assert.ok(cacheVersion >= 23, 'changed UI shell requires a new service-worker cache version');
+  assert.ok(cacheVersion >= 24, 'changed UI shell requires a new service-worker cache version');
   assert.match(html, /id="startDate" type="date" value="" \/>/);
   assert.match(html, /id="endDate" type="date" value="" \/>/);
   assert.match(html, /id="dataStatus" class="data-status">No trade data loaded yet\. Add a daily CSV or ZIP file to begin\.<\/div>/);
@@ -87,17 +88,18 @@ test('combined 10-second bars are built lazily and stay out of the eager rebuild
   assert.doesNotMatch(html, /for\(const tf of Object\.keys\(BAR_STEPS\)\)\{bars\[tf\]/, 'rebuild must iterate the eager list, not every step');
 });
 
-function makeZip({ name = 'trades.csv', localName = name, comment = Buffer.alloc(0), data = 'timestamp,price,size,buyer_role,product_symbol\n2026-08-01 00:00:00,60000,1,taker,BTCUSD\n' } = {}) {
+function makeZip({ name = 'trades.csv', localName = name, comment = Buffer.alloc(0), method = 0, data = 'timestamp,price,size,buyer_role,product_symbol\n2026-08-01 00:00:00,60000,1,taker,BTCUSD\n' } = {}) {
   const filename = Buffer.from(name);
   const localFilename = Buffer.from(localName);
-  const payload = Buffer.from(data);
+  const sourcePayload = Buffer.from(data);
+  const payload = method === 8 ? deflateRawSync(sourcePayload) : sourcePayload;
   const local = Buffer.alloc(30);
   local.writeUInt32LE(0x04034b50, 0);
   local.writeUInt16LE(20, 4);
   local.writeUInt16LE(0, 6);
-  local.writeUInt16LE(0, 8);
+  local.writeUInt16LE(method, 8);
   local.writeUInt32LE(payload.length, 18);
-  local.writeUInt32LE(payload.length, 22);
+  local.writeUInt32LE(sourcePayload.length, 22);
   local.writeUInt16LE(localFilename.length, 26);
   const localRecord = Buffer.concat([local, localFilename, payload]);
 
@@ -106,9 +108,9 @@ function makeZip({ name = 'trades.csv', localName = name, comment = Buffer.alloc
   central.writeUInt16LE(20, 4);
   central.writeUInt16LE(20, 6);
   central.writeUInt16LE(0, 8);
-  central.writeUInt16LE(0, 10);
+  central.writeUInt16LE(method, 10);
   central.writeUInt32LE(payload.length, 20);
-  central.writeUInt32LE(payload.length, 24);
+  central.writeUInt32LE(sourcePayload.length, 24);
   central.writeUInt16LE(filename.length, 28);
   central.writeUInt32LE(0, 42);
   const centralRecord = Buffer.concat([central, filename]);
@@ -350,6 +352,19 @@ test('import controller honors cancellation before reading the next file', async
   await assert.rejects(readTradeFiles([file], { shouldCancel: () => true }), /Import cancelled by user/);
 });
 
+
+test('import controller streams DEFLATE-compressed CSV entries from ZIP archives', async () => {
+  const events = [];
+  const file = asFile(makeZip({ method: 8 }), 'controller-deflated.zip');
+  const days = await readTradeFiles([file], {
+    barSteps: { '1m': 60 },
+    histLabels: ['tiny'],
+    onProgress: event => events.push(event)
+  });
+  assert.deepEqual([...days.keys()], ['2026-08-01']);
+  assert.equal(days.get('2026-08-01').metrics.row_count, 1);
+  assert.ok(events.some(event => event.type === 'entry' && event.entryName === 'trades.csv'));
+});
 
 test('import controller streams CSV entries from ZIP archives', async () => {
   const events = [];

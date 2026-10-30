@@ -790,7 +790,7 @@ async function saveWorkspace(){
    }else{
      const text=workspaceJsonText(DAYS,meta);
      downloadBlob(new Blob([text],{type:'application/json;charset=utf-8'}),'BTCUSD_Market_Mechanics_Workspace_'+first+'_to_'+last+'.json');
-     $('status').textContent='Saved workspace as JSON with '+dates.length+' loaded date'+(dates.length===1?'':'s')+'.;
+     $('status').textContent='Saved workspace as JSON with '+dates.length+' loaded date'+(dates.length===1?'':'s')+'.';
    }
  }catch(err){$('status').textContent='Workspace export failed: '+String(err);}
 }
