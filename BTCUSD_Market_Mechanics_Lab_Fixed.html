@@ -315,7 +315,7 @@ body{background:var(--ws-bg)}
 .kpi .hint{display:none}
 .ws-chartbar{display:flex;align-items:center;gap:6px;flex:0 0 auto;min-width:0;overflow-x:auto;padding:2px 0;scrollbar-width:none}
 .ws-chartbar::-webkit-scrollbar{display:none}
-.ws-chartbar button,.ws-chartbar select,.ws-import{flex:0 0 auto;border:1px solid var(--ws-line);background:#111d2d;color:#cbd8e8;border-radius:8px;padding:7px 10px;min-height:34px;font:600 11px/1.2 inherit;cursor:pointer}
+.ws-chartbar button,.ws-chartbar select,.ws-import{flex:0 0 auto;border:1px solid var(--ws-line);background:#111d2d;color:#cbd8e8;border-radius:8px;padding:7px 10px;min-height:34px;font-family:inherit;font-size:11px;font-weight:600;line-height:1.2;cursor:pointer}
 .ws-chartbar button[aria-pressed=true]{background:#123b37;border-color:#48d6ad;color:#b6ffeb}
 .ws-chartbar .ws-spacer{flex:1}
 .ws-chartbar .ws-data{color:var(--ws-muted);font-size:10px;white-space:nowrap}
@@ -1101,7 +1101,7 @@ initMobileQuickActions();updateDateBounds(true);rebuildCombined();initInteractiv
  const studio=$('chartStudio');studio.insertBefore(bar,studio.firstChild);studio.insertBefore(advanced,bar.nextSibling);
  const cards=new Map(ids.map(id=>[id,$(id)?.closest('.chartcard')]).filter(x=>x[1]));
  let active='priceChart';
- function show(id){if(!cards.has(id))return;active=id;cards.forEach((card,key)=>card.classList.toggle('ws-active',key===id));tabs.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.chart===id)));const research=id==='leadLagChart'||id==='regimeChart';const h=$('researchSectionHead');if(h)h.style.display='none';requestAnimationFrame(()=>{try{if(window.Plotly&&$(id)&&$(id).data)Plotly.Plots.resize($(id));}catch(e){};});}
+ function show(id){if(!cards.has(id))return;active=id;cards.forEach((card,key)=>{const on=key===id;card.classList.toggle('ws-active',on);card.classList.remove('panel-hidden');card.style.display=on?'':'none';});tabs.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.chart===id)));const research=id==='leadLagChart'||id==='regimeChart';const h=$('researchSectionHead');if(h)h.style.display='none';requestAnimationFrame(()=>{try{if(window.Plotly&&$(id)&&$(id).data)Plotly.Plots.resize($(id));}catch(e){};});}
  tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.chart)));
  document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(e.target?.tagName))return;if(e.key==='['||e.key===']'){const i=ids.indexOf(active),n=(i+(e.key===']'?1:ids.length-1))%ids.length;show(ids[n]);}});
  const originalResize=window.dispatchEvent.bind(window);window.addEventListener('resize',()=>{const plot=$(active);if(plot&&window.Plotly)requestAnimationFrame(()=>{try{Plotly.Plots.resize(plot);}catch(e){}});},{passive:true});
