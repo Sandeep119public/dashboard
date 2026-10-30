@@ -280,6 +280,84 @@ input,select,button{color-scheme:dark}
 @media(max-width:420px){.guided-steps small{display:none}.guided-steps>div{padding:9px 8px}}
 
 </style>
+<style id="workstation-overrides">
+:root{--ws-bg:#080d16;--ws-panel:#101a29;--ws-line:#26364c;--ws-muted:#8ea1b9}
+html,body{height:100%;overflow:hidden}
+body{background:var(--ws-bg)}
+.wrap{height:100dvh;max-width:none;padding:10px 14px 12px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.top{flex:0 0 auto;align-items:center;margin:0;padding:0 2px;gap:12px}
+.top .eyebrow,.top .sub,.top .stamp span{display:none}
+.top h1{font-size:clamp(18px,2vw,25px);margin:0;letter-spacing:-.035em}
+.stamp{min-width:0;padding:6px 10px;border-radius:9px;display:flex;align-items:center;gap:10px}
+.stamp strong{font-size:12px;white-space:nowrap}
+.stamp #installApp{margin:0!important;width:auto!important;padding:5px 8px;min-height:30px}
+.guided-home,.controls,.toolbar,.studio-topline,.studio-controls,.panel-picker-row,.sectionhead,.researchSectionHead,.notes,.fineprint{display:none!important}
+#chartStudio{order:3;display:flex;flex-direction:column;flex:1 1 auto;min-height:0;margin:0;padding:0;border:0;background:transparent;box-shadow:none;gap:7px;overflow:hidden}
+.replay-box{order:3;flex:0 0 auto;margin:0;padding:8px 10px;border-radius:10px}
+.replay-head{align-items:center;gap:8px}
+.replay-head .toolbar-label{display:none}
+.focus-time{font-size:11px}
+.replay-buttons{gap:5px}
+.replay-buttons .btn{min-height:32px;padding:5px 9px}
+.speed-control{min-width:65px!important}
+.speed-control label{display:none}
+.speed-control select{min-height:32px;padding:4px}
+.time-scrubber{margin:5px 0}
+.focus-metrics{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-top:5px}
+.focus-metrics>div{padding:5px 7px;min-width:0}
+.focus-metrics span{font-size:9px}
+.focus-metrics strong{font-size:11px;overflow-wrap:anywhere}
+.focus-insight,.focus-footnote{display:none}
+.kpis{order:2;flex:0 0 auto;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:0}
+.kpi{padding:6px 9px;border-radius:9px}
+.kpi .label{font-size:9px;letter-spacing:.07em}
+.kpi .value{font-size:clamp(13px,1.4vw,19px);margin:2px 0}
+.kpi .hint{display:none}
+.ws-chartbar{display:flex;align-items:center;gap:6px;flex:0 0 auto;min-width:0;overflow-x:auto;padding:2px 0;scrollbar-width:none}
+.ws-chartbar::-webkit-scrollbar{display:none}
+.ws-chartbar button,.ws-chartbar select,.ws-import{flex:0 0 auto;border:1px solid var(--ws-line);background:#111d2d;color:#cbd8e8;border-radius:8px;padding:7px 10px;min-height:34px;font:600 11px/1.2 inherit;cursor:pointer}
+.ws-chartbar button[aria-pressed=true]{background:#123b37;border-color:#48d6ad;color:#b6ffeb}
+.ws-chartbar .ws-spacer{flex:1}
+.ws-chartbar .ws-data{color:var(--ws-muted);font-size:10px;white-space:nowrap}
+.ws-chartbar .ws-import{background:#17453f;border-color:#2e7668;color:#c6fff0}
+.chartgrid,.chartgrid.research-grid,.research-grid{display:contents}
+.chartcard{display:none;min-height:0;height:100%;padding:7px;border-radius:11px;overflow:hidden}
+.chartcard.ws-active{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;grid-column:auto!important}
+.chartcard.ws-active .charttitle{flex:0 0 auto;padding:3px 7px 5px}
+.chartcard.ws-active .charttitle strong{font-size:12px}
+.chartcard.ws-active .charttitle span{font-size:10px}
+.chartcard.ws-active .plot{height:auto!important;min-height:0;flex:1 1 auto;width:100%}
+.chartcard.ws-active .chart-howto{display:none}
+#researchSectionHead{display:none!important}
+body.has-maximized-panel .wrap{display:block}
+.mobile-action-bar{display:none!important}
+@media(max-width:760px){
+ .wrap{padding:7px 7px calc(8px + env(safe-area-inset-bottom));gap:6px}
+ .top h1{font-size:17px}
+ .stamp{padding:5px 7px}
+ .stamp strong{font-size:10px;max-width:100px;overflow:hidden;text-overflow:ellipsis}
+ .kpis{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+ .kpi{padding:5px 6px}
+ .kpi .label{font-size:8px}
+ .kpi .value{font-size:13px}
+ .ws-chartbar{gap:4px}
+ .ws-chartbar button,.ws-chartbar select,.ws-import{padding:7px 8px;min-height:33px;font-size:10px}
+ .ws-chartbar .ws-data{display:none}
+ .replay-box{padding:6px 7px}
+ .replay-head{flex-wrap:wrap}
+ .replay-buttons{width:100%;justify-content:flex-start}
+ .focus-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .focus-metrics>div:nth-child(n+4){display:none}
+ .focus-time{font-size:10px}
+}
+@media(max-height:650px) and (min-width:761px){
+ .wrap{gap:5px;padding-top:6px;padding-bottom:6px}
+ .kpi{padding:4px 7px}
+ .replay-box{padding:5px 8px}
+ .focus-metrics{margin-top:2px}
+ .focus-metrics>div{padding:3px 5px}
+}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -1005,5 +1083,33 @@ initMobileQuickActions();updateDateBounds(true);rebuildCombined();initInteractiv
 })();
 </script>
 
+<script id="workstation-controller">
+(function(){
+ const ids=['priceChart','flowChart','cvdChart','profileChart','sizeChart','hourChart','eventChart','leadLagChart','regimeChart'];
+ const labels=['Price','Flow','CVD','Volume profile','Trade sizes','Hourly activity','Large trades','Lead / lag','Regimes'];
+ const $=id=>document.getElementById(id);
+ const bar=document.createElement('nav');bar.className='ws-chartbar';bar.setAttribute('aria-label','Chart workspace');
+ const tabs=ids.map((id,i)=>{const b=document.createElement('button');b.type='button';b.textContent=labels[i];b.dataset.chart=id;b.setAttribute('aria-pressed','false');bar.appendChild(b);return b;});
+ const spacer=document.createElement('span');spacer.className='ws-spacer';bar.appendChild(spacer);
+ const data=document.createElement('span');data.className='ws-data';data.textContent='Trade data stays on this device';bar.appendChild(data);
+ const importBtn=document.createElement('button');importBtn.type='button';importBtn.className='ws-import';importBtn.textContent='＋ Import';importBtn.addEventListener('click',()=>{$('tradeFiles')?.click();});bar.appendChild(importBtn);
+ const settings=document.createElement('button');settings.type='button';settings.textContent='Filters';settings.setAttribute('aria-expanded','false');bar.appendChild(settings);
+ const advanced=document.createElement('div');advanced.className='ws-filter-drawer';advanced.style.cssText='display:none;flex:0 0 auto;gap:7px;align-items:center;flex-wrap:wrap;padding:7px 9px;border:1px solid var(--ws-line);border-radius:9px;background:#101a29;font-size:11px';
+ const filterIds=['startDate','endDate','tf','threshold','profileBin','smooth','flowLookback','reset','saveWorkspace','loadWorkspace','exportBars','exportEvents'];
+ filterIds.forEach(id=>{const el=$(id);if(!el)return;const wrap=el.closest('.control')||el;if(wrap.parentElement&&wrap.parentElement.classList.contains('controls')){const clone=el.cloneNode(true);clone.id='ws-'+id;const label=el.closest('.control')?.querySelector('label');if(label){const l=document.createElement('label');l.textContent=label.textContent;l.htmlFor=clone.id;advanced.appendChild(l);}advanced.appendChild(clone);clone.addEventListener('change',()=>{el.value=clone.value;el.dispatchEvent(new Event('change',{bubbles:true}));});if(el.type==='range')clone.addEventListener('input',()=>{el.value=clone.value;el.dispatchEvent(new Event('input',{bubbles:true}));});}else{const clone=el.cloneNode(true);clone.id='ws-'+id;clone.hidden=false;advanced.appendChild(clone);clone.addEventListener('click',()=>el.click());}});
+ settings.addEventListener('click',()=>{const open=advanced.style.display==='none';advanced.style.display=open?'flex':'none';settings.setAttribute('aria-expanded',String(open));});
+ const studio=$('chartStudio');studio.insertBefore(bar,studio.firstChild);studio.insertBefore(advanced,bar.nextSibling);
+ const cards=new Map(ids.map(id=>[id,$(id)?.closest('.chartcard')]).filter(x=>x[1]));
+ let active='priceChart';
+ function show(id){if(!cards.has(id))return;active=id;cards.forEach((card,key)=>card.classList.toggle('ws-active',key===id));tabs.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.chart===id)));const research=id==='leadLagChart'||id==='regimeChart';const h=$('researchSectionHead');if(h)h.style.display='none';requestAnimationFrame(()=>{try{if(window.Plotly&&$(id)&&$(id).data)Plotly.Plots.resize($(id));}catch(e){};});}
+ tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.chart)));
+ document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(e.target?.tagName))return;if(e.key==='['||e.key===']'){const i=ids.indexOf(active),n=(i+(e.key===']'?1:ids.length-1))%ids.length;show(ids[n]);}});
+ const originalResize=window.dispatchEvent.bind(window);window.addEventListener('resize',()=>{const plot=$(active);if(plot&&window.Plotly)requestAnimationFrame(()=>{try{Plotly.Plots.resize(plot);}catch(e){}});},{passive:true});
+ show('priceChart');
+ const status=$('dataStatus');if(status){const observer=new MutationObserver(()=>{data.textContent=status.textContent.replace(/\s+/g,' ').slice(0,100);});observer.observe(status,{childList:true,subtree:true,characterData:true});}
+ // Keep the date and interval controls compactly accessible without duplicating the actual file input.
+ const fileInput=$('tradeFiles');if(fileInput){fileInput.tabIndex=-1;fileInput.setAttribute('aria-hidden','true');}
+})();
+</script>
 </body>
 </html>
