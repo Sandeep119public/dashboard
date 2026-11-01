@@ -125,7 +125,16 @@ function roleFromLine(line,start){
  let end=line.length,beg=start;
  while(beg<end&&line.charCodeAt(beg)<=32)beg++;
  while(end>beg&&line.charCodeAt(end-1)<=32)end--;
- if(end-beg===5){
+ const length=end-beg;
+ if(length===3){
+  const a=line.charCodeAt(beg)|32,b=line.charCodeAt(beg+1)|32,c=line.charCodeAt(beg+2)|32;
+  if(a===98&&b===117&&c===121)return 1; // buy = taker
+ }
+ if(length===4){
+  const a=line.charCodeAt(beg)|32,b=line.charCodeAt(beg+1)|32,c=line.charCodeAt(beg+2)|32,d=line.charCodeAt(beg+3)|32;
+  if(a===115&&b===101&&c===108&&d===108)return 0; // sell = maker
+ }
+ if(length===5){
   const a=line.charCodeAt(beg)|32,b=line.charCodeAt(beg+1)|32,c=line.charCodeAt(beg+2)|32,d=line.charCodeAt(beg+3)|32,e=line.charCodeAt(beg+4)|32;
   if(a===116&&b===97&&c===107&&d===101&&e===114)return 1;
   if(a===109&&b===97&&c===107&&d===101&&e===114)return 0;
@@ -186,9 +195,24 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   if(date!==currentDate){flush();if(result.has(date))throw new Error('Trades for '+date+' are not contiguous after timestamp normalization. Import CSV files with trades sorted chronologically.');currentDate=date;}
   if(sec<lastSec)ordered=false;lastSec=sec;rows.push(sec,price,size,role);rowCount++;
  };
- const symbolAllowed=symbol=>{const normalized=String(symbol||'').trim().toUpperCase();return !normalized||symbols.includes(normalized);};
- // Allocation-free symbol check for the fast path: compare the token in place.
- const symbolAllowedAt=(line,p1)=>{for(let i=0;i<symbols.length;i++){const sym=symbols[i];if(p1===sym.length&&line.startsWith(sym))return true;}return false;};
+ const validateSymbol=(value,rowNo)=>{
+  const symbol=String(value===null||value===undefined?'':value).trim().toUpperCase();
+  if(!symbol)throw new Error('Missing product symbol at CSV row '+rowNo+'. Explicit symbol columns must contain a supported BTC symbol.');
+  if(!symbols.includes(symbol))throw new Error('This dashboard is for '+symbols.join(', ')+', but CSV row '+rowNo+' has product_symbol="'+symbol+'". Mixed or different symbols are not combined.');
+ };
+ // Keep the common uppercase symbol check allocation-free; normalize unusual casing
+ // or whitespace only when the token does not match the configured symbol in place.
+ const validateSymbolAt=(line,end,rowNo)=>{
+  let start=0,stop=end;
+  while(start<stop&&line.charCodeAt(start)<=32)start++;
+  while(stop>start&&line.charCodeAt(stop-1)<=32)stop--;
+  if(start===stop){validateSymbol('',rowNo);return;}
+  for(let i=0;i<symbols.length;i++){
+   const symbol=symbols[i];
+   if(stop-start===symbol.length&&line.startsWith(symbol,start))return;
+  }
+  validateSymbol(line.slice(start,stop),rowNo);
+ };
  const setHeader=cells=>{
   header=cells.map(normalizeCell);
   const column=(...names)=>{for(const name of names){const index=header.indexOf(name);if(index>=0)return index;}return -1;};
@@ -206,7 +230,7 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   if(!Number.isFinite(price)||price<=0)throw new Error('Invalid price at CSV row '+lineNo+'. Prices must be positive numbers.');
   if(!Number.isFinite(size)||size<=0)throw new Error('Invalid size at CSV row '+lineNo+'. Sizes must be positive numbers.');
   if(role<0)throw new Error('Unknown buyer_role "'+String(a[idx.role]||'').trim().toLowerCase()+'" at CSV row '+lineNo+'. Expected maker or taker; the file was not imported to avoid silently misclassifying flow.');
-  if(idx.product>=0){const symbol=String(a[idx.product]||'').trim().toUpperCase();if(!symbolAllowed(symbol))throw new Error('This dashboard is for BTCUSD, BTCUSDT or BTCUSD_PERP, but CSV row '+lineNo+' has product_symbol="'+symbol+'". Mixed or different symbols are not combined.');}
+  if(idx.product>=0)validateSymbol(a[idx.product],lineNo);
   commit(parsedDate,parsedSec,price,size,role);
  };
  const pushFastLine=line=>{
@@ -223,10 +247,7 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   if(!Number.isFinite(size)||size<=0)throw new Error('Invalid size at CSV row '+lineNo+'. Sizes must be positive numbers.');
   const role=roleFromLine(line,p4+1);
   if(role<0){const roleText=String(line.slice(p4+1)||'').trim().toLowerCase();throw new Error('Unknown buyer_role "'+roleText+'" at CSV row '+lineNo+'. Expected maker or taker; the file was not imported to avoid silently misclassifying flow.');}
-  if(idx.product>=0&&!symbolAllowedAt(line,p1)){
-   const symbol=String(line.slice(0,p1)||'').trim().toUpperCase();
-   if(!symbolAllowed(symbol))throw new Error('This dashboard is for BTCUSD, BTCUSDT or BTCUSD_PERP, but CSV row '+lineNo+' has product_symbol="'+symbol+'". Mixed or different symbols are not combined.');
-  }
+  if(idx.product>=0)validateSymbolAt(line,p1,lineNo);
   commit(parsedDate,parsedSec,price,size,role);
   return true;
  };
