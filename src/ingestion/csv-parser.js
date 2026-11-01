@@ -7,6 +7,7 @@ import { aggregateDay } from '../data/day-aggregator.js';
 
 const DEFAULT_BAR_STEPS = {'10s':10,'1m':60,'5m':300,'15m':900,'1h':3600};
 const DEFAULT_HIST_LABELS = ['1–9','10–24','25–49','50–99','100–219','220–671','672–999','1k–1.9k','2k+'];
+const DEFAULT_SYMBOLS = ['BTCUSD','BTCUSDT','BTCUSD_PERP'];
 const isoDate = ms => new Date(ms).toISOString().slice(0,10);
 const POW10 = [1,10,100,1000,10000,100000,1000000,10000000,100000000,1000000000,10000000000,100000000000,1000000000000,10000000000000,100000000000000,1000000000000000];
 // A numeric YYYYMMDD key avoids allocating a date substring for every trade print.
@@ -125,10 +126,17 @@ function roleFromLine(line,start){
  let end=line.length,beg=start;
  while(beg<end&&line.charCodeAt(beg)<=32)beg++;
  while(end>beg&&line.charCodeAt(end-1)<=32)end--;
- if(end-beg===5){
+ const len=end-beg;
+ if(len===5){
   const a=line.charCodeAt(beg)|32,b=line.charCodeAt(beg+1)|32,c=line.charCodeAt(beg+2)|32,d=line.charCodeAt(beg+3)|32,e=line.charCodeAt(beg+4)|32;
   if(a===116&&b===97&&c===107&&d===101&&e===114)return 1;
   if(a===109&&b===97&&c===107&&d===101&&e===114)return 0;
+ }else if(len===4){
+  const a=line.charCodeAt(beg)|32,b=line.charCodeAt(beg+1)|32,c=line.charCodeAt(beg+2)|32,d=line.charCodeAt(beg+3)|32;
+  if(a===115&&b===101&&c===108&&d===108)return 0;
+ }else if(len===3){
+  const a=line.charCodeAt(beg)|32,b=line.charCodeAt(beg+1)|32,c=line.charCodeAt(beg+2)|32;
+  if(a===98&&b===117&&c===121)return 1;
  }
  return -1;
 }
@@ -177,8 +185,8 @@ function inferHeaderlessLayout(cells,acceptedSymbols){
  if(timestamp<0||role<0||numeric.length<2)return null;
  return {price:numeric[0],size:numeric[1],timestamp,role,product};
 }
-function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_LABELS,expectedSymbol='BTCUSD',acceptedSymbols}={}){
- const symbols=normalizeSymbolList(acceptedSymbols||expectedSymbol);
+function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_LABELS,expectedSymbol,acceptedSymbols}={}){
+ const symbols=normalizeSymbolList(acceptedSymbols||expectedSymbol||DEFAULT_SYMBOLS);
  const result=new Map();let lineNo=0,header=null,idx=null,layoutReady=false,headerless=false,fastLayout=false,currentDate=null,rows=new PackedTradeRows(),rowCount=0,ordered=true,lastSec=-Infinity;
  const flush=()=>{if(currentDate!==null&&rows.length){result.set(currentDate,aggregateDay(currentDate,rows,ordered,barSteps,histLabels));rows=new PackedTradeRows();ordered=true;lastSec=-Infinity;}};
  const commit=(date,sec,price,size,role)=>{
@@ -186,7 +194,13 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   if(date!==currentDate){flush();if(result.has(date))throw new Error('Trades for '+date+' are not contiguous after timestamp normalization. Import CSV files with trades sorted chronologically.');currentDate=date;}
   if(sec<lastSec)ordered=false;lastSec=sec;rows.push(sec,price,size,role);rowCount++;
  };
- const symbolAllowed=symbol=>{const normalized=String(symbol||'').trim().toUpperCase();return !normalized||symbols.includes(normalized);};
+ const symbolAllowed=symbol=>{const normalized=String(symbol||'').trim().toUpperCase();return !!normalized&&symbols.includes(normalized);};
+ const symbolError=symbol=>{
+  const normalized=String(symbol||'').trim().toUpperCase();
+  if(!normalized)return new Error('Missing product_symbol at CSV row '+lineNo+'. Every trade row must contain one of: '+symbols.join(', ')+'.');
+  return new Error('This dashboard is for '+symbols.join(', ')+', but CSV row '+lineNo+' has product_symbol="'+normalized+'". Mixed or different symbols are not combined.');
+ };
+ const roleError=roleText=>new Error('Unknown buyer_role "'+roleText+'" at CSV row '+lineNo+'. Expected maker, taker, buy, or sell; the file was not imported to avoid silently misclassifying flow.');
  // Allocation-free symbol check for the fast path: compare the token in place.
  const symbolAllowedAt=(line,p1)=>{for(let i=0;i<symbols.length;i++){const sym=symbols[i];if(p1===sym.length&&line.startsWith(sym))return true;}return false;};
  const setHeader=cells=>{
@@ -205,8 +219,8 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   const price=Number(String(a[idx.price]||'').trim()),size=Number(String(a[idx.size]||'').trim()),role=parseRole(a[idx.role]);
   if(!Number.isFinite(price)||price<=0)throw new Error('Invalid price at CSV row '+lineNo+'. Prices must be positive numbers.');
   if(!Number.isFinite(size)||size<=0)throw new Error('Invalid size at CSV row '+lineNo+'. Sizes must be positive numbers.');
-  if(role<0)throw new Error('Unknown buyer_role "'+String(a[idx.role]||'').trim().toLowerCase()+'" at CSV row '+lineNo+'. Expected maker or taker; the file was not imported to avoid silently misclassifying flow.');
-  if(idx.product>=0){const symbol=String(a[idx.product]||'').trim().toUpperCase();if(!symbolAllowed(symbol))throw new Error('This dashboard is for BTCUSD, BTCUSDT or BTCUSD_PERP, but CSV row '+lineNo+' has product_symbol="'+symbol+'". Mixed or different symbols are not combined.');}
+  if(role<0)throw roleError(String(a[idx.role]||'').trim().toLowerCase());
+  if(idx.product>=0){const symbol=String(a[idx.product]||'').trim().toUpperCase();if(!symbolAllowed(symbol))throw symbolError(symbol);}
   commit(parsedDate,parsedSec,price,size,role);
  };
  const pushFastLine=line=>{
@@ -222,10 +236,10 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   if(!Number.isFinite(price)||price<=0)throw new Error('Invalid price at CSV row '+lineNo+'. Prices must be positive numbers.');
   if(!Number.isFinite(size)||size<=0)throw new Error('Invalid size at CSV row '+lineNo+'. Sizes must be positive numbers.');
   const role=roleFromLine(line,p4+1);
-  if(role<0){const roleText=String(line.slice(p4+1)||'').trim().toLowerCase();throw new Error('Unknown buyer_role "'+roleText+'" at CSV row '+lineNo+'. Expected maker or taker; the file was not imported to avoid silently misclassifying flow.');}
+  if(role<0)throw roleError(String(line.slice(p4+1)||'').trim().toLowerCase());
   if(idx.product>=0&&!symbolAllowedAt(line,p1)){
    const symbol=String(line.slice(0,p1)||'').trim().toUpperCase();
-   if(!symbolAllowed(symbol))throw new Error('This dashboard is for BTCUSD, BTCUSDT or BTCUSD_PERP, but CSV row '+lineNo+' has product_symbol="'+symbol+'". Mixed or different symbols are not combined.');
+   if(!symbolAllowed(symbol))throw symbolError(symbol);
   }
   commit(parsedDate,parsedSec,price,size,role);
   return true;
