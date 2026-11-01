@@ -501,6 +501,87 @@ body.drawer-open{overflow:hidden}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
 </style>
+<style id="workstation-cleanup">
+/* Calm workstation hierarchy: fewer controls compete with the active chart. */
+.top-right{gap:14px}
+.stamp{display:grid;gap:2px;padding:2px 0;background:transparent;border:0;box-shadow:none}
+.stamp strong{font-size:11px;letter-spacing:.01em}
+.stamp span{font-size:9px;color:var(--ws-muted)}
+.header-actions{gap:8px;flex-wrap:nowrap}
+.header-actions .btn{min-height:36px;padding:8px 14px;border-radius:9px;font-size:11px}
+#headerSave,#headerRestore{display:none!important}
+.drawer-head-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+.drawer-head-actions #installApp{min-height:36px;padding:7px 10px;font-size:10px}
+.chart-nav{gap:10px;min-height:36px;padding:1px 2px}
+.chart-nav-label{font-size:9px;font-weight:800;letter-spacing:.14em;color:#8094ad}
+.chart-tabs{display:none!important}
+.chart-select{display:block!important;width:min(300px,100%);min-height:36px;padding:7px 11px;border-radius:9px;background:#101a29;border:1px solid #2b3d56;font-size:12px;font-weight:650;color:#e5edf8}
+.kpis{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:0!important}
+.metric-card{display:flex;flex-direction:column;min-width:0;padding:8px 12px 9px;border:1px solid #25364e;border-radius:10px;background:linear-gradient(145deg,#101a29,#0b1421);gap:4px}
+.metric-group-label{font-size:8px;font-weight:850;letter-spacing:.14em;color:#7f94ad}
+.metric-primary,.metric-secondary{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}
+.metric-primary>span{font-size:10px;color:#aebed1;font-weight:650}
+.metric-primary .value{font-size:clamp(17px,1.8vw,23px);line-height:1.1;font-weight:850;letter-spacing:-.025em;white-space:nowrap}
+.metric-hint{font-size:9px;line-height:1.2;color:#788da7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.metric-secondary{border-top:1px solid #202f43;padding-top:5px;margin-top:1px}
+.metric-secondary>span{font-size:9px;color:#8ea1b9;font-weight:600}
+.metric-secondary .value{font-size:11px;line-height:1.2;font-weight:750;white-space:nowrap}
+.metric-subhint{font-size:8px;line-height:1.15;color:#70839b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.replay-box{padding:7px 10px!important}
+.focus-details{margin-top:4px;border-top:1px solid #202f43}
+.focus-details>summary{display:flex;align-items:center;gap:8px;min-height:24px;padding:4px 1px 0;cursor:pointer;list-style:none;color:#aebed1;font-size:10px;font-weight:750}
+.focus-details>summary::-webkit-details-marker{display:none}
+.focus-details>summary::before{content:"+";display:inline-grid;place-items:center;width:15px;height:15px;border:1px solid #354b66;border-radius:5px;color:#8ea1b9;font-size:12px;line-height:1}
+.focus-details[open]>summary::before{content:"−"}
+.focus-details>summary span{color:#71859f;font-size:9px;font-weight:500}
+.focus-details .focus-metrics{margin-top:5px!important}
+.focus-details .focus-insight{margin-top:7px}
+.focus-details .focus-footnote{margin-top:5px}
+.focus-details[open] .focus-insight{display:flex!important}
+.focus-details[open] .focus-footnote{display:block!important}
+@media(max-width:900px){
+ .top{align-items:center}
+ .top-right{width:auto;flex:0 0 auto;gap:8px}
+ .stamp{order:0;flex:0 1 auto}
+ .header-actions{order:0;flex:0 0 auto}
+}
+@media(max-width:760px){
+ .top{align-items:flex-start}
+ .top-right{width:100%;justify-content:space-between;align-items:center}
+ .stamp{order:0;flex:1 1 auto;min-width:0}
+ .stamp span{display:none}
+ .header-actions{order:0;display:flex;width:auto;flex:0 0 auto;gap:5px}
+ .header-actions .btn{min-height:40px;padding:7px 10px;font-size:10px}
+ .chart-nav{display:grid;grid-template-columns:42px minmax(0,1fr);gap:7px}
+ .chart-nav-label{font-size:8px}
+ .chart-select{width:100%;min-height:38px}
+ .kpis{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+ .metric-card{padding:6px 7px;gap:3px;border-radius:8px}
+ .metric-group-label{font-size:7px;letter-spacing:.1em}
+ .metric-primary{display:block}
+ .metric-primary>span{display:block;font-size:8px;line-height:1.15}
+ .metric-primary .value{display:block;margin-top:2px;font-size:clamp(13px,3.7vw,17px)}
+ .metric-hint{display:none}
+ .metric-secondary{gap:4px;padding-top:4px}
+ .metric-secondary>span{font-size:7px}
+ .metric-secondary .value{font-size:9px;max-width:58%;overflow:hidden;text-overflow:ellipsis}
+ .metric-subhint{display:none}
+ .focus-details>summary{min-height:24px}
+}
+@media(max-width:380px){
+ .metric-card{padding:5px}
+ .metric-primary .value{font-size:12px}
+ .metric-secondary>span{font-size:6px}
+ .metric-secondary .value{font-size:8px}
+}
+@media(max-height:640px) and (min-width:761px){
+ .metric-card{padding:6px 10px;gap:3px}
+ .metric-primary .value{font-size:16px}
+ .metric-secondary{padding-top:3px}
+ .metric-subhint{display:none}
+ .focus-details>summary{min-height:20px}
+}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -511,13 +592,11 @@ body.drawer-open{overflow:hidden}
       <div class="sub">Explore executed flow, price location, trade size, session regimes and flow-to-return response across dates. This is a trade-print microscope, not an order-book reconstruction.</div>
     </div>
     <div class="top-right">
-      <div class="stamp"><strong id="stampDate">No data loaded</strong><span id="stampRows">Import a CSV or ZIP to begin</span><button class="btn subtle" id="installApp" type="button" hidden>Install app</button></div>
+      <div class="stamp"><strong id="stampDate">No data loaded</strong><span id="stampRows">Import a CSV or ZIP to begin</span></div>
       <div class="header-actions" aria-label="Workspace actions">
         <button class="btn primary" id="headerImport" type="button">Import</button>
         <button class="btn danger" id="cancelImport" type="button" hidden>Cancel import</button>
-        <button class="btn subtle" id="headerFilters" type="button" aria-expanded="false" aria-controls="filterDrawer">Filters</button>
-        <button class="btn subtle" id="headerSave" type="button">Save</button>
-        <button class="btn subtle" id="headerRestore" type="button">Restore</button>
+        <button class="btn subtle" id="headerFilters" type="button" aria-expanded="false" aria-controls="filterDrawer">Filters &amp; tools</button>
       </div>
     </div>
   </header>
@@ -525,17 +604,33 @@ body.drawer-open{overflow:hidden}
   <div class="status-strip" id="statusStrip"><span id="status" class="status" role="status" aria-live="polite"></span></div>
 
   <section class="chart-nav" aria-label="Chart selector">
+    <span class="chart-nav-label">CHART</span>
     <div class="chart-tabs" id="chartTabs" role="tablist" aria-label="Choose chart"></div>
     <select class="chart-select" id="chartSelect" aria-label="Choose chart"></select>
   </section>
 
   <section class="kpis" aria-label="Selected window metrics">
-    <div class="kpi"><div class="label">Window return</div><div id="kReturn" class="value">…</div><div id="kReturnHint" class="hint">Load data to calculate this metric</div></div>
-    <div class="kpi"><div class="label">Price span</div><div id="kRange" class="value">…</div><div id="kRangeHint" class="hint">Load data to calculate this metric</div></div>
-    <div class="kpi"><div class="label">Trade prints</div><div id="kTrades" class="value">…</div><div id="kTradesHint" class="hint">Load data to calculate this metric</div></div>
-    <div class="kpi"><div class="label">Executed size</div><div id="kSize" class="value">…</div><div id="kSizeHint" class="hint">Load data to calculate this metric</div></div>
-    <div class="kpi"><div class="label">Net signed flow</div><div id="kDelta" class="value">…</div><div id="kDeltaHint" class="hint">Load data to calculate this metric</div></div>
-    <div class="kpi"><div class="label">Flow imbalance</div><div id="kImb" class="value">…</div><div id="kImbHint" class="hint">Load data to calculate this metric</div></div>
+    <div class="metric-card">
+      <div class="metric-group-label">PERFORMANCE</div>
+      <div class="metric-primary"><span>Window return</span><strong id="kReturn" class="value">…</strong></div>
+      <div id="kReturnHint" class="metric-hint">Load data to calculate this metric</div>
+      <div class="metric-secondary"><span>Price span</span><strong id="kRange" class="value">…</strong></div>
+      <div id="kRangeHint" class="metric-subhint">Load data to calculate this metric</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-group-label">ACTIVITY</div>
+      <div class="metric-primary"><span>Trade prints</span><strong id="kTrades" class="value">…</strong></div>
+      <div id="kTradesHint" class="metric-hint">Load data to calculate this metric</div>
+      <div class="metric-secondary"><span>Executed size</span><strong id="kSize" class="value">…</strong></div>
+      <div id="kSizeHint" class="metric-subhint">Load data to calculate this metric</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-group-label">ORDER FLOW</div>
+      <div class="metric-primary"><span>Net signed flow</span><strong id="kDelta" class="value">…</strong></div>
+      <div id="kDeltaHint" class="metric-hint">Load data to calculate this metric</div>
+      <div class="metric-secondary"><span>Flow imbalance</span><strong id="kImb" class="value">…</strong></div>
+      <div id="kImbHint" class="metric-subhint">Load data to calculate this metric</div>
+    </div>
   </section>
 
   <section class="chart-stage" id="chartStage" aria-label="Active chart">
@@ -582,23 +677,29 @@ body.drawer-open{overflow:hidden}
       </div>
     </div>
     <input id="timeFocus" class="time-scrubber" type="range" min="0" max="0" step="1" value="0" aria-label="Inspect time in selected window" disabled />
-    <div class="focus-metrics">
-      <div><span>Close</span><strong id="focusPrice">…</strong></div>
-      <div><span>High / low</span><strong id="focusHighLow">…</strong></div>
-      <div><span>Prints</span><strong id="focusPrints">…</strong></div>
-      <div><span>Executed size</span><strong id="focusSize">…</strong></div>
-      <div><span>Flow imbalance</span><strong id="focusFlow">…</strong></div>
-      <div><span>Forward return (+5 min)</span><strong id="focusReturn5">…</strong></div>
-      <div><span>Forward return (+15 min)</span><strong id="focusReturn15">…</strong></div>
-    </div>
-    <div class="focus-insight" id="focusInsight" aria-live="polite"><span class="insight-spark" aria-hidden="true">✳</span><div><strong id="focusInsightTitle">Reading the tape</strong><p id="focusInsightText">Move the cursor to compare the last five minutes of price change with the signed-flow proxy. This is a descriptive hint, not a trade signal.</p></div></div>
-    <div class="focus-footnote">Click a bar in Price, Executed Flow, or CVD to move the cursor. Forward returns after large trades use the first recorded trade at or after each target horizon, provided it occurs within 30 seconds. Timestamps without a timezone are assumed UTC; explicit offsets are normalized to UTC.</div>
+    <details class="focus-details">
+      <summary>Bar details <span>Close · flow · forward returns</span></summary>
+      <div class="focus-metrics">
+        <div><span>Close</span><strong id="focusPrice">…</strong></div>
+        <div><span>High / low</span><strong id="focusHighLow">…</strong></div>
+        <div><span>Prints</span><strong id="focusPrints">…</strong></div>
+        <div><span>Executed size</span><strong id="focusSize">…</strong></div>
+        <div><span>Flow imbalance</span><strong id="focusFlow">…</strong></div>
+        <div><span>Forward return (+5 min)</span><strong id="focusReturn5">…</strong></div>
+        <div><span>Forward return (+15 min)</span><strong id="focusReturn15">…</strong></div>
+      </div>
+      <div class="focus-insight" id="focusInsight" aria-live="polite"><span class="insight-spark" aria-hidden="true">✳</span><div><strong id="focusInsightTitle">Reading the tape</strong><p id="focusInsightText">Move the cursor to compare the last five minutes of price change with the signed-flow proxy. This is a descriptive hint, not a trade signal.</p></div></div>
+      <div class="focus-footnote">Click a bar in Price, Executed Flow, or CVD to move the cursor. Forward returns after large trades use the first recorded trade at or after each target horizon, provided it occurs within 30 seconds. Timestamps without a timezone are assumed UTC; explicit offsets are normalized to UTC.</div>
+    </details>
   </section>
 
   <aside class="filter-drawer" id="filterDrawer" aria-label="Filters and data tools" hidden>
     <div class="drawer-head">
-      <div><strong>Filters &amp; data</strong><span>Changes apply immediately</span></div>
-      <button class="drawer-close" id="drawerClose" type="button" aria-label="Close filters">×</button>
+      <div><strong>Filters &amp; tools</strong><span>Workspace, data and chart settings</span></div>
+      <div class="drawer-head-actions">
+        <button class="btn subtle" id="installApp" type="button" hidden>Install app</button>
+        <button class="drawer-close" id="drawerClose" type="button" aria-label="Close filters">×</button>
+      </div>
     </div>
     <div class="drawer-body">
       <section class="controls" aria-label="Dashboard controls">
@@ -1286,7 +1387,7 @@ function setDrawer(open){
  document.body.classList.toggle('drawer-open',open);
  if(open){
   document.body.classList.add('show-advanced');
-  const first=drawer.querySelector('select,input,button');
+  const first=drawer.querySelector('select:not([hidden]),input:not([hidden]),button:not([hidden])');
   if(first&&first.focus)first.focus({preventScroll:true});
  }else if(button&&button.focus)button.focus({preventScroll:true});
  scheduleChartResize(activeChart);

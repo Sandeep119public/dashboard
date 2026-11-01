@@ -14,13 +14,13 @@ Then open <http://localhost:8000/BTCUSD_Market_Mechanics_Lab_Fixed.html> (or the
 
 ## Single-screen workstation
 
-The page is laid out as one viewport-height workstation: header actions, a status line, chart tabs (a select on phones), a six-metric KPI strip, one flexible chart stage, and a compact replay footer. Only the active chart is displayed; the other eight keep their rendered state and are shown on demand. Filters, imports, exports, chart settings, workspace tools and data notes live in an overlay drawer opened from **Filters**, so the chart never has to share height with a second control block.
+The page is laid out as one viewport-height workstation with a compact header, a single chart picker on desktop and mobile, three grouped metric cards (performance, activity and order flow), one flexible chart stage, and a compact replay footer. Each metric card pairs a headline value with its related context, keeping all six window metrics available without six separate tiles. Only the active chart is displayed; the other eight keep their rendered state and are shown on demand. Bar-level replay metrics and diagnostics sit under **Bar details** and stay out of the way until needed. Imports, filters, exports, workspace save/restore, chart settings and data notes live in the **Filters & tools** drawer.
 
 The chart stage uses `display:contents` grids and a flexing Plotly container with `autosize`, so tab switches and viewport changes resize the active plot instead of leaving a blank or fixed-height canvas. Each chart tracks a dirty flag: switching to a chart that is already rendered only resizes it and re-applies the linked cursor, while a full refresh marks every chart dirty and renders only the active one.
 
 ### Mobile and accessibility
 
-Header actions, chart tabs, drawer controls, replay buttons, speed/scrubber controls, panel actions and checkboxes are at least 44 CSS pixels high on touch-sized viewports, with safe-area padding for notches and gesture bars. Chart tabs support arrow/Home/End keyboard navigation; `[` and `]` cycle charts; Escape closes the drawer first, then restores a maximized panel and stops replay. Focus outlines, dark native form controls, reduced-motion handling and a no-horizontal-scroll layout are preserved.
+The header actions, chart picker and drawer controls use touch-sized targets on phones, with safe-area padding for notches and gesture bars. Replay transport and scrubber controls remain compact to preserve chart height. The native chart picker is keyboard accessible; `[` and `]` also cycle charts. Escape closes the drawer first, then restores a maximized panel and stops replay. Focus outlines, dark native form controls, reduced-motion handling and a no-horizontal-scroll layout are preserved.
 
 Chromium emulation was checked at 360×800, 390×844, 412×915, 768×1024, 1280×720, 1920×1080, and landscape 800×360, 844×390 and 915×412. Every viewport had `scrollWidth === innerWidth`, no clipped header actions, a visible Plotly canvas, and the replay footer inside the viewport. A physical Samsung Galaxy A35 run is still outstanding, so on-device performance and touch feel are not certified.
 
