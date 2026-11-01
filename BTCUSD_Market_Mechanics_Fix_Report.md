@@ -174,7 +174,7 @@ A `file://` banner explains that the app must be served over HTTP because browse
 
 ## Single-screen workstation hardening (2026-11-01)
 
-Branch: `feature/workstation-hardening` (based on the open workstation branch; `main` and the pull request were not merged or overwritten).
+Branch: `feature/workstation-hardening` (based on the open workstation branch; `main` and the pull request were not merged or overwritten). Commits: `3f1739e` (importer, workspace view, tests) and `c42377f` (single-screen workstation, docs).
 
 ### Layout and interaction
 
