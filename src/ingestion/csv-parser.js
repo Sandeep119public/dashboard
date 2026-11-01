@@ -171,6 +171,11 @@ function parseRole(value){
 }
 // Headerless Binance exports: locate the timestamp, buyer role and symbol columns,
 // then use the first two remaining positive numeric columns as price and size.
+function startsWithSymbol(line,sym){
+ if(line.length<sym.length)return false;
+ for(let i=0;i<sym.length;i++){if((line.charCodeAt(i)|32)!==(sym.charCodeAt(i)|32))return false;}
+ return true;
+}
 function inferHeaderlessLayout(cells,acceptedSymbols){
  const values=cells.map(value=>String(value===null||value===undefined?'':value).trim());
  const timestamp=values.findIndex(looksLikeTimestamp);
@@ -185,8 +190,9 @@ function inferHeaderlessLayout(cells,acceptedSymbols){
  if(timestamp<0||role<0||numeric.length<2)return null;
  return {price:numeric[0],size:numeric[1],timestamp,role,product};
 }
-function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_LABELS,expectedSymbol,acceptedSymbols}={}){
+function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_LABELS,expectedSymbol,acceptedSymbols,onSymbol}={}){
  const symbols=normalizeSymbolList(acceptedSymbols||expectedSymbol||DEFAULT_SYMBOLS);
+ let activeSymbol=expectedSymbol?String(expectedSymbol).trim().toUpperCase():null;
  const result=new Map();let lineNo=0,header=null,idx=null,layoutReady=false,headerless=false,fastLayout=false,currentDate=null,rows=new PackedTradeRows(),rowCount=0,ordered=true,lastSec=-Infinity;
  const flush=()=>{if(currentDate!==null&&rows.length){result.set(currentDate,aggregateDay(currentDate,rows,ordered,barSteps,histLabels));rows=new PackedTradeRows();ordered=true;lastSec=-Infinity;}};
  const commit=(date,sec,price,size,role)=>{
@@ -198,11 +204,10 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
  const symbolError=symbol=>{
   const normalized=String(symbol||'').trim().toUpperCase();
   if(!normalized)return new Error('Missing product_symbol at CSV row '+lineNo+'. Every trade row must contain one of: '+symbols.join(', ')+'.');
-  return new Error('This dashboard is for '+symbols.join(', ')+', but CSV row '+lineNo+' has product_symbol="'+normalized+'". Mixed or different symbols are not combined.');
+  const allowedDesc=symbols.length>1?symbols.slice(0,-1).join(', ')+' or '+symbols[symbols.length-1]:symbols[0];
+  return new Error('This dashboard is for '+allowedDesc+', but CSV row '+lineNo+' has product_symbol="'+normalized+'". Mixed or different symbols are not combined.');
  };
  const roleError=roleText=>new Error('Unknown buyer_role "'+roleText+'" at CSV row '+lineNo+'. Expected maker, taker, buy, or sell; the file was not imported to avoid silently misclassifying flow.');
- // Allocation-free symbol check for the fast path: compare the token in place.
- const symbolAllowedAt=(line,p1)=>{for(let i=0;i<symbols.length;i++){const sym=symbols[i];if(p1===sym.length&&line.startsWith(sym))return true;}return false;};
  const setHeader=cells=>{
   header=cells.map(normalizeCell);
   const column=(...names)=>{for(const name of names){const index=header.indexOf(name);if(index>=0)return index;}return -1;};
@@ -220,7 +225,12 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   if(!Number.isFinite(price)||price<=0)throw new Error('Invalid price at CSV row '+lineNo+'. Prices must be positive numbers.');
   if(!Number.isFinite(size)||size<=0)throw new Error('Invalid size at CSV row '+lineNo+'. Sizes must be positive numbers.');
   if(role<0)throw roleError(String(a[idx.role]||'').trim().toLowerCase());
-  if(idx.product>=0){const symbol=String(a[idx.product]||'').trim().toUpperCase();if(!symbolAllowed(symbol))throw symbolError(symbol);}
+  if(idx.product>=0){
+   const symbol=String(a[idx.product]||'').trim().toUpperCase();
+   if(!symbolAllowed(symbol))throw symbolError(symbol);
+   if(activeSymbol===null){activeSymbol=symbol;if(typeof onSymbol==='function')onSymbol(symbol);}
+   else if(symbol!==activeSymbol)throw symbolError(symbol);
+  }
   commit(parsedDate,parsedSec,price,size,role);
  };
  const pushFastLine=line=>{
@@ -237,9 +247,28 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   if(!Number.isFinite(size)||size<=0)throw new Error('Invalid size at CSV row '+lineNo+'. Sizes must be positive numbers.');
   const role=roleFromLine(line,p4+1);
   if(role<0)throw roleError(String(line.slice(p4+1)||'').trim().toLowerCase());
-  if(idx.product>=0&&!symbolAllowedAt(line,p1)){
-   const symbol=String(line.slice(0,p1)||'').trim().toUpperCase();
-   if(!symbolAllowed(symbol))throw symbolError(symbol);
+  if(idx.product>=0){
+   if(activeSymbol!==null){
+    if(p1===activeSymbol.length&&startsWithSymbol(line,activeSymbol)){
+     // allocation-free fast check
+    }else{
+     const symbol=String(line.slice(0,p1)||'').trim().toUpperCase();
+     if(!symbol||symbol!==activeSymbol)throw symbolError(symbol);
+    }
+   }else{
+    let matched=null;
+    for(let i=0;i<symbols.length;i++){
+     const sym=symbols[i];
+     if(p1===sym.length&&startsWithSymbol(line,sym)){matched=sym;break;}
+    }
+    if(!matched){
+     const symbol=String(line.slice(0,p1)||'').trim().toUpperCase();
+     if(!symbolAllowed(symbol))throw symbolError(symbol);
+     matched=symbol;
+    }
+    activeSymbol=matched;
+    if(typeof onSymbol==='function')onSymbol(matched);
+   }
   }
   commit(parsedDate,parsedSec,price,size,role);
   return true;
@@ -262,7 +291,7 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   if(fastLayout&&line.indexOf('"')<0&&pushFastLine(line))return;
   pushGeneralLine(line);
  };
- return {pushLine,finish(){flush();if(!result.size)throw new Error('No valid trade rows were found in this file.');return result;},get rowCount(){return rowCount;},get currentDate(){return currentDate;},get headerless(){return headerless;},get lineNo(){return lineNo;}};
+ return {pushLine,finish(){flush();if(!result.size)throw new Error('No valid trade rows were found in this file.');return result;},get rowCount(){return rowCount;},get currentDate(){return currentDate;},get headerless(){return headerless;},get lineNo(){return lineNo;},get symbol(){return activeSymbol;}};
 }
 function parseCsvByDay(text,options={}){
  const parser=createCsvDayParser(options);let pos=0;

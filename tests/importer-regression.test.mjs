@@ -398,10 +398,20 @@ test('ZIP imports accept buy/sell aliases and reject blank explicit symbols', as
     'BTCUSD,60000,2,2026-08-01 00:00:00,taker',
     ',60001,3,2026-08-01 00:00:01,maker'
   ].join('\n') + '\n';
-  const invalid = asFile(makeZip({ data: invalidData }), 'blank-symbol.zip');
-  await assert.rejects(
+  const invalid = asFile(makeZip({ data: invalidData }), 'blank-symbol.zip');  await assert.rejects(
     readTradeFiles([invalid], { barSteps: { '1m': 60 }, histLabels: ['tiny'] }),
     /Missing product_symbol at CSV row 3/
+  );
+
+  const mixedData = [
+    'product_symbol,price,size,timestamp,buyer_role',
+    'BTCUSD,60000,2,2026-08-01 00:00:00,taker',
+    'BTCUSDT,60001,3,2026-08-01 00:00:01,maker'
+  ].join('\n') + '\n';
+  const mixedZip = asFile(makeZip({ data: mixedData }), 'mixed-symbols.zip');
+  await assert.rejects(
+    readTradeFiles([mixedZip], { barSteps: { '1m': 60 }, histLabels: ['tiny'] }),
+    /Mixed or different symbols are not combined/
   );
 });
 

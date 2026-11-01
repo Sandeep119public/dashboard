@@ -232,6 +232,43 @@ test('explicit symbol columns reject blank, whitespace-only and unsupported symb
   }
 });
 
+test('mixed symbols within a single file or across multiple files are rejected before aggregating', async () => {
+  const fastMixed = [
+    'product_symbol,price,size,timestamp,buyer_role',
+    'BTCUSD,60000,1,2026-08-01 00:00:00,taker',
+    'BTCUSDT,60001,1,2026-08-01 00:00:01,maker'
+  ].join('\n');
+  assert.throws(
+    () => parseCsvByDay(fastMixed),
+    /Mixed or different symbols are not combined/
+  );
+
+  const generalMixed = [
+    'price,size,timestamp,buyer_role,product_symbol',
+    '60000,1,2026-08-01 00:00:00,taker,BTCUSD',
+    '60001,1,2026-08-01 00:00:01,maker,BTCUSD_PERP'
+  ].join('\n');
+  assert.throws(
+    () => parseCsvByDay(generalMixed),
+    /Mixed or different symbols are not combined/
+  );
+
+  const fileA = new File(
+    ['product_symbol,price,size,timestamp,buyer_role\nBTCUSD,60000,1,2026-08-01 00:00:00,taker\n'],
+    'trades-btcusd.csv',
+    { type: 'text/csv' }
+  );
+  const fileB = new File(
+    ['product_symbol,price,size,timestamp,buyer_role\nBTCUSDT,60000,1,2026-08-02 00:00:00,taker\n'],
+    'trades-btcusdt.csv',
+    { type: 'text/csv' }
+  );
+  await assert.rejects(
+    readTradeFiles([fileA, fileB]),
+    /Mixed or different symbols are not combined/
+  );
+});
+
 test('headerless imports keep optional symbol identification and accept role aliases', () => {
   const csv = [
     '50000,1,2026-08-01 00:00:00,buy',
