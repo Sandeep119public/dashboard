@@ -15,16 +15,10 @@ export async function readTradeFiles(files, {
   const selected = Array.from(files || []).filter(file => /\.(csv|zip)$/i.test(file.name || ''));
   if (!selected.length) throw new Error('No CSV or ZIP trade files were found in that selection.');
 
+  let datasetSymbol = expectedSymbol ? String(expectedSymbol).trim().toUpperCase() : null;
   const incoming = new Map();
   const progress = (rows, date, name) => onProgress({ type: 'rows', rows, date, name });
   const bytes = (bytesRead, totalBytes, name, rows) => onProgress({ type: 'bytes', bytesRead, totalBytes, name, rows });
-  const parserOptions = {
-    barSteps,
-    histLabels,
-    expectedSymbol,
-    acceptedSymbols,
-    onBytes: bytes
-  };
   const acceptDays = days => {
     for (const [date, obj] of days) {
       if (incoming.has(date)) {
@@ -33,6 +27,21 @@ export async function readTradeFiles(files, {
       incoming.set(date, obj);
     }
   };
+  const getParserOptions = totalBytes => ({
+    barSteps,
+    histLabels,
+    expectedSymbol: datasetSymbol || expectedSymbol,
+    acceptedSymbols,
+    onBytes: bytes,
+    onSymbol: sym => {
+      if (!datasetSymbol) {
+        datasetSymbol = sym;
+      } else if (datasetSymbol !== sym) {
+        throw new Error('This dashboard is for ' + datasetSymbol + ', but encountered product_symbol="' + sym + '". Mixed or different symbols are not combined.');
+      }
+    },
+    totalBytes
+  });
 
   for (const file of selected) {
     if (isCancelled(shouldCancel)) throw new Error('Import cancelled by user.');
@@ -42,12 +51,12 @@ export async function readTradeFiles(files, {
         if (isCancelled(shouldCancel)) throw new Error('Import cancelled by user.');
         onProgress({ type: 'entry', fileName: file.name, entryName: entry.name, uncompressedBytes: entry.uncompSize });
         const stream = await zipEntryStream(file, entry);
-        const days = await parseCsvStreamByDay(stream, entry.name, progress, shouldCancel, { ...parserOptions, totalBytes: entry.uncompSize || 0 });
+        const days = await parseCsvStreamByDay(stream, entry.name, progress, shouldCancel, getParserOptions(entry.uncompSize || 0));
         acceptDays(days);
       }
     } else {
       onProgress({ type: 'csv', fileName: file.name });
-      const days = await parseCsvStreamByDay(file.stream(), file.name, progress, shouldCancel, { ...parserOptions, totalBytes: file.size || 0 });
+      const days = await parseCsvStreamByDay(file.stream(), file.name, progress, shouldCancel, getParserOptions(file.size || 0));
       acceptDays(days);
     }
   }

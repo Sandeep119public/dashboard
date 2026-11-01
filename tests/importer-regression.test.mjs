@@ -380,6 +380,42 @@ test('import controller streams CSV entries from ZIP archives', async () => {
 });
 
 
+test('ZIP imports accept buy/sell aliases and reject blank explicit symbols', async () => {
+  const data = [
+    'product_symbol,price,size,timestamp,buyer_role',
+    'BTCUSD,60000,2,2026-08-01 00:00:00,buy',
+    'BTCUSD,60001,3,2026-08-01 00:00:01,sell'
+  ].join('\n') + '\n';
+  const file = asFile(makeZip({ data }), 'aliases.zip');
+  const days = await readTradeFiles([file], { barSteps: { '1m': 60 }, histLabels: ['tiny'] });
+  assert.equal(days.get('2026-08-01').metrics.row_count, 2);
+  assert.equal(days.get('2026-08-01').metrics.buy_size, 2);
+  assert.equal(days.get('2026-08-01').metrics.sell_size, 3);
+  assert.equal(days.get('2026-08-01').metrics.delta, -1);
+
+  const invalidData = [
+    'product_symbol,price,size,timestamp,buyer_role',
+    'BTCUSD,60000,2,2026-08-01 00:00:00,taker',
+    ',60001,3,2026-08-01 00:00:01,maker'
+  ].join('\n') + '\n';
+  const invalid = asFile(makeZip({ data: invalidData }), 'blank-symbol.zip');  await assert.rejects(
+    readTradeFiles([invalid], { barSteps: { '1m': 60 }, histLabels: ['tiny'] }),
+    /Missing product_symbol at CSV row 3/
+  );
+
+  const mixedData = [
+    'product_symbol,price,size,timestamp,buyer_role',
+    'BTCUSD,60000,2,2026-08-01 00:00:00,taker',
+    'BTCUSDT,60001,3,2026-08-01 00:00:01,maker'
+  ].join('\n') + '\n';
+  const mixedZip = asFile(makeZip({ data: mixedData }), 'mixed-symbols.zip');
+  await assert.rejects(
+    readTradeFiles([mixedZip], { barSteps: { '1m': 60 }, histLabels: ['tiny'] }),
+    /Mixed or different symbols are not combined/
+  );
+});
+
+
 function workspaceFixtureDays() {
   const day = date => ({
     metrics: { date, row_count: 3, start_price: 60000, end_price: 60001, return_pct: 0.0017, low: 59999, high: 60002, total_size: 6, buy_size: 4, sell_size: 2, delta: 2, imbalance_pct: 33.333, median_size: 1, p90: 3, p95: 3, p99: 3, max_size: 3, active_seconds_pct: 0.0035, minute_flow_return_corr: 0.12 },

@@ -136,6 +136,151 @@ test('header and headerless detection helpers agree on canonical layouts', () =>
   assert.deepEqual(inferred, { price: 1, size: 2, timestamp: 3, role: 4, product: 0 });
 });
 
+test('canonical fast-path parser accepts buy and sell aliases with case and whitespace', () => {
+  const csv = [
+    'product_symbol,price,size,timestamp,buyer_role',
+    'BTCUSD,60000,2,2026-08-01 00:00:00,buy',
+    'BTCUSD,60001,3,2026-08-01 00:00:01,sell',
+    'BTCUSD,60002,5,2026-08-01 00:00:02,BUY',
+    'BTCUSD,60003,7,2026-08-01 00:00:03,Sell',
+    'BTCUSD,60004,11,2026-08-01 00:00:04, buy ',
+    'BTCUSD,60005,13,2026-08-01 00:00:05, sell ',
+    'BTCUSD,60006,17,2026-08-01 00:00:06,maker',
+    'BTCUSD,60007,19,2026-08-01 00:00:07,taker'
+  ].join('\n');
+  const day = parseCsvByDay(csv, { barSteps: { '1m': 60 }, histLabels: ['tiny'] }).get('2026-08-01');
+  assert.equal(day.metrics.row_count, 8);
+  close(day.metrics.buy_size, 37);
+  close(day.metrics.sell_size, 40);
+  close(day.metrics.total_size, 77);
+  close(day.metrics.delta, -3);
+});
+
+test('explicit symbol columns accept every configured BTC symbol on fast and general paths', () => {
+  for (const symbol of ['BTCUSD', 'BTCUSDT', 'BTCUSD_PERP']) {
+    const fast = [
+      'product_symbol,price,size,timestamp,buyer_role',
+      symbol + ',60000,1,2026-08-01 00:00:00,taker'
+    ].join('\n');
+    assert.equal(parseCsvByDay(fast).get('2026-08-01').metrics.row_count, 1, 'fast ' + symbol);
+
+    const general = [
+      'price,size,timestamp,buyer_role,product_symbol',
+      '60000,1,2026-08-01 00:00:00,taker,' + symbol
+    ].join('\n');
+    assert.equal(parseCsvByDay(general).get('2026-08-01').metrics.row_count, 1, 'general ' + symbol);
+  }
+});
+
+test('explicit symbol columns reject blank, whitespace-only and unsupported symbols', () => {
+  const fastHeaders = [
+    'product_symbol,price,size,timestamp,buyer_role',
+    'symbol,price,size,timestamp,buyer_role',
+    'product,price,size,timestamp,buyer_role'
+  ];
+  for (const header of fastHeaders) {
+    assert.throws(
+      () => parseCsvByDay([header, ',60000,1,2026-08-01 00:00:00,taker'].join('\n')),
+      /Missing product_symbol at CSV row 2/
+    );
+    assert.throws(
+      () => parseCsvByDay([header, '   ,60000,1,2026-08-01 00:00:00,taker'].join('\n')),
+      /Missing product_symbol at CSV row 2/
+    );
+    assert.throws(
+      () => parseCsvByDay([header, 'ETHUSD,60000,1,2026-08-01 00:00:00,taker'].join('\n')),
+      /CSV row 2 has product_symbol="ETHUSD"/
+    );
+    assert.throws(
+      () => parseCsvByDay([
+        header,
+        'BTCUSD,60000,1,2026-08-01 00:00:00,taker',
+        ',60001,1,2026-08-01 00:00:01,maker',
+        'BTCUSD,60002,1,2026-08-01 00:00:02,taker'
+      ].join('\n')),
+      /Missing product_symbol at CSV row 3/
+    );
+  }
+
+  const generalHeaders = [
+    'price,size,timestamp,buyer_role,product_symbol',
+    'price,size,timestamp,buyer_role,symbol',
+    'price,size,timestamp,buyer_role,product'
+  ];
+  for (const header of generalHeaders) {
+    assert.throws(
+      () => parseCsvByDay([header, '60000,1,2026-08-01 00:00:00,taker,'].join('\n')),
+      /Missing product_symbol at CSV row 2/
+    );
+    assert.throws(
+      () => parseCsvByDay([header, '60000,1,2026-08-01 00:00:00,taker,   '].join('\n')),
+      /Missing product_symbol at CSV row 2/
+    );
+    assert.throws(
+      () => parseCsvByDay([header, '60000,1,2026-08-01 00:00:00,taker,ETHUSD'].join('\n')),
+      /CSV row 2 has product_symbol="ETHUSD"/
+    );
+    assert.throws(
+      () => parseCsvByDay([
+        header,
+        '60000,1,2026-08-01 00:00:00,taker,BTCUSD',
+        '60001,1,2026-08-01 00:00:01,maker,',
+        '60002,1,2026-08-01 00:00:02,taker,BTCUSD'
+      ].join('\n')),
+      /Missing product_symbol at CSV row 3/
+    );
+  }
+});
+
+test('mixed symbols within a single file or across multiple files are rejected before aggregating', async () => {
+  const fastMixed = [
+    'product_symbol,price,size,timestamp,buyer_role',
+    'BTCUSD,60000,1,2026-08-01 00:00:00,taker',
+    'BTCUSDT,60001,1,2026-08-01 00:00:01,maker'
+  ].join('\n');
+  assert.throws(
+    () => parseCsvByDay(fastMixed),
+    /Mixed or different symbols are not combined/
+  );
+
+  const generalMixed = [
+    'price,size,timestamp,buyer_role,product_symbol',
+    '60000,1,2026-08-01 00:00:00,taker,BTCUSD',
+    '60001,1,2026-08-01 00:00:01,maker,BTCUSD_PERP'
+  ].join('\n');
+  assert.throws(
+    () => parseCsvByDay(generalMixed),
+    /Mixed or different symbols are not combined/
+  );
+
+  const fileA = new File(
+    ['product_symbol,price,size,timestamp,buyer_role\nBTCUSD,60000,1,2026-08-01 00:00:00,taker\n'],
+    'trades-btcusd.csv',
+    { type: 'text/csv' }
+  );
+  const fileB = new File(
+    ['product_symbol,price,size,timestamp,buyer_role\nBTCUSDT,60000,1,2026-08-02 00:00:00,taker\n'],
+    'trades-btcusdt.csv',
+    { type: 'text/csv' }
+  );
+  await assert.rejects(
+    readTradeFiles([fileA, fileB]),
+    /Mixed or different symbols are not combined/
+  );
+});
+
+test('headerless imports keep optional symbol identification and accept role aliases', () => {
+  const csv = [
+    '50000,1,2026-08-01 00:00:00,buy',
+    '50001,2,2026-08-01 00:00:01,sell'
+  ].join('\n');
+  const day = parseCsvByDay(csv, { barSteps: { '1m': 60 }, histLabels: ['tiny'] }).get('2026-08-01');
+  assert.equal(day.metrics.row_count, 2);
+  close(day.metrics.buy_size, 1);
+  close(day.metrics.sell_size, 2);
+  close(day.metrics.delta, -1);
+});
+
 test('streaming import reports monotonic byte progress and a final total', async () => {
   const lines = ['price,size,timestamp,buyer_role'];
   for (let i = 0; i < 5000; i++) {
