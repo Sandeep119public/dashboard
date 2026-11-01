@@ -280,150 +280,253 @@ input,select,button{color-scheme:dark}
 @media(max-width:420px){.guided-steps small{display:none}.guided-steps>div{padding:9px 8px}}
 
 </style>
+<style id="workstation-overrides">
+:root{--ws-bg:#080d16;--ws-panel:#101a29;--ws-panel-2:#0b1422;--ws-line:#26364c;--ws-muted:#8ea1b9;--ws-gap:6px}
+html,body{height:100%;overflow:hidden}
+body{background:var(--ws-bg);overflow-x:hidden}
+.wrap{height:100dvh;max-width:none;margin:0;padding:calc(8px + env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto auto minmax(0,1fr) auto;gap:var(--ws-gap);overflow:hidden}
+.top{display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;margin:0;padding:0 2px;min-width:0}
+.brand{min-width:0;flex:1 1 auto}
+.top .eyebrow{font-size:9px;letter-spacing:.14em;margin:0}
+.top h1{font-size:clamp(17px,2.1vw,25px);line-height:1.08;margin:2px 0 0;letter-spacing:-.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .sub{display:none}
+.top-right{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;min-width:0}
+.stamp{min-width:0;padding:5px 9px;border-radius:9px;display:flex;align-items:center;gap:9px;max-width:100%}
+.stamp strong{font-size:11px;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.stamp span{font-size:10px;white-space:nowrap;max-width:230px;overflow:hidden;text-overflow:ellipsis;display:block}
+.stamp #installApp{margin:0!important;width:auto!important;padding:5px 8px;min-height:30px;font-size:10px}
+.header-actions{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.header-actions .btn{min-height:34px;padding:7px 10px;font-size:11px;white-space:nowrap}
+.btn.primary{background:#103332;border-color:#2e7668;color:#c6fff0}
+.btn.primary:hover{background:#174744;border-color:#48d6ad}
+.btn.danger{background:#3a1720;border-color:#7d3442;color:#ffd7dc}
+.btn.danger:hover{background:#4d1d28;border-color:#ff7e87}
+.status-strip{min-width:0;padding:0 2px;color:var(--ws-muted);font-size:11px;line-height:1.35;overflow:hidden}
+.status-strip:empty,.status-strip .status:empty{display:none}
+.status-strip .status{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chart-nav{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden}
+.chart-tabs{display:flex;align-items:center;gap:4px;flex:1 1 auto;min-width:0;overflow-x:auto;padding:1px 0;scrollbar-width:none}
+.chart-tabs::-webkit-scrollbar{display:none}
+.chart-tabs button{flex:0 0 auto;border:1px solid var(--ws-line);background:#111d2d;color:#cbd8e8;border-radius:8px;padding:7px 10px;min-height:34px;font:600 11px/1.2 Inter,ui-sans-serif,system-ui,sans-serif;cursor:pointer;white-space:nowrap;touch-action:manipulation}
+.chart-tabs button:hover{border-color:#3f5d7d;background:#16253a}
+.chart-tabs button[aria-selected="true"]{background:#123b37;border-color:#48d6ad;color:#b6ffeb;box-shadow:inset 0 0 0 1px #48d6ad33}
+.chart-select{display:none;width:100%;min-width:0;min-height:42px;background:#091220;color:var(--text);border:1px solid #31435d;border-radius:9px;padding:8px 10px;font:inherit}
+.kpis{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin:0!important}
+.kpi{padding:5px 8px;border-radius:9px;min-width:0}
+.kpi .label{font-size:8px;letter-spacing:.07em;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .value{font-size:clamp(12px,1.45vw,19px);margin:1px 0 0;line-height:1.2;overflow-wrap:anywhere}
+.kpi .hint{display:none}
+.chart-stage{position:relative;min-height:0;display:flex;flex-direction:column;overflow:hidden;border-radius:11px}
+.chartgrid,.chartgrid.research-grid,.research-grid{display:contents}
+.sectionhead{display:none!important}
+.chartcard{display:none;min-height:0;height:auto;padding:0;border-radius:11px;overflow:hidden;background:linear-gradient(180deg,rgba(16,25,42,.98),rgba(12,19,32,.98));box-shadow:none}
+.chartcard.ws-active{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;grid-column:auto!important}
+.chartcard.ws-active .charttitle{display:flex;flex:0 0 auto;align-items:baseline;justify-content:space-between;gap:8px;padding:5px 9px 4px;margin:0;border-bottom:1px solid #1d2c42;flex-wrap:nowrap;min-width:0}
+.chartcard.ws-active .charttitle strong{font-size:11px;line-height:1.25;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chartcard.ws-active .charttitle span{font-size:9px;line-height:1.25;color:var(--ws-muted);text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:48%}
+.chartcard .panel-actions{display:none!important}
+.chartcard .chart-howto{display:none!important}
+.chartcard .plot,.plot{height:100%!important;min-height:0!important;width:100%;flex:1 1 auto;margin:0}
+.chartcard.ws-active .plot{height:100%!important;min-height:0!important}
+.empty-state{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:7px;padding:18px;background:radial-gradient(600px 260px at 50% 0%,#12233a 0%,#0b1422 70%);border:1px dashed #2d4260;border-radius:11px;overflow:auto}
+.empty-state[hidden]{display:none!important}
+.empty-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:#123c37;color:#71e9c2;font-size:24px;font-weight:800}
+.empty-state h2{font-size:clamp(15px,2vw,20px);margin:0;letter-spacing:-.02em}
+.empty-state p{max-width:560px;margin:0;color:#9eb0c7;font-size:11px;line-height:1.5}
+.empty-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-top:2px}
+.empty-actions .btn{min-height:38px}
+.empty-hint{font-size:10px!important;color:#71849d!important}
+.replay-box{flex:0 0 auto;margin:0!important;padding:6px 9px!important;border-radius:10px!important}
+.replay-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:nowrap;min-width:0}
+.replay-title{min-width:0;flex:1 1 auto;overflow:hidden}
+.replay-head .toolbar-label{display:none}
+.focus-time{font-size:10px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0}
+.replay-buttons{display:flex;align-items:end;gap:5px;flex:0 0 auto;flex-wrap:nowrap}
+.replay-buttons .btn{min-height:31px;padding:5px 9px;font-size:11px}
+.replay-buttons .icon-btn{min-width:34px;padding:5px 8px}
+.speed-control{min-width:62px!important}
+.speed-control label{display:none}
+.speed-control select{min-height:31px;padding:4px;font-size:11px}
+.time-scrubber{display:block;width:100%;margin:4px 0 5px!important;min-height:18px;accent-color:var(--gold);cursor:pointer}
+.focus-metrics{display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:0!important}
+.focus-metrics>div{min-width:0;padding:3px 6px;border-radius:7px;background:#0a1320}
+.focus-metrics span{font-size:8px;letter-spacing:.05em;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.focus-metrics strong{font-size:10px;line-height:1.25;overflow-wrap:anywhere}
+.focus-insight,.focus-footnote{display:none!important}
+.filter-drawer{position:fixed;z-index:12000;top:0;right:0;bottom:0;width:min(460px,94vw);display:flex;flex-direction:column;background:linear-gradient(160deg,#101c2e,#0a1220);border-left:1px solid #334a67;box-shadow:-24px 0 70px #000b;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);padding-right:env(safe-area-inset-right);overflow:hidden}
+.filter-drawer[hidden]{display:none!important}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid #243650;flex:0 0 auto}
+.drawer-head strong{display:block;font-size:14px}
+.drawer-head span{display:block;color:var(--ws-muted);font-size:10px;margin-top:2px}
+.drawer-close{appearance:none;border:1px solid #334a67;background:#101a2b;color:#d7e5f5;border-radius:9px;min-width:42px;min-height:42px;font-size:20px;line-height:1;cursor:pointer}
+.drawer-close:hover{border-color:#48d6ad;color:#dcfff5}
+.drawer-body{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;padding:11px 12px 18px;display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain}
+.drawer-scrim{position:fixed;inset:0;z-index:11000;background:#0009;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.drawer-scrim[hidden]{display:none!important}
+body.drawer-open{overflow:hidden}
+.filter-drawer .controls,.filter-drawer .toolbar,.filter-drawer .studio{display:flex!important;flex-wrap:wrap!important;align-items:flex-end!important;gap:8px!important;padding:10px!important;margin:0!important;border-radius:11px!important;box-shadow:none!important;background:#0b1422!important}
+.filter-drawer .controls{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch!important}
+.filter-drawer .control{min-width:0!important;width:100%!important}
+.filter-drawer .control label{font-size:9px;line-height:1.3}
+.filter-drawer .control select,.filter-drawer .control input[type=time],.filter-drawer .control input[type=date],.filter-drawer .control input[type=number]{width:100%;min-width:0;min-height:40px;padding:7px 8px;font-size:13px}
+.filter-drawer .control input[type=file]{width:100%;max-width:100%;min-height:42px;padding:7px;font-size:11px}
+.filter-drawer .advanced-control{display:flex!important}
+.filter-drawer .import-control,.filter-drawer .threshold,.filter-drawer .data-status,.filter-drawer .status,.filter-drawer .controls>.btn{grid-column:1/-1;width:100%;min-width:0}
+.filter-drawer .controls>.btn{min-height:40px}
+.filter-drawer .threshold input{width:100%}
+.filter-drawer .data-status{font-size:10px;line-height:1.45;overflow-wrap:anywhere}
+.filter-drawer .toolbar{display:grid!important;grid-template-columns:minmax(0,1fr);gap:9px!important}
+.filter-drawer .toolbar-block{min-width:0}
+.filter-drawer .quick-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.filter-drawer .quick-buttons .btn{min-width:0;width:100%;min-height:38px;padding:7px 8px;font-size:11px;white-space:normal}
+.filter-drawer .coverage-summary{grid-column:1/-1;font-size:10px;line-height:1.45;border-top:1px solid #243650;padding-top:8px;overflow-wrap:anywhere}
+.filter-drawer .studio{display:block!important}
+.filter-drawer .studio-topline{display:flex;flex-direction:column;gap:7px;margin:0 0 9px}
+.filter-drawer .studio-caption{font-size:10px;line-height:1.45}
+.filter-drawer .studio-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;width:100%}
+.filter-drawer .studio-actions .btn{width:100%;min-height:38px;font-size:10px;padding:7px 5px;white-space:normal}
+.filter-drawer .studio-controls{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important;padding:8px!important}
+.filter-drawer .studio-controls .control{min-width:0}
+.filter-drawer .studio-controls select{width:100%;min-height:38px;font-size:12px}
+.filter-drawer .studio-toggles{grid-column:1/-1;display:grid!important;grid-template-columns:minmax(0,1fr);gap:5px!important;flex-basis:auto!important}
+.filter-drawer .studio-toggle{min-height:38px;padding:7px 8px;font-size:11px}
+.filter-drawer .panel-picker-row{display:block;margin:9px 0 0}
+.filter-drawer .panel-picker-title{margin-bottom:5px}
+.filter-drawer .panel-picker{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.filter-drawer .panel-chip{min-height:36px;padding:6px 8px}
+.filter-drawer .panel-chip span{max-width:none;white-space:normal;font-size:10px;line-height:1.25}
+.notes-details{border:1px solid #243650;border-radius:10px;background:#0b1422;overflow:hidden}
+.notes-details>summary{cursor:pointer;padding:10px 12px;font-size:11px;font-weight:800;color:#cfe0f2;list-style:none}
+.notes-details>summary::-webkit-details-marker{display:none}
+.notes-details>summary::before{content:'▸';display:inline-block;margin-right:6px;color:var(--buy)}
+.notes-details[open]>summary::before{transform:rotate(90deg)}
+.notes-details .notes{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px!important;padding:0 9px 9px;margin:0!important}
+.notes-details .note{padding:10px;border-radius:9px}
+.notes-details .note h3{font-size:11px}
+.notes-details .note p,.notes-details .note li{font-size:10px;line-height:1.5}
+.filter-drawer .fineprint{font-size:9px;line-height:1.45;margin:0;color:#71849d;overflow-wrap:anywhere}
+.hidden-compat{display:none!important}
+.mobile-action-bar{display:none!important}
+#fileProtocolNotice{position:sticky;top:0;z-index:20000}
+:where(button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--buy);outline-offset:2px}
+@media(max-width:900px){
+  .header-actions .btn{min-height:44px}
+  .chart-tabs button{min-height:44px}
+  .top{flex-wrap:wrap;align-items:flex-start}
+  .top h1{white-space:normal}
+  .top-right{width:100%;justify-content:space-between}
+  .stamp{order:2;flex:1 1 auto}
+  .header-actions{order:1;flex:1 1 auto;justify-content:flex-start}
+}
+@media(max-width:760px){
+  :root{--ws-gap:5px}
+  .wrap{padding:calc(6px + env(safe-area-inset-top)) max(6px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))}
+  .top{gap:6px}
+  .top .eyebrow{display:none}
+  .top h1{font-size:16px;margin:0}
+  .top-right{gap:5px}
+  .stamp{padding:4px 7px;gap:6px;flex:0 1 auto}
+  .stamp #installApp{min-height:44px;padding:6px 10px;font-size:10px}
+  .stamp strong{font-size:9px;max-width:110px}
+  .stamp span{display:none}
+  .header-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;width:100%}
+  .header-actions .btn{min-height:44px;padding:6px 3px;font-size:10px;white-space:normal;line-height:1.15}
+  .chart-tabs{display:none}
+  .chart-select{display:block}
+  .kpis{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+  .kpi{padding:4px 6px}
+  .kpi .label{font-size:7px}
+  .kpi .value{font-size:13px}
+  .chartcard.ws-active .charttitle{padding:4px 7px 3px}
+  .chartcard.ws-active .charttitle strong{font-size:10px}
+  .chartcard.ws-active .charttitle span{display:none}
+  .replay-box{padding:5px 7px!important}
+  .replay-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px;align-items:center}
+  .focus-time{font-size:9px}
+  .replay-buttons{gap:3px}
+  .replay-buttons .btn{min-height:40px;padding:5px 7px;font-size:10px}
+  .replay-buttons .icon-btn{min-width:40px}
+  .speed-control{min-width:58px!important}
+  .speed-control select{min-height:40px;font-size:10px}
+  .time-scrubber{margin:2px 0 4px!important}
+  .focus-metrics{display:flex!important;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
+  .focus-metrics::-webkit-scrollbar{display:none}
+  .focus-metrics>div{flex:0 0 92px;padding:3px 5px}
+  .focus-metrics span{font-size:7px}
+  .focus-metrics strong{font-size:10px}
+  .filter-drawer{width:100vw;border-left:0}
+  .drawer-body{padding:9px 8px 14px}
+  .filter-drawer .controls{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .filter-drawer .control select,.filter-drawer .control input[type=time],.filter-drawer .control input[type=date]{min-height:44px}
+  .empty-state{padding:12px}
+  .empty-state h2{font-size:15px}
+  .empty-state p{font-size:10px}
+}
+@media(max-width:360px){
+  .header-actions .btn{font-size:9px}
+  .kpi .value{font-size:12px}
+  .focus-metrics>div{flex-basis:84px}
+}
+@media(max-height:640px) and (min-width:761px){
+  .wrap{gap:4px;padding-top:5px;padding-bottom:5px}
+  .top h1{font-size:16px}
+  .header-actions .btn{min-height:30px;padding:5px 8px}
+  .kpi{padding:3px 7px}
+  .kpi .value{font-size:14px}
+  .replay-box{padding:4px 7px!important}
+  .replay-buttons .btn{min-height:28px}
+  .speed-control select{min-height:28px}
+  .time-scrubber{margin:1px 0 3px!important}
+  .focus-metrics>div{padding:2px 5px}
+  .focus-metrics span{font-size:7px}
+  .focus-metrics strong{font-size:9px}
+}
+@media(max-height:480px){
+  /* Short landscape: give the active chart the height instead of the KPI strip. */
+  .top{flex-wrap:nowrap}
+  .stamp{display:none}
+  .top-right{width:auto;flex:0 0 auto;justify-content:flex-end}
+  .header-actions{display:flex;width:auto;grid-template-columns:none}
+  .kpis,.status-strip{display:none!important}
+  .chart-tabs button{min-height:36px}
+}
+@media(max-height:560px){
+  .top .eyebrow,.stamp span{display:none}
+  .kpis{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .kpi .label{font-size:7px}
+  .kpi .value{font-size:12px}
+  .focus-metrics{display:none!important}
+  .time-scrubber{margin:0!important}
+  .replay-box{padding:3px 6px!important}
+}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}
+</style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <div>
+    <div class="brand">
       <div class="eyebrow">Trade tape → structure → response</div>
-      <h1>BTCUSD <span style="color:var(--buy)">Market Mechanics Lab</span></h1>
-      <div class="sub">Explore executed flow, price location, trade size, session regimes and flow-to-return response across dates. Arrange charts to fit your question, scrub a linked time cursor, replay the tape, and save reusable data and view presets. This is a trade-print microscope, not an order-book reconstruction.</div>
+      <h1>BTCUSD <span>Market Mechanics Lab</span></h1>
+      <div class="sub">Explore executed flow, price location, trade size, session regimes and flow-to-return response across dates. This is a trade-print microscope, not an order-book reconstruction.</div>
     </div>
-    <div class="stamp"><strong id="stampDate">No data loaded</strong><span id="stampRows">Import a CSV or ZIP to begin</span><button class="btn subtle" id="installApp" type="button" hidden style="margin-top:9px;width:100%">Install app</button></div>
+    <div class="top-right">
+      <div class="stamp"><strong id="stampDate">No data loaded</strong><span id="stampRows">Import a CSV or ZIP to begin</span><button class="btn subtle" id="installApp" type="button" hidden>Install app</button></div>
+      <div class="header-actions" aria-label="Workspace actions">
+        <button class="btn primary" id="headerImport" type="button">Import</button>
+        <button class="btn danger" id="cancelImport" type="button" hidden>Cancel import</button>
+        <button class="btn subtle" id="headerFilters" type="button" aria-expanded="false" aria-controls="filterDrawer">Filters</button>
+        <button class="btn subtle" id="headerSave" type="button">Save</button>
+        <button class="btn subtle" id="headerRestore" type="button">Restore</button>
+      </div>
+    </div>
   </header>
 
-  <section class="guided-home" aria-label="Guided exploration">
-    <div class="guided-head">
-      <div>
-        <div class="eyebrow">START WITH A QUESTION</div>
-        <h2>What do you want to understand?</h2>
-        <p>Choose a research path. The dashboard will arrange the most useful charts for that question. You can change the layout at any time.</p>
-      </div>
-      <div class="guided-steps" aria-label="Suggested workflow">
-        <div><b>1</b><span><strong>Load data</strong><small>Add more dates when you need them</small></span></div>
-        <div><b>2</b><span><strong>Choose a question</strong><small>Start with a focused chart set</small></span></div>
-        <div><b>3</b><span><strong>Inspect a moment</strong><small>Click a chart, then scrub or replay</small></span></div>
-      </div>
-    </div>
-    <div class="question-grid" id="questionModes" role="group" aria-label="Choose a research path">
-      <button class="question-card" type="button" data-question-mode="price-flow" aria-pressed="false">
-        <span class="question-icon" aria-hidden="true">↗</span><span class="question-copy"><strong>Follow price + flow</strong><small>Start here: price, buying/selling pressure and cumulative delta.</small></span><span class="question-arrow" aria-hidden="true">→</span>
-      </button>
-      <button class="question-card" type="button" data-question-mode="large-trades" aria-pressed="false">
-        <span class="question-icon purple" aria-hidden="true">◉</span><span class="question-copy"><strong>Inspect large trades</strong><small>Find unusually large prints and what price did afterward.</small></span><span class="question-arrow" aria-hidden="true">→</span>
-      </button>
-      <button class="question-card" type="button" data-question-mode="price-zones" aria-pressed="false">
-        <span class="question-icon gold" aria-hidden="true">▤</span><span class="question-copy"><strong>Find active price zones</strong><small>See where executions clustered and when activity peaked.</small></span><span class="question-arrow" aria-hidden="true">→</span>
-      </button>
-      <button class="question-card" type="button" data-question-mode="flow-test" aria-pressed="false">
-        <span class="question-icon blue" aria-hidden="true">⌁</span><span class="question-copy"><strong>Test flow vs returns</strong><small>Explore lead/lag relationships and hourly market states.</small></span><span class="question-arrow" aria-hidden="true">→</span>
-      </button>
-      <button class="question-card question-card-all" type="button" data-question-mode="full-lab" aria-pressed="false">
-        <span class="question-icon green" aria-hidden="true">▦</span><span class="question-copy"><strong>Full research lab</strong><small>Show all nine chart panels for broad exploration.</small></span><span class="question-arrow" aria-hidden="true">→</span>
-      </button>
-    </div>
-    <div class="guided-footer">
-      <div><span class="active-dot" aria-hidden="true"></span><strong id="activeQuestionLabel">Active view: Follow price + flow</strong><span id="activeQuestionHint">A focused starting point. Use “Visible panels” to add more charts at any time.</span></div>
-      <button class="btn subtle" id="toggleAdvanced" type="button" aria-expanded="false">Show advanced filters <span aria-hidden="true">⌄</span></button>
-    </div>
-  </section>
+  <div class="status-strip" id="statusStrip"><span id="status" class="status" role="status" aria-live="polite"></span></div>
 
-  <section class="controls" aria-label="Dashboard controls">
-    <div class="control date-control"><label for="startDate">Start date</label><input id="startDate" type="date" value="" /></div>
-    <div class="control date-control"><label for="endDate">End date</label><input id="endDate" type="date" value="" /></div>
-    <div class="control import-control"><label for="tradeFiles">Add trade files (CSV or ZIP)</label><input id="tradeFiles" type="file" multiple accept=".csv,.zip,text/csv,application/zip" /><button class="btn subtle" id="cancelImport" type="button" hidden>Cancel import</button></div>
-    <div class="control bar-interval"><label for="tf">Bar interval</label><select id="tf"><option value="10s">10 seconds</option><option value="1m" selected>1 minute</option><option value="5m">5 minutes</option><option value="15m">15 minutes</option><option value="1h">1 hour</option></select></div>
-    <div class="control advanced-control"><label for="start">Start time</label><input id="start" type="time" value="00:00" step="60" /></div>
-    <div class="control advanced-control"><label for="end">End time</label><input id="end" type="time" value="23:59" step="60" /></div>
-    <div class="control threshold advanced-control"><label for="threshold">Highlight trades above <span class="tag">size units</span></label><input id="threshold" type="range" min="220" max="8500" step="10" value="672"/><div class="rangeval"><span>220 · minimum stored size</span><strong id="thresholdValue">672</strong><span>8,500 · slider max</span></div></div>
-    <div class="control advanced-control"><label for="profileBin">Price bucket width</label><select id="profileBin"><option value="5">$5</option><option value="10" selected>$10</option><option value="25">$25</option><option value="50">$50</option><option value="100">$100</option></select></div>
-    <div class="control advanced-control"><label for="smooth">Smooth flow over</label><select id="smooth"><option value="3">3 bars</option><option value="10" selected>10 bars</option><option value="30">30 bars</option></select></div>
-    <div class="control advanced-control"><label for="flowLookback">Lead/lag flow lookback</label><select id="flowLookback"><option value="1">1 minute</option><option value="5" selected>5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option></select></div>
-    <button class="btn subtle" id="reset" title="Return the date range, interval, and research filters to their defaults">Reset filters</button>
-    <div id="status" class="status"></div>
-    <div id="dataStatus" class="data-status">No trade data loaded yet. Add a daily CSV or ZIP file to begin.</div>
-  </section>
-
-  <section class="toolbar" aria-label="Quick ranges and data tools">
-    <div class="toolbar-block">
-      <div class="toolbar-label">Quick range <span>counts loaded dates, not calendar days</span></div>
-      <div class="quick-buttons">
-        <button class="btn subtle active" data-range="1" type="button">Latest day</button>
-        <button class="btn subtle" data-range="3" type="button">Last 3 days</button>
-        <button class="btn subtle" data-range="7" type="button">Last 7 days</button>
-        <button class="btn subtle" data-range="all" type="button">All loaded</button>
-      </div>
-    </div>
-    <div class="toolbar-block">
-      <div class="toolbar-label">Export and workspace</div>
-      <div class="quick-buttons">
-        <button class="btn subtle" id="importFolder" type="button">Import folder</button>
-        <input id="tradeFolder" type="file" webkitdirectory directory multiple accept=".csv,.zip,text/csv,application/zip" hidden />
-        <button class="btn subtle" id="exportBars" type="button">Export bars as CSV</button>
-        <button class="btn subtle" id="exportEvents" type="button">Export large trades as CSV</button>
-        <button class="btn" id="saveWorkspace" type="button">Save data workspace</button>
-        <button class="btn subtle" id="loadWorkspace" type="button">Load data workspace</button>
-        <input id="workspaceFile" type="file" accept=".json,.gz,.json.gz,application/json,application/gzip" hidden />
-      </div>
-    </div>
-    <div class="coverage-summary" id="coverageSummary">Coverage summary appears after data is loaded.</div>
-  </section>
-
-  <section class="studio" id="chartStudio" aria-label="Interactive chart studio">
-    <div class="studio-topline">
-      <div>
-        <div class="toolbar-label">Chart Studio <span>Customize the workspace, then click any time-series chart to inspect that moment</span></div>
-        <div class="studio-caption">Drag panels by their grip, hide views you do not need, or expand a chart into a full-screen workbench.</div>
-      </div>
-      <div class="studio-actions">
-        <button class="btn subtle" id="saveViewPreset" type="button">Save chart layout</button>
-        <button class="btn subtle" id="loadViewPreset" type="button">Load chart layout</button>
-        <input id="viewPresetFile" type="file" accept=".json,application/json" hidden />
-        <button class="btn subtle" id="resetStudio" type="button">Reset chart layout</button>
-      </div>
-    </div>
-    <div class="studio-controls">
-      <div class="control"><label for="panelLayout">Panel grid</label><select id="panelLayout"><option value="2" selected>Two columns</option><option value="1">Single column</option><option value="3">Three columns</option></select></div>
-      <div class="control"><label for="chartDensity">Chart height</label><select id="chartDensity"><option value="compact">Compact</option><option value="standard" selected>Standard</option><option value="large">Large</option></select></div>
-      <div class="control"><label for="priceStyle">Price display</label><select id="priceStyle"><option value="candles" selected>Candlesticks</option><option value="line">Close line</option></select></div>
-      <div class="control"><label for="priceScale">Price scale</label><select id="priceScale"><option value="linear" selected>Linear</option><option value="log">Logarithmic</option></select></div>
-      <div class="studio-toggles">
-        <label class="studio-toggle"><input id="showLarge" type="checkbox" checked /> Large-trade markers</label>
-        <label class="studio-toggle"><input id="showEMA20" type="checkbox" /> EMA 20</label>
-        <label class="studio-toggle"><input id="showEMA50" type="checkbox" /> EMA 50</label>
-        <label class="studio-toggle"><input id="showVWAP" type="checkbox" /> Trade-size-weighted price</label>
-      </div>
-    </div>
-    <div class="panel-picker-row">
-      <div class="panel-picker-title">Visible panels</div>
-      <div id="panelVisibility" class="panel-picker" aria-label="Show or hide chart panels"></div>
-    </div>
-    <div class="replay-box">
-      <div class="replay-head">
-        <div>
-          <div class="toolbar-label">Linked time cursor <span>Follows the 1-minute tape within the selected date/time window</span></div>
-          <div id="focusAtTime" class="focus-time">Choose a time by clicking a chart or moving the cursor.</div>
-        </div>
-        <div class="replay-buttons">
-          <button class="btn subtle icon-btn" id="focusPrev" title="Previous bar" aria-label="Previous bar" type="button">◀</button>
-          <button class="btn" id="focusPlay" type="button">▶ Play</button>
-          <button class="btn subtle icon-btn" id="focusNext" title="Next bar" aria-label="Next bar" type="button">▶|</button>
-          <div class="control speed-control"><label for="replaySpeed">Replay speed</label><select id="replaySpeed"><option value="1">1×</option><option value="4" selected>4×</option><option value="12">12×</option></select></div>
-        </div>
-      </div>
-      <input id="timeFocus" class="time-scrubber" type="range" min="0" max="0" step="1" value="0" aria-label="Inspect time in selected window" disabled />
-      <div class="focus-metrics">
-        <div><span>Close</span><strong id="focusPrice">…</strong></div>
-        <div><span>High / low</span><strong id="focusHighLow">…</strong></div>
-        <div><span>Prints</span><strong id="focusPrints">…</strong></div>
-        <div><span>Executed size</span><strong id="focusSize">…</strong></div>
-        <div><span>Flow imbalance</span><strong id="focusFlow">…</strong></div>
-        <div><span>Forward return (+5 min)</span><strong id="focusReturn5">…</strong></div>
-        <div><span>Forward return (+15 min)</span><strong id="focusReturn15">…</strong></div>
-      </div>
-      <div class="focus-insight" id="focusInsight" aria-live="polite"><span class="insight-spark" aria-hidden="true">✳</span><div><strong id="focusInsightTitle">Reading the tape</strong><p id="focusInsightText">Move the cursor to compare the last five minutes of price change with the signed-flow proxy. This is a descriptive hint, not a trade signal.</p></div></div>
-      <div class="focus-footnote">Click a bar in Price, Executed Flow, or CVD to move the cursor. Forward returns after large trades use the first recorded trade at or after each target horizon, provided it occurs within 30 seconds. Timestamps without a timezone are assumed UTC; explicit offsets are normalized to UTC.</div>
-    </div>
+  <section class="chart-nav" aria-label="Chart selector">
+    <div class="chart-tabs" id="chartTabs" role="tablist" aria-label="Choose chart"></div>
+    <select class="chart-select" id="chartSelect" aria-label="Choose chart"></select>
   </section>
 
   <section class="kpis" aria-label="Selected window metrics">
@@ -435,63 +538,176 @@ input,select,button{color-scheme:dark}
     <div class="kpi"><div class="label">Flow imbalance</div><div id="kImb" class="value">…</div><div id="kImbHint" class="hint">Load data to calculate this metric</div></div>
   </section>
 
-  <div class="sectionhead"><div><h2>01 / Price path and large-trade markers</h2><p>Zoom, pan, and use the range slider. Long windows are grouped for speed; chart totals are preserved and exports keep raw bars.</p></div><span class="tag" id="priceBadge">1-minute bars</span></div>
-  <div class="chartgrid">
-    <div class="chartcard full"><div class="charttitle"><strong>Price structure + large executions</strong><span>▲ buyer_role=taker · ▼ buyer_role=maker (sell-aggressor proxy)</span></div><div id="priceChart" class="plot tall"></div></div>
-    <div class="chartcard"><div class="charttitle"><strong>02 / Executed flow + rolling imbalance</strong><span>Bars show the buy-side proxy above zero and the sell-side proxy below</span></div><div id="flowChart" class="plot"></div></div>
-    <div class="chartcard"><div class="charttitle"><strong>03 / Cumulative volume delta (CVD)</strong><span>Starts at zero for the selected window</span></div><div id="cvdChart" class="plot"></div></div>
-    <div class="chartcard"><div class="charttitle"><strong>04 / Volume-at-price profile</strong><span>Length = executed size · color = signed flow</span></div><div id="profileChart" class="plot profile"></div></div>
-    <div class="chartcard"><div class="charttitle"><strong>05 / Trade-size distribution</strong><span>Count of prints in each size bucket</span></div><div id="sizeChart" class="plot profile"></div></div>
-    <div class="chartcard"><div class="charttitle"><strong>06 / Activity by hour</strong><span>Trade count with net signed flow overlay</span></div><div id="hourChart" class="plot"></div></div>
-    <div class="chartcard"><div class="charttitle"><strong>07 / Large-trade follow-through</strong><span>Median return from execution to the first trade at or after each horizon</span></div><div id="eventChart" class="plot"></div></div>
-  </div>
-
-  <div class="sectionhead" id="researchSectionHead"><div><h2>08 / Flow lead-lag and hourly market states</h2><p>Research views for testing whether executed flow leads returns and how activity differs by hour. Correlation is descriptive, not causal.</p></div><span class="tag">Research view</span></div>
-  <div class="chartgrid research-grid">
-    <div class="chartcard"><div class="charttitle"><strong>Flow imbalance vs price-return horizon</strong><span id="leadLagMeta">Uses trailing 5-minute signed-size imbalance</span></div><div id="leadLagChart" class="plot"></div></div>
-    <div class="chartcard"><div class="charttitle"><strong>Hourly regime map</strong><span id="regimeMeta">Color = signed-flow imbalance</span></div><div id="regimeChart" class="plot profile"></div></div>
-  </div>
-
-  <section class="notes">
-    <div class="note"><h3>Data validation and calculation notes</h3>
-      <p><span class="tag">Validated</span> CSV quoting, calendar timestamps, positive prices and sizes, known maker/taker labels, and BTCUSD symbol consistency (when the symbol column is present). Invalid rows are rejected instead of being silently classified as sell-side flow.</p>
-      <p><span class="tag">Gap-aware</span> Minute-flow correlations include only exact adjacent 60-second pairs; lead/lag lookbacks require complete contiguous minutes and exact forward endpoints; compressed candles split at detected missing intervals; hourly activity uses a real time axis.</p>
-      <p><span class="tag">Indicators</span> EMA overlays warm up on preceding loaded bars and restart after detected gaps. When available, the price overlay divides the sum of trade price × size by total size. Older workspaces without those sums use a clearly labelled HLC3-weighted proxy. This may differ from exchange-defined VWAP; verify the source’s size units before comparing them.</p><p><span class="tag">Forward samples</span> Large-trade outcomes use the first trade at or after the target horizon only when it is within 30 seconds. Daily medians are not combined into an exact pooled median. Use per-day size distributions when an exact pooled quantile is required.</p>
+  <section class="chart-stage" id="chartStage" aria-label="Active chart">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon" aria-hidden="true">▦</div>
+      <h2 id="emptyTitle">No trade data loaded</h2>
+      <p id="emptyText">Import a Binance BTCUSD, BTCUSDT or BTCUSD_PERP daily CSV or monthly ZIP to build the charts. Parsing and calculations stay on this device.</p>
+      <div class="empty-actions">
+        <button class="btn primary" id="emptyImport" type="button">Import CSV or ZIP</button>
+        <button class="btn subtle" id="emptyReset" type="button" hidden>Reset range</button>
+      </div>
+      <p class="empty-hint">CSV or ZIP · headers optional · multiple files supported · unzoned timestamps are treated as UTC.</p>
     </div>
-    <div class="note"><h3>How to read this tape</h3>
-      <p><span class="tag">Observed</span> Price, trade size, execution timestamps, trade counts and the supplied buyer-role label.</p>
-      <p><span class="tag">Derived</span> Flow signs, cumulative delta, imbalance, price bins and forward trade-price responses. These depend on the assumptions below.</p>
-      <ul><li><b>Role-to-side assumption:</b> <code>buyer_role=taker</code> is treated as buyer-initiated flow; <code>buyer_role=maker</code> as a sell-aggressor proxy. Verify this field's exchange-specific definition before using it for signals.</li><li><b>Size units:</b> preserved as supplied. The file does not define the contract multiplier, so size is not relabeled as BTC or USD notional.</li><li><b>Follow-through:</b> uses the first recorded trade at or after +1m, +5m and +15m, compared with the event's execution price. It is not a quote-mid impact measure.</li></ul>
+
+    <div class="sectionhead"><div><h2>01 / Price path and large-trade markers</h2><p>Zoom, pan, and use the range slider. Long windows are grouped for speed; chart totals are preserved and exports keep raw bars.</p></div><span class="tag" id="priceBadge">1-minute bars</span></div>
+    <div class="chartgrid">
+      <div class="chartcard full"><div class="charttitle"><strong>Price structure + large executions</strong><span>▲ buyer_role=taker · ▼ buyer_role=maker (sell-aggressor proxy)</span></div><div id="priceChart" class="plot tall"></div></div>
+      <div class="chartcard"><div class="charttitle"><strong>02 / Executed flow + rolling imbalance</strong><span>Bars show the buy-side proxy above zero and the sell-side proxy below</span></div><div id="flowChart" class="plot"></div></div>
+      <div class="chartcard"><div class="charttitle"><strong>03 / Cumulative volume delta (CVD)</strong><span>Starts at zero for the selected window</span></div><div id="cvdChart" class="plot"></div></div>
+      <div class="chartcard"><div class="charttitle"><strong>04 / Volume-at-price profile</strong><span>Length = executed size · color = signed flow</span></div><div id="profileChart" class="plot profile"></div></div>
+      <div class="chartcard"><div class="charttitle"><strong>05 / Trade-size distribution</strong><span>Count of prints in each size bucket</span></div><div id="sizeChart" class="plot profile"></div></div>
+      <div class="chartcard"><div class="charttitle"><strong>06 / Activity by hour</strong><span>Trade count with net signed flow overlay</span></div><div id="hourChart" class="plot"></div></div>
+      <div class="chartcard"><div class="charttitle"><strong>07 / Large-trade follow-through</strong><span>Median return from execution to the first trade at or after each horizon</span></div><div id="eventChart" class="plot"></div></div>
     </div>
-    <div class="note"><h3>What this dataset cannot reveal</h3>
-      <p>This dataset contains no order-book depth, best bid/ask, spread, queue position, cancellation feed, or liquidation flag. Large executions can suggest aggressive activity, but they cannot establish that resting liquidity was thin or that a stop cascade occurred.</p>
-      <p>A filename that says “monthly” does not guarantee a full month of data; check the loaded date range before analysis. The source may omit timezone metadata. Unzoned timestamps are interpreted as UTC; explicit offsets are normalized to UTC. Confirm the source’s timezone convention before interpreting session times.</p>
-      <p id="dataInsight"></p>
+
+    <div class="sectionhead" id="researchSectionHead"><div><h2>08 / Flow lead-lag and hourly market states</h2><p>Research views for testing whether executed flow leads returns and how activity differs by hour. Correlation is descriptive, not causal.</p></div><span class="tag">Research view</span></div>
+    <div class="chartgrid research-grid">
+      <div class="chartcard"><div class="charttitle"><strong>Flow imbalance vs price-return horizon</strong><span id="leadLagMeta">Uses trailing 5-minute signed-size imbalance</span></div><div id="leadLagChart" class="plot"></div></div>
+      <div class="chartcard"><div class="charttitle"><strong>Hourly regime map</strong><span id="regimeMeta">Color = signed-flow imbalance</span></div><div id="regimeChart" class="plot profile"></div></div>
     </div>
   </section>
-  <div class="fineprint">Interactive report · calculations run in your browser · imported trade data is not uploaded.</div>
+
+  <section class="replay-box" aria-label="Linked time cursor">
+    <div class="replay-head">
+      <div class="replay-title">
+        <div class="toolbar-label">Linked time cursor <span>Follows the 1-minute tape within the selected window</span></div>
+        <div id="focusAtTime" class="focus-time">Choose a time by clicking a chart or moving the cursor.</div>
+      </div>
+      <div class="replay-buttons">
+        <button class="btn subtle icon-btn" id="focusPrev" title="Previous bar" aria-label="Previous bar" type="button">◀</button>
+        <button class="btn" id="focusPlay" type="button">▶ Play</button>
+        <button class="btn subtle icon-btn" id="focusNext" title="Next bar" aria-label="Next bar" type="button">▶|</button>
+        <div class="control speed-control"><label for="replaySpeed">Replay speed</label><select id="replaySpeed"><option value="1">1×</option><option value="4" selected>4×</option><option value="12">12×</option></select></div>
+      </div>
+    </div>
+    <input id="timeFocus" class="time-scrubber" type="range" min="0" max="0" step="1" value="0" aria-label="Inspect time in selected window" disabled />
+    <div class="focus-metrics">
+      <div><span>Close</span><strong id="focusPrice">…</strong></div>
+      <div><span>High / low</span><strong id="focusHighLow">…</strong></div>
+      <div><span>Prints</span><strong id="focusPrints">…</strong></div>
+      <div><span>Executed size</span><strong id="focusSize">…</strong></div>
+      <div><span>Flow imbalance</span><strong id="focusFlow">…</strong></div>
+      <div><span>Forward return (+5 min)</span><strong id="focusReturn5">…</strong></div>
+      <div><span>Forward return (+15 min)</span><strong id="focusReturn15">…</strong></div>
+    </div>
+    <div class="focus-insight" id="focusInsight" aria-live="polite"><span class="insight-spark" aria-hidden="true">✳</span><div><strong id="focusInsightTitle">Reading the tape</strong><p id="focusInsightText">Move the cursor to compare the last five minutes of price change with the signed-flow proxy. This is a descriptive hint, not a trade signal.</p></div></div>
+    <div class="focus-footnote">Click a bar in Price, Executed Flow, or CVD to move the cursor. Forward returns after large trades use the first recorded trade at or after each target horizon, provided it occurs within 30 seconds. Timestamps without a timezone are assumed UTC; explicit offsets are normalized to UTC.</div>
+  </section>
+
+  <aside class="filter-drawer" id="filterDrawer" aria-label="Filters and data tools" hidden>
+    <div class="drawer-head">
+      <div><strong>Filters &amp; data</strong><span>Changes apply immediately</span></div>
+      <button class="drawer-close" id="drawerClose" type="button" aria-label="Close filters">×</button>
+    </div>
+    <div class="drawer-body">
+      <section class="controls" aria-label="Dashboard controls">
+        <div class="control date-control"><label for="startDate">Start date</label><input id="startDate" type="date" value="" /></div>
+        <div class="control date-control"><label for="endDate">End date</label><input id="endDate" type="date" value="" /></div>
+        <div class="control import-control"><label for="tradeFiles">Add trade files (CSV or ZIP)</label><input id="tradeFiles" type="file" multiple accept=".csv,.zip,text/csv,application/zip" /><button class="btn subtle" id="drawerCancelImport" type="button" hidden>Cancel import</button></div>
+        <div class="control bar-interval"><label for="tf">Bar interval</label><select id="tf"><option value="10s">10 seconds</option><option value="1m" selected>1 minute</option><option value="5m">5 minutes</option><option value="15m">15 minutes</option><option value="1h">1 hour</option></select></div>
+        <div class="control advanced-control"><label for="start">Start time</label><input id="start" type="time" value="00:00" step="60" /></div>
+        <div class="control advanced-control"><label for="end">End time</label><input id="end" type="time" value="23:59" step="60" /></div>
+        <div class="control threshold advanced-control"><label for="threshold">Highlight trades above <span class="tag">size units</span></label><input id="threshold" type="range" min="220" max="8500" step="10" value="672"/><div class="rangeval"><span>220 · minimum stored size</span><strong id="thresholdValue">672</strong><span>8,500 · slider max</span></div></div>
+        <div class="control advanced-control"><label for="profileBin">Price bucket width</label><select id="profileBin"><option value="5">$5</option><option value="10" selected>$10</option><option value="25">$25</option><option value="50">$50</option><option value="100">$100</option></select></div>
+        <div class="control advanced-control"><label for="smooth">Smooth flow over</label><select id="smooth"><option value="3">3 bars</option><option value="10" selected>10 bars</option><option value="30">30 bars</option></select></div>
+        <div class="control advanced-control"><label for="flowLookback">Lead/lag flow lookback</label><select id="flowLookback"><option value="1">1 minute</option><option value="5" selected>5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option></select></div>
+        <button class="btn subtle" id="reset" title="Return the date range, interval, and research filters to their defaults">Reset filters</button>
+        <div id="dataStatus" class="data-status">No trade data loaded yet. Add a daily CSV or ZIP file to begin.</div>
+      </section>
+
+      <section class="toolbar" aria-label="Quick ranges and data tools">
+        <div class="toolbar-block">
+          <div class="toolbar-label">Quick range <span>counts loaded dates, not calendar days</span></div>
+          <div class="quick-buttons">
+            <button class="btn subtle active" data-range="1" type="button">Latest day</button>
+            <button class="btn subtle" data-range="3" type="button">Last 3 days</button>
+            <button class="btn subtle" data-range="7" type="button">Last 7 days</button>
+            <button class="btn subtle" data-range="all" type="button">All loaded</button>
+          </div>
+        </div>
+        <div class="toolbar-block">
+          <div class="toolbar-label">Export and workspace</div>
+          <div class="quick-buttons">
+            <button class="btn subtle" id="importFolder" type="button">Import folder</button>
+            <input id="tradeFolder" type="file" webkitdirectory directory multiple accept=".csv,.zip,text/csv,application/zip" hidden />
+            <button class="btn subtle" id="exportBars" type="button">Export bars as CSV</button>
+            <button class="btn subtle" id="exportEvents" type="button">Export large trades as CSV</button>
+            <button class="btn" id="saveWorkspace" type="button">Save data workspace</button>
+            <button class="btn subtle" id="loadWorkspace" type="button">Load data workspace</button>
+            <input id="workspaceFile" type="file" accept=".json,.gz,.json.gz,application/json,application/gzip" hidden />
+          </div>
+        </div>
+        <div class="coverage-summary" id="coverageSummary">Coverage summary appears after data is loaded.</div>
+      </section>
+
+      <section class="studio" id="chartStudio" aria-label="Chart settings">
+        <div class="studio-topline">
+          <div>
+            <div class="toolbar-label">Chart settings <span>Price style, overlays and saved layouts</span></div>
+            <div class="studio-caption">Use the tabs above to switch charts. These settings apply to the active chart.</div>
+          </div>
+          <div class="studio-actions">
+            <button class="btn subtle" id="saveViewPreset" type="button">Save chart layout</button>
+            <button class="btn subtle" id="loadViewPreset" type="button">Load chart layout</button>
+            <input id="viewPresetFile" type="file" accept=".json,application/json" hidden />
+            <button class="btn subtle" id="resetStudio" type="button">Reset chart layout</button>
+          </div>
+        </div>
+        <div class="studio-controls">
+          <div class="control"><label for="panelLayout">Panel grid</label><select id="panelLayout"><option value="2" selected>Two columns</option><option value="1">Single column</option><option value="3">Three columns</option></select></div>
+          <div class="control"><label for="chartDensity">Chart height</label><select id="chartDensity"><option value="compact">Compact</option><option value="standard" selected>Standard</option><option value="large">Large</option></select></div>
+          <div class="control"><label for="priceStyle">Price display</label><select id="priceStyle"><option value="candles" selected>Candlesticks</option><option value="line">Close line</option></select></div>
+          <div class="control"><label for="priceScale">Price scale</label><select id="priceScale"><option value="linear" selected>Linear</option><option value="log">Logarithmic</option></select></div>
+          <div class="studio-toggles">
+            <label class="studio-toggle"><input id="showLarge" type="checkbox" checked /> Large-trade markers</label>
+            <label class="studio-toggle"><input id="showEMA20" type="checkbox" /> EMA 20</label>
+            <label class="studio-toggle"><input id="showEMA50" type="checkbox" /> EMA 50</label>
+            <label class="studio-toggle"><input id="showVWAP" type="checkbox" /> Trade-size-weighted price</label>
+          </div>
+        </div>
+        <div class="panel-picker-row">
+          <div class="panel-picker-title">Visible panels</div>
+          <div id="panelVisibility" class="panel-picker" aria-label="Show or hide chart panels"></div>
+        </div>
+      </section>
+
+      <details class="notes-details">
+        <summary>About this data and its limits</summary>
+        <section class="notes">
+          <div class="note"><h3>Data validation and calculation notes</h3>
+            <p><span class="tag">Validated</span> CSV quoting, calendar timestamps, positive prices and sizes, known maker/taker labels, and BTCUSD symbol consistency (when the symbol column is present). Invalid rows are rejected instead of being silently classified as sell-side flow.</p>
+            <p><span class="tag">Gap-aware</span> Minute-flow correlations include only exact adjacent 60-second pairs; lead/lag lookbacks require complete contiguous minutes and exact forward endpoints; compressed candles split at detected missing intervals; hourly activity uses a real time axis.</p>
+            <p><span class="tag">Indicators</span> EMA overlays warm up on preceding loaded bars and restart after detected gaps. When available, the price overlay divides the sum of trade price × size by total size. Older workspaces without those sums use a clearly labelled HLC3-weighted proxy. This may differ from exchange-defined VWAP; verify the source’s size units before comparing them.</p><p><span class="tag">Forward samples</span> Large-trade outcomes use the first trade at or after the target horizon only when it is within 30 seconds. Daily medians are not combined into an exact pooled median. Use per-day size distributions when an exact pooled quantile is required.</p>
+          </div>
+          <div class="note"><h3>How to read this tape</h3>
+            <p><span class="tag">Observed</span> Price, trade size, execution timestamps, trade counts and the supplied buyer-role label.</p>
+            <p><span class="tag">Derived</span> Flow signs, cumulative delta, imbalance, price bins and forward trade-price responses. These depend on the assumptions below.</p>
+            <ul><li><b>Role-to-side assumption:</b> <code>buyer_role=taker</code> is treated as buyer-initiated flow; <code>buyer_role=maker</code> as a sell-aggressor proxy. Verify this field's exchange-specific definition before using it for signals.</li><li><b>Size units:</b> preserved as supplied. The file does not define the contract multiplier, so size is not relabeled as BTC or USD notional.</li><li><b>Follow-through:</b> uses the first recorded trade at or after +1m, +5m and +15m, compared with the event's execution price. It is not a quote-mid impact measure.</li></ul>
+          </div>
+          <div class="note"><h3>What this dataset cannot reveal</h3>
+            <p>This dataset contains no order-book depth, best bid/ask, spread, queue position, cancellation feed, or liquidation flag. Large executions can suggest aggressive activity, but they cannot establish that resting liquidity was thin or that a stop cascade occurred.</p>
+            <p>A filename that says “monthly” does not guarantee a full month of data; check the loaded date range before analysis. The source may omit timezone metadata. Unzoned timestamps are interpreted as UTC; explicit offsets are normalized to UTC. Confirm the source’s timezone convention before interpreting session times.</p>
+            <p id="dataInsight"></p>
+          </div>
+        </section>
+      </details>
+      <div class="fineprint">Interactive report · calculations run in your browser · imported trade data is not uploaded.</div>
+    </div>
+  </aside>
+  <div class="drawer-scrim" id="drawerScrim" hidden></div>
+
+  <div class="hidden-compat" hidden aria-hidden="true">
+    <div class="question-grid" id="questionModes"></div>
+    <button id="toggleAdvanced" type="button" aria-expanded="false">Advanced filters</button>
+    <span id="activeQuestionLabel"></span><span id="activeQuestionHint"></span>
+  </div>
 </div>
 <script>
 const DATA = {"metrics":{"date":"2026-09-01","row_count":0,"start_time":"00:00:00","end_time":"23:59:59","start_price":0,"end_price":0,"return_pct":0,"low":0,"high":0,"range_pct":0,"total_size":0,"buy_size":0,"sell_size":0,"delta":0,"imbalance_pct":0,"median_size":0,"p90":0,"p95":0,"p99":0,"max_size":0,"active_seconds_pct":0,"minute_flow_return_corr":0},"bars":{"10s":{"t":[],"o":[],"h":[],"l":[],"c":[],"v":[],"n":[],"b":[],"s":[],"d":[],"pv":[]},"1m":{"t":[],"o":[],"h":[],"l":[],"c":[],"v":[],"n":[],"b":[],"s":[],"d":[],"pv":[]},"5m":{"t":[],"o":[],"h":[],"l":[],"c":[],"v":[],"n":[],"b":[],"s":[],"d":[],"pv":[]},"15m":{"t":[],"o":[],"h":[],"l":[],"c":[],"v":[],"n":[],"b":[],"s":[],"d":[],"pv":[]},"1h":{"t":[],"o":[],"h":[],"l":[],"c":[],"v":[],"n":[],"b":[],"s":[],"d":[],"pv":[]}},"profile":{"m":[],"p":[],"v":[],"d":[]},"hist":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"hist_labels":["1–9","10–24","25–49","50–99","100–219","220–671","672–999","1k–1.9k","2k+"],"events":{"t":[],"p":[],"s":[],"r":[],"r1":[],"r5":[],"r15":[]}};
 window.DATA = DATA;
 </script>
 <script src="https://cdn.plot.ly/plotly-3.3.1.min.js"></script>
-
-<nav class="mobile-action-bar" id="mobileActionBar" aria-label="Quick dashboard actions">
-  <button type="button" data-mobile-action="import" aria-label="Import trade CSV or ZIP">
-    <span class="mobile-action-icon" aria-hidden="true">＋</span><span class="mobile-action-label">Import</span>
-  </button>
-  <button type="button" data-mobile-action="charts" aria-label="Jump to charts">
-    <span class="mobile-action-icon" aria-hidden="true">▦</span><span class="mobile-action-label">Charts</span>
-  </button>
-  <button type="button" data-mobile-action="replay" aria-label="Jump to linked replay controls">
-    <span class="mobile-action-icon" aria-hidden="true">⏯</span><span class="mobile-action-label">Replay</span>
-  </button>
-  <button type="button" data-mobile-action="filters" aria-label="Show or hide advanced filters" aria-expanded="false">
-    <span class="mobile-action-icon" aria-hidden="true">☷</span><span class="mobile-action-label">Filters</span>
-  </button>
-</nav>
-
 <script>
 (function(){
   if(location.protocol!=='file:')return;
@@ -509,7 +725,6 @@ window.DATA = DATA;
 <script type="module">
 import { readTradeFiles } from './src/app/import-controller.js';
 import { createWorkspaceJsonStream, workspaceJsonText, workspaceMeta } from './src/app/workspace-export.js';
-import { bindMobileQuickActions } from './src/ui/mobile-quick-actions.js';
 import { createLatestRenderQueue } from './src/charts/latest-render-queue.js';
 import { createBarSubsetter } from './src/charts/bar-subsetter.js';
 import { createChartSeriesMath } from './src/charts/series-math.js';
@@ -541,6 +756,24 @@ const BAR_STEPS = {'10s':10,'1m':60,'5m':300,'15m':900,'1h':3600};
 // only needed when that interval is selected, so they are built on first use.
 const EAGER_TIMEFRAMES = ['1m','5m','15m','1h'];
 const HIST_BUCKETS = [9,24,49,99,219,671,999,1999,Infinity];
+const WORKSTATION_CHARTS = [
+ {id:'priceChart',label:'Price'},
+ {id:'flowChart',label:'Flow'},
+ {id:'cvdChart',label:'CVD'},
+ {id:'profileChart',label:'Volume profile'},
+ {id:'sizeChart',label:'Trade sizes'},
+ {id:'hourChart',label:'Hourly activity'},
+ {id:'eventChart',label:'Large trades'},
+ {id:'leadLagChart',label:'Lead / lag'},
+ {id:'regimeChart',label:'Regimes'}
+];
+const CHART_IDS = WORKSTATION_CHARTS.map(chart=>chart.id);
+const CHART_LABELS = Object.fromEntries(WORKSTATION_CHARTS.map(chart=>[chart.id,chart.label]));
+const TIME_CHARTS = ['priceChart','flowChart','cvdChart'];
+let activeChart='priceChart';
+const dirtyCharts=new Set(CHART_IDS);
+const renderedCharts=new Set();
+let chartResizeFrame=0;
 let focusIndices=[], focusTimeSec=null, replayHandle=null, draggedPanel=null, focusLineTimer=null, pendingFocusLineTime=null;
 let COMBINED_DATES=[];
 // Performance caches are invalidated whenever combined data is rebuilt.
@@ -605,28 +838,42 @@ function rebuildCombined(){
    coverage.textContent=msg;
  }
 }
+function setImportStamp(rows,date){
+ if(Number(M.row_count||0)>0)return;
+ $('stampDate').textContent='Importing…';
+ $('stampRows').textContent=rows?nfmt(rows)+' trades processed'+(date?' · '+date:''):'Reading your file; charts update when the batch completes.';
+}
+function setImportStampResult(title,detail){
+ if(Number(M.row_count||0)>0)return;
+ $('stampDate').textContent=title;$('stampRows').textContent=detail;
+}
 function syncImportControls(){
  const cancel=$('cancelImport');if(cancel){cancel.hidden=!importRunning;cancel.disabled=importCancelRequested;cancel.textContent=importCancelRequested?'Cancelling…':'Cancel import';}
+ const drawerCancel=$('drawerCancelImport');if(drawerCancel){drawerCancel.hidden=!importRunning;drawerCancel.disabled=importCancelRequested;drawerCancel.textContent=importCancelRequested?'Cancelling…':'Cancel import';}
+ const header=$('headerImport');if(header){header.disabled=importRunning||importCancelRequested;header.textContent=importCancelRequested?'Cancelling…':'Import';header.setAttribute('aria-busy',importRunning?'true':'false');}
+ const empty=$('emptyImport');if(empty){empty.disabled=importRunning||importCancelRequested;empty.textContent=importRunning?'Importing…':'Import CSV or ZIP';}
  const mobile=document.querySelector('[data-mobile-action="import"]');
  if(mobile){const icon=mobile.querySelector('.mobile-action-icon'),label=mobile.querySelector('.mobile-action-label');mobile.setAttribute('aria-label',importRunning?'Cancel current import':'Import trade CSV or ZIP');mobile.dataset.importState=importRunning?'running':'idle';if(icon)icon.textContent=importRunning?'×':'＋';if(label)label.textContent=importCancelRequested?'Cancelling…':(importRunning?'Cancel':'Import');mobile.disabled=importCancelRequested;}
 }
 function requestImportCancel(){if(!importRunning||importCancelRequested)return;importCancelRequested=true;syncImportControls();$('status').textContent='Cancellation requested. The importer will stop at the next safe parsing boundary; existing loaded data will be kept.';}
 async function importTradeFiles(files,sourceInputId='tradeFiles'){
- const input=$(sourceInputId);if(!files.length)return;files=Array.from(files).filter(f=>/\.(csv|zip)$/i.test(f.name));if(!files.length){$('status').textContent='No CSV or ZIP trade files were found in that selection.';input.value='';return;}
- input.disabled=true;importRunning=true;importCancelRequested=false;syncImportControls();$('dataStatus').textContent='Streaming trade data and building multi-day bars. Monthly ZIP files are processed one day at a time to limit memory use.';$('status').textContent='';
+ const input=$(sourceInputId);if(!files||!files.length)return;files=Array.from(files).filter(f=>/\.(csv|zip)$/i.test(f.name));if(!files.length){$('status').textContent='No CSV or ZIP trade files were found in that selection.';input.value='';return;}
+ input.disabled=true;importRunning=true;importCancelRequested=false;syncImportControls();$('dataStatus').textContent='Streaming trade data and building multi-day bars. Monthly ZIP files are processed one day at a time to limit memory use.';$('status').textContent='';setImportStamp(0);
  try{
   const incoming=await readTradeFiles(files,{
    shouldCancel:()=>importCancelRequested,
    barSteps:BAR_STEPS,
    histLabels:DATA.hist_labels,
+   acceptedSymbols:['BTCUSD','BTCUSDT','BTCUSD_PERP'],
    onProgress:event=>{
-    if(event.type==='rows')$('status').textContent='Reading '+event.name+': '+nfmt(event.rows)+' trades processed'+(event.date?' · current date '+event.date:'')+'. Data is streamed; the full decompressed CSV is not kept in memory.';
+    if(event.type==='rows'){$('status').textContent='Reading '+event.name+': '+nfmt(event.rows)+' trades processed'+(event.date?' · current date '+event.date:'')+'. Data is streamed; the full decompressed CSV is not kept in memory.';setImportStamp(event.rows,event.date);}
+    else if(event.type==='bytes'){const pct=event.totalBytes?Math.min(100,Math.round(event.bytesRead/event.totalBytes*100)):null;$('status').textContent='Reading '+event.name+': '+nfmt(event.bytesRead)+' bytes'+(pct===null?'':' ('+pct+'%)')+(event.rows?' · '+nfmt(event.rows)+' trades':'');}
     else if(event.type==='entry')$('dataStatus').textContent='Streaming '+event.fileName+' → '+event.entryName+' ('+nfmt(event.uncompressedBytes)+' uncompressed bytes). Large monthly archives may take a few minutes; progress updates appear below.';
     else if(event.type==='csv')$('dataStatus').textContent='Streaming '+event.fileName+' without loading the complete CSV into memory.';
    }
   });
   if(importCancelRequested)throw new Error('Import cancelled by user.');for(const [date,obj] of incoming)DAYS.set(date,obj);rebuildCombined();updateDateBounds(true);refresh();$('status').textContent='Import complete: '+nfmt(M.row_count)+' trade prints loaded across '+DAYS.size+' day'+(DAYS.size===1?'':'s')+'.';$('dataStatus').textContent='Imported '+incoming.size+' date'+(incoming.size===1?'':'s')+' from '+files.length+' file'+(files.length===1?'':'s')+'. '+DAYS.size+' day'+(DAYS.size===1?'':'s')+' and '+nfmt(M.row_count)+' prints are now loaded. Monthly ZIPs are streamed and aggregated one date at a time. Matching dates were replaced, not double-counted. Unzoned timestamps are assumed UTC; explicit offsets are normalized to UTC.';
- }catch(err){if(err&&err.message==='Import cancelled by user.'){$('status').textContent='Import cancelled. Existing loaded data was preserved.';$('dataStatus').textContent='Import cancelled before committing the new batch; previously loaded dates remain available.';}else{$('status').textContent='Import failed: '+(err&&err.message?err.message:String(err));$('dataStatus').textContent='Import failed; current loaded data was kept. If this archive uses ZIP64 or unsupported compression, extract the CSV and import it directly in a current version of Chrome or Edge.';}}
+ }catch(err){if(err&&err.message==='Import cancelled by user.'){$('status').textContent='Import cancelled. Existing loaded data was preserved.';$('dataStatus').textContent='Import cancelled before committing the new batch; previously loaded dates remain available.';setImportStampResult('Import cancelled','No new dates were added.');}else{$('status').textContent='Import failed: '+(err&&err.message?err.message:String(err));$('dataStatus').textContent=Number(M.row_count||0)>0?'Import failed; current loaded data was kept. If this archive uses ZIP64 or unsupported compression, extract the CSV and import it directly in a current version of Chrome or Edge.':'Import failed and no data is loaded. Check the message in the status bar, then try a CSV or a smaller ZIP archive.';setImportStampResult('Import failed','See the message in the status bar.');}updateEmptyState(getWindow());}
  finally{importRunning=false;importCancelRequested=false;input.disabled=false;input.value='';syncImportControls();}
 }
 
@@ -644,13 +891,24 @@ const config = {responsive:true,displaylogo:false,scrollZoom:true,modeBarButtons
 const plotQueue=createLatestRenderQueue({
  render:(id,el,request)=>Plotly.react(el,request.traces,common(request.layout),config),
  afterRender:(id,el)=>{
-  if(['priceChart','flowChart','cvdChart'].includes(id)&&el&&typeof el.on==='function'&&!el.__focusLinked){
+  scheduleChartResize(id);
+  if(TIME_CHARTS.includes(id)&&el&&typeof el.on==='function'&&!el.__focusLinked){
    el.__focusLinked=true;
    el.on('plotly_click',ev=>{if(ev&&ev.points&&ev.points[0]&&ev.points[0].x!==undefined){const raw=ev.points[0].x instanceof Date?ev.points[0].x.getTime():Number(ev.points[0].x);setFocusByTime((raw-BASE)/1000);}});
   }
  }
 });
-function plot(id,traces,layout){return plotQueue.enqueue(id,$(id),{traces,layout});}
+function resizeChart(id){
+ const el=id?$(id):null;if(!el||!el.data||typeof Plotly==='undefined'||!Plotly.Plots||typeof Plotly.Plots.resize!=='function')return;
+ const rect=el.getBoundingClientRect();if(rect.width<24||rect.height<24)return;
+ try{Plotly.Plots.resize(el);}catch(_){}
+}
+function scheduleChartResize(id){
+ if(chartResizeFrame)return;
+ const run=()=>{chartResizeFrame=0;resizeChart(id||activeChart);};
+ if(typeof requestAnimationFrame==='function')chartResizeFrame=requestAnimationFrame(run);else setTimeout(run,60);
+}
+function plot(id,traces,layout){const safe=Object.assign({},layout,{autosize:true});delete safe.height;return plotQueue.enqueue(id,$(id),{traces,layout:safe});}
 function axisTickFormat(){return $('startDate').value!==$('endDate').value?'%b %d<br>%H:%M':'%H:%M';}
 function upperBoundTime(times,target){let lo=0,hi=times.length;while(lo<hi){const mid=(lo+hi)>>1;if(times[mid]<=target)lo=mid+1;else hi=mid;}return lo;}
 function setMetric(id,value,cls){const el=$(id);el.textContent=value;el.className='value '+(cls||'neutral');}
@@ -680,7 +938,7 @@ function updatePrice(tf,w,threshold){
  const markerLimit=1600;let visibleKeep=keep;if(keep.length>markerLimit){visibleKeep=keep.slice().sort((a,b)=>E.s[b]-E.s[a]).slice(0,markerLimit).sort((a,b)=>E.t[a]-E.t[b]);}
  for(const roleCode of [1,0]){const ev=visibleKeep.filter(i=>E.r[i]===roleCode);if(!ev.length)continue;tr.push({type:'scattergl',mode:'markers',name:roleCode===1?'Buyer role: taker':'Buyer role: maker*',x:ev.map(i=>dtMs(E.t[i])),y:ev.map(i=>E.p[i]),customdata:ev.map(i=>[nfmt(E.s[i]),roleCode===1?'taker':'maker',timeLabel(E.t[i])]),marker:{symbol:roleCode===1?'triangle-up':'triangle-down',color:roleCode===1?C.buy:C.sell,opacity:.72,size:ev.map(i=>Math.max(5,Math.min(17,4+Math.sqrt(E.s[i]/Math.max(1,threshold))*4))),line:{width:.4,color:'#07101c'}},hovertemplate:'%{customdata[2]}<br>Price %{y:.1f}<br>Size %{customdata[0]}<br>Buyer role: %{customdata[1]}<extra></extra>'});}
  $('priceBadge').textContent=$('tf').selectedOptions[0].text+' · '+nfmt(sub.sourceCount||ids.length)+' source bars'+(sub.compressed?' · grouped ×'+sub.groupSize:'')+' · '+nfmt(keep.length)+' large prints'+(keep.length>visibleKeep.length?' · showing largest '+nfmt(visibleKeep.length):'')+(style==='line'?' · close line':'');
- return plot('priceChart',tr,{height:455,xaxis:{type:'date',gridcolor:C.grid,tickformat:axisTickFormat(),rangeslider:{visible:true,thickness:.08,bgcolor:'#091220',bordercolor:C.grid}},yaxis:{title:'Price',side:'right',type:$('priceScale')&&$('priceScale').value==='log'?'log':'linear',gridcolor:C.grid},margin:{l:58,r:65,t:16,b:48},hovermode:'x'});
+ return plot('priceChart',tr,{xaxis:{type:'date',gridcolor:C.grid,tickformat:axisTickFormat(),rangeslider:{visible:true,thickness:.08,bgcolor:'#091220',bordercolor:C.grid}},yaxis:{title:'Price',side:'right',type:$('priceScale')&&$('priceScale').value==='log'?'log':'linear',gridcolor:C.grid},margin:{l:58,r:65,t:16,b:48},hovermode:'x'});
 }
 function updateFlow(tf,w){
  const sub=subsetBars(tf,w),x=sub.x,ids=sub.ids,xx=ids.map(i=>dtMs(x.t[i]));
@@ -779,7 +1037,7 @@ function exportLargeTrades(){
 }
 async function saveWorkspace(){
  $('status').textContent='Preparing a compressed workspace snapshot…';
- const dates=loadedDates(),meta=workspaceMeta(),first=dates[0]||'empty',last=dates[dates.length-1]||'empty';
+ const dates=loadedDates(),meta=workspaceMeta(new Date().toISOString(),studioViewPayload()),first=dates[0]||'empty',last=dates[dates.length-1]||'empty';
  try{
    if(typeof CompressionStream!=='undefined'&&typeof ReadableStream!=='undefined'){
      // Serialize one day at a time into gzip instead of building the whole
@@ -802,22 +1060,23 @@ async function loadWorkspaceFile(file){
    const stream=file.stream().pipeThrough(new DecompressionStream('gzip'));text=await new Response(stream).text();
  }else text=await file.text();
  let doc=JSON.parse(text);
- // The parsed day objects are retained by DAYS; drop the 57 MB JSON text and the
- // document wrapper before rebuilding so they cannot overlap with the new combined arrays.
- text=null;
  if(doc.format!=='BTCUSD-Market-Mechanics-Lab'||!Array.isArray(doc.days))throw new Error('This is not a compatible Market Mechanics Lab workspace.');
+ const savedView=doc.view&&typeof doc.view==='object'?doc.view:null;
  let added=0;
  for(const entry of doc.days){
    if(!Array.isArray(entry)||entry.length!==2)continue;const [date,day]=entry;
    if(!/^\d{4}-\d{2}-\d{2}$/.test(String(date))||!day||!day.metrics||!day.bars||!day.bars['1m']||!Array.isArray(day.hist)||!day.profile||!day.events)continue;
    DAYS.set(date,day);added++;
  }
- doc=null;
+ // The parsed day objects are retained by DAYS; drop the JSON text and the document
+ // wrapper before rebuilding so they cannot overlap with the new combined arrays.
+ text=null;doc=null;
  if(!added)throw new Error('This workspace contains no valid daily data.');
- rebuildCombined();updateDateBounds(true);refresh();$('status').textContent='Loaded '+added+' day'+(added===1?'':'s')+' from the workspace. Data for matching dates was replaced.';
+ rebuildCombined();updateDateBounds(true);applyViewState(savedView);refresh();$('status').textContent='Loaded '+added+' day'+(added===1?'':'s')+' from the workspace. Data for matching dates was replaced.';
 }
 
 const STUDIO_PANEL_NAMES={priceChart:'Price + large executions',flowChart:'Executed flow',cvdChart:'Cumulative volume delta',profileChart:'Volume-at-price profile',sizeChart:'Trade-size distribution',hourChart:'Activity by hour',eventChart:'Large-trade follow-through',leadLagChart:'Flow lead-lag',regimeChart:'Hourly regime map'};
+function chartDataReady(){return DAYS.size>0&&Number(M.row_count||0)>0;}
 function studioCardFor(id){const p=$(id);return p&&p.closest?p.closest('.chartcard'):null;}
 function resizeStudioCharts(){if(typeof Plotly==='undefined'||!Plotly.Plots||!Plotly.Plots.resize)return;document.querySelectorAll('.plot').forEach(p=>{if(p.offsetParent!==null&&p.data)try{Plotly.Plots.resize(p);}catch(_){}});}
 function applyStudioLayout(){
@@ -826,7 +1085,17 @@ function applyStudioLayout(){
  if(document.body&&document.body.classList){document.body.classList.remove('density-compact','density-standard','density-large');if(density!=='standard')document.body.classList.add('density-'+density);}
  setTimeout(resizeStudioCharts,80);
 }
-function setCardVisibility(id,visible){const card=studioCardFor(id);if(!card)return;card.classList.toggle('panel-hidden',!visible);card.style.display=visible?'':'none';if(typeof updateGuidedSectionHeaders==='function')updateGuidedSectionHeaders();const checkbox=document.querySelector('[data-panel-target="'+id+'"]');if(checkbox&&checkbox.checked!==visible)checkbox.checked=visible;if(visible)setTimeout(()=>{const plotEl=$(id);if(plotEl&&typeof Plotly!=='undefined'&&Plotly.Plots&&Plotly.Plots.resize&&plotEl.data)try{Plotly.Plots.resize(plotEl);}catch(_){}},80);}
+function setCardVisibility(id,visible){
+ const card=studioCardFor(id);if(!card)return;
+ card.classList.toggle('panel-hidden',!visible);
+ if(id===activeChart){
+  if(!visible){const next=CHART_IDS.find(chart=>chart!==id);if(next)setActiveChart(next);}
+  else card.style.display='';
+ }
+ if(typeof updateGuidedSectionHeaders==='function')updateGuidedSectionHeaders();
+ const checkbox=document.querySelector('[data-panel-target="'+id+'"]');if(checkbox&&checkbox.checked!==visible)checkbox.checked=visible;
+ if(visible&&id===activeChart)setTimeout(()=>resizeChart(id),80);
+}
 function createPanelActions(card,plotId){
  const title=card.querySelector('.charttitle');if(!title||title.querySelector('.panel-actions'))return;
  const actions=document.createElement('div');actions.className='panel-actions';
@@ -869,19 +1138,38 @@ function updateFocusAtIndex(k){
 }
 // Throttle (not debounce) the linked cursor so fast replay keeps moving instead of starving.
 function applyFocusLine(){
- focusLineTimer=null;const t=pendingFocusLineTime;
- for(const id of ['priceChart','flowChart','cvdChart']){const p=$(id),card=studioCardFor(id);if(!p||!p.data||(card&&card.classList.contains('panel-hidden'))||typeof Plotly==='undefined'||typeof Plotly.relayout!=='function')continue;try{Plotly.relayout(p,{shapes:[{type:'line',xref:'x',yref:'paper',x0:t,x1:t,y0:0,y1:1,line:{color:C.gold,width:1.25,dash:'dot'}}]});}catch(_){}}
- if(pendingFocusLineTime!==t)scheduleFocusLine();
+ focusLineTimer=null;
+ const t=pendingFocusLineTime!==null?pendingFocusLineTime:(focusTimeSec!==null?dtMs(focusTimeSec):null);
+ if(t===null||!TIME_CHARTS.includes(activeChart))return;
+ const p=$(activeChart);if(!p||!p.data||typeof Plotly==='undefined'||typeof Plotly.relayout!=='function')return;
+ try{Plotly.relayout(p,{shapes:[{type:'line',xref:'x',yref:'paper',x0:t,x1:t,y0:0,y1:1,line:{color:C.gold,width:1.25,dash:'dot'}}]});}catch(_){}
+ if(pendingFocusLineTime!==null&&pendingFocusLineTime!==t)scheduleFocusLine();
 }
 function scheduleFocusLine(){if(focusLineTimer!==null)return;focusLineTimer=setTimeout(applyFocusLine,85);}
 function focusStep(delta){if(!focusIndices.length)return;const slider=$('timeFocus'),k=Math.max(0,Math.min(focusIndices.length-1,Number(slider.value||0)+delta));slider.value=String(k);updateFocusAtIndex(k);}
 function stopReplay(){if(replayHandle!==null){clearInterval(replayHandle);replayHandle=null;}const btn=$('focusPlay');if(btn)btn.textContent='▶ Play';}
 function startReplay(){if(!focusIndices.length)return;stopReplay();const speed=Number($('replaySpeed').value||4),delay=speed>=12?70:speed>=4?220:650;$('focusPlay').textContent='Ⅱ Pause';replayHandle=setInterval(()=>{const slider=$('timeFocus');if(Number(slider.value)>=focusIndices.length-1){stopReplay();return;}focusStep(1);},delay);}
 function toggleReplay(){if(replayHandle!==null)stopReplay();else startReplay();}
+function captureFilterState(){
+ return {startDate:$('startDate').value,endDate:$('endDate').value,start:$('start').value,end:$('end').value,tf:$('tf').value,threshold:$('threshold').value,profileBin:$('profileBin').value,smooth:$('smooth').value,flowLookback:$('flowLookback').value};
+}
+function applyViewState(view){
+ if(!view||typeof view!=='object')return;
+ const filters=view.filters||{};
+ const setValue=(id,value)=>{const el=$(id);if(el&&value!==undefined&&value!==null&&value!=='')el.value=String(value);};
+ setValue('startDate',filters.startDate);setValue('endDate',filters.endDate);
+ setValue('start',filters.start);setValue('end',filters.end);
+ if(['10s','1m','5m','15m','1h'].includes(String(filters.tf)))$('tf').value=String(filters.tf);
+ setValue('threshold',filters.threshold);setValue('profileBin',filters.profileBin);
+ setValue('smooth',filters.smooth);setValue('flowLookback',filters.flowLookback);
+ const focusTime=view.focus&&Number(view.focus.time);
+ if(Number.isFinite(focusTime))focusTimeSec=focusTime;
+ if(view.activeChart&&CHART_LABELS[view.activeChart])setActiveChart(view.activeChart,{persist:false,render:false});
+}
 function studioViewPayload(){
  const orders=Array.from(document.querySelectorAll('.chartgrid,.research-grid')).map(grid=>({grid:grid.classList.contains('research-grid')?'research-grid':'chartgrid',ids:Array.from(grid.querySelectorAll('.plot')).map(p=>p.id)}));
  const visibility={};for(const [id] of Object.entries(STUDIO_PANEL_NAMES)){const c=studioCardFor(id);visibility[id]=!!(c&&!c.classList.contains('panel-hidden'));}
- return {format:'BTCUSD-Market-Mechanics-View',version:1,created_at:new Date().toISOString(),layout:$('panelLayout').value,density:$('chartDensity').value,priceStyle:$('priceStyle').value,priceScale:$('priceScale').value,overlays:{large:!!$('showLarge').checked,ema20:!!$('showEMA20').checked,ema50:!!$('showEMA50').checked,vwap:!!$('showVWAP').checked},visibility,orders};
+ return {format:'BTCUSD-Market-Mechanics-View',version:1,created_at:new Date().toISOString(),layout:$('panelLayout').value,density:$('chartDensity').value,priceStyle:$('priceStyle').value,priceScale:$('priceScale').value,overlays:{large:!!$('showLarge').checked,ema20:!!$('showEMA20').checked,ema50:!!$('showEMA50').checked,vwap:!!$('showVWAP').checked},visibility,orders,activeChart,filters:captureFilterState(),focus:{time:focusTimeSec}};
 }
 function saveViewPreset(){const payload=studioViewPayload();downloadBlob(new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'}),'BTCUSD_Market_Mechanics_View_Preset.json');if($('status'))$('status').textContent='Exported chart layout, visibility and price-overlay settings.';}
 async function loadViewPreset(file){const doc=JSON.parse(await file.text());if(doc.format!=='BTCUSD-Market-Mechanics-View'||doc.version!==1)throw new Error('Unsupported view preset. Choose a preset exported by this dashboard.');
@@ -889,7 +1177,7 @@ async function loadViewPreset(file){const doc=JSON.parse(await file.text());if(d
  const ov=doc.overlays||{};$('showLarge').checked=ov.large!==false;$('showEMA20').checked=!!ov.ema20;$('showEMA50').checked=!!ov.ema50;$('showVWAP').checked=!!ov.vwap;
  for(const [id,vis] of Object.entries(doc.visibility||{}))if(Object.prototype.hasOwnProperty.call(STUDIO_PANEL_NAMES,id))setCardVisibility(id,!!vis);
  for(const order of doc.orders||[]){const grid=document.querySelector(order.grid==='research-grid'?'.research-grid':'.chartgrid');if(!grid||!Array.isArray(order.ids))continue;for(const id of order.ids){const card=studioCardFor(id);if(card&&card.parentElement===grid)grid.appendChild(card);}}
- applyStudioLayout();refresh();if($('status'))$('status').textContent='Loaded view preset. Data is unchanged.';
+ applyViewState(doc);applyStudioLayout();refresh();if($('status'))$('status').textContent='Loaded view preset. Data and active chart restored.';
 }
 function resetStudioSettings(){stopReplay();document.querySelectorAll('.chartcard.is-maximized').forEach(c=>{c.classList.remove('is-maximized');const b=c.querySelector('[data-action="expand"]');if(b){b.textContent='⛶';b.title='Expand chart';b.setAttribute('aria-label','Expand chart');}});if(document.body&&document.body.classList)document.body.classList.remove('has-maximized-panel');$('panelLayout').value='2';$('chartDensity').value='standard';$('priceStyle').value='candles';$('priceScale').value='linear';$('showLarge').checked=true;$('showEMA20').checked=false;$('showEMA50').checked=false;$('showVWAP').checked=false;
  for(const id of Object.keys(STUDIO_PANEL_NAMES))setCardVisibility(id,true);
@@ -903,7 +1191,7 @@ function initInteractiveStudio(){
  ['priceStyle','priceScale','showLarge','showEMA20','showEMA50','showVWAP'].forEach(id=>$(id).addEventListener('change',()=>refreshCharts(['priceChart'])));
  $('timeFocus').addEventListener('input',e=>{stopReplay();updateFocusAtIndex(Number(e.target.value));});$('focusPrev').addEventListener('click',()=>{stopReplay();focusStep(-1);});$('focusNext').addEventListener('click',()=>{stopReplay();focusStep(1);});$('focusPlay').addEventListener('click',toggleReplay);$('replaySpeed').addEventListener('change',()=>{if(replayHandle!==null)startReplay();});
  $('resetStudio').addEventListener('click',resetStudioSettings);$('saveViewPreset').addEventListener('click',saveViewPreset);$('loadViewPreset').addEventListener('click',()=>$('viewPresetFile').click());$('viewPresetFile').addEventListener('change',async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{await loadViewPreset(f);}catch(err){$('status').textContent='View preset failed: '+String(err);}finally{e.target.value='';}});
- if(document.addEventListener)document.addEventListener('keydown',e=>{if(e.key==='Escape'){const open=document.querySelector('.chartcard.is-maximized');if(open){open.classList.remove('is-maximized');if(document.body&&document.body.classList)document.body.classList.remove('has-maximized-panel');const b=open.querySelector('[data-action="expand"]');if(b){b.textContent='⛶';b.title='Expand chart';b.setAttribute('aria-label','Expand chart');}setTimeout(resizeStudioCharts,60);}stopReplay();return;}const tag=(e.target&&e.target.tagName||'').toLowerCase();if(['input','select','textarea','button'].includes(tag))return;if(e.code==='Space'){e.preventDefault();toggleReplay();}else if(e.key==='ArrowLeft'){focusStep(-1);}else if(e.key==='ArrowRight'){focusStep(1);}});
+ if(document.addEventListener)document.addEventListener('keydown',e=>{if(e.key==='Escape'){const drawer=$('filterDrawer');if(drawer&&!drawer.hidden){e.preventDefault();setDrawer(false);return;}const open=document.querySelector('.chartcard.is-maximized');if(open){open.classList.remove('is-maximized');if(document.body&&document.body.classList)document.body.classList.remove('has-maximized-panel');const b=open.querySelector('[data-action="expand"]');if(b){b.textContent='⛶';b.title='Expand chart';b.setAttribute('aria-label','Expand chart');}setTimeout(resizeStudioCharts,60);}stopReplay();return;}const tag=(e.target&&e.target.tagName||'').toLowerCase();if(['input','select','textarea','button'].includes(tag))return;if(e.code==='Space'){e.preventDefault();toggleReplay();}else if(e.key==='ArrowLeft'){focusStep(-1);}else if(e.key==='ArrowRight'){focusStep(1);}});
 }
 
 
@@ -936,18 +1224,157 @@ function initChartGuides(){
 function initGuidedExperience(){
  document.querySelectorAll('[data-question-mode]').forEach(btn=>btn.addEventListener('click',()=>applyQuestionPreset(btn.dataset.questionMode,true)));
  const advanced=$('toggleAdvanced');if(advanced)advanced.addEventListener('click',()=>{const open=!document.body.classList.contains('show-advanced');document.body.classList.toggle('show-advanced',open);advanced.setAttribute('aria-expanded',open?'true':'false');advanced.innerHTML=open?'Hide advanced filters <span aria-hidden="true">⌃</span>':'Show advanced filters <span aria-hidden="true">⌄</span>';if(open){const first=document.querySelector('.advanced-control input,.advanced-control select');if(first&&first.focus)first.focus({preventScroll:true});}});
- initChartGuides();applyQuestionPreset('price-flow',false);updateGuidedSectionHeaders();
+ initChartGuides();updateGuidedSectionHeaders();
+ document.body.classList.add('show-advanced');
 }
 
+function setEmptyKpis(hint){
+ for(const id of ['kReturn','kRange','kTrades','kSize','kDelta','kImb'])setMetric(id,'—','neutral');
+ for(const id of ['kReturnHint','kRangeHint','kTradesHint','kSizeHint','kDeltaHint','kImbHint'])$(id).textContent=hint;
+}
+function windowHasBars(w){
+ const x=B['1m'];if(!x||!x.t||!x.t.length||!w)return false;
+ return upperBoundTime(x.t,w.e)>lowerBoundTime(x.t,w.s);
+}
+function updateEmptyState(w){
+ const empty=$('emptyState');if(!empty)return;
+ const noData=!chartDataReady(),noWindow=!noData&&w&&!windowHasBars(w);
+ empty.hidden=!(noData||noWindow);
+ const title=$('emptyTitle'),text=$('emptyText'),importBtn=$('emptyImport'),resetBtn=$('emptyReset');
+ if(noData){
+  if(title)title.textContent='No trade data loaded';
+  if(text)text.textContent='Import a Binance BTCUSD, BTCUSDT or BTCUSD_PERP daily CSV or monthly ZIP to build the charts. Parsing and calculations stay on this device.';
+  if(importBtn)importBtn.hidden=false;
+  if(resetBtn)resetBtn.hidden=true;
+ }else if(noWindow){
+  if(title)title.textContent='No bars in this window';
+  if(text)text.textContent='The selected date/time range has no minute bars. Reset to the loaded range or adjust the filters.';
+  if(importBtn)importBtn.hidden=true;
+  if(resetBtn)resetBtn.hidden=false;
+ }
+}
+function setActiveChart(id,{persist=true,render=true}={}){
+ if(!CHART_LABELS[id])return;
+ activeChart=id;
+ for(const chartId of CHART_IDS){
+  const card=studioCardFor(chartId);if(!card)continue;
+  const on=chartId===id;
+  card.classList.toggle('ws-active',on);
+  if(on)card.classList.remove('panel-hidden');
+  card.style.display=on?'':'none';
+  card.setAttribute('aria-hidden',on?'false':'true');
+ }
+ document.querySelectorAll('#chartTabs [data-chart]').forEach(tab=>{
+  const on=tab.dataset.chart===id;
+  tab.setAttribute('aria-selected',on?'true':'false');
+  tab.tabIndex=on?0:-1;
+ });
+ const select=$('chartSelect');if(select)select.value=id;
+ updateEmptyState(currentRange);
+ if(render&&chartDataReady()){
+  if(dirtyCharts.has(id)||!renderedCharts.has(id))refreshCharts([id]);
+  else requestAnimationFrame(()=>{resizeChart(id);applyFocusLine();});
+ }
+ if(persist&&typeof window.__labPersistView==='function')window.__labPersistView();
+}
+function setDrawer(open){
+ const drawer=$('filterDrawer'),scrim=$('drawerScrim'),button=$('headerFilters');
+ if(!drawer)return;
+ drawer.hidden=!open;
+ if(scrim)scrim.hidden=!open;
+ if(button)button.setAttribute('aria-expanded',String(open));
+ document.body.classList.toggle('drawer-open',open);
+ if(open){
+  document.body.classList.add('show-advanced');
+  const first=drawer.querySelector('select,input,button');
+  if(first&&first.focus)first.focus({preventScroll:true});
+ }else if(button&&button.focus)button.focus({preventScroll:true});
+ scheduleChartResize(activeChart);
+}
+function initWorkstation(){
+ const tabs=$('chartTabs'),select=$('chartSelect');
+ if(tabs){
+  tabs.innerHTML='';
+  for(const chart of WORKSTATION_CHARTS){
+   const button=document.createElement('button');
+   button.type='button';button.id='tab-'+chart.id;button.dataset.chart=chart.id;
+   button.textContent=chart.label;button.setAttribute('role','tab');
+   button.setAttribute('aria-controls',chart.id);button.setAttribute('aria-selected','false');button.tabIndex=-1;
+   tabs.appendChild(button);
+  }
+  tabs.addEventListener('click',event=>{const button=event.target.closest('[data-chart]');if(button)setActiveChart(button.dataset.chart);});
+  tabs.addEventListener('keydown',event=>{
+   const current=CHART_IDS.indexOf(activeChart);let next=current;
+   if(event.key==='ArrowRight'||event.key==='ArrowDown')next=(current+1)%CHART_IDS.length;
+   else if(event.key==='ArrowLeft'||event.key==='ArrowUp')next=(current-1+CHART_IDS.length)%CHART_IDS.length;
+   else if(event.key==='Home')next=0;
+   else if(event.key==='End')next=CHART_IDS.length-1;
+   else return;
+   event.preventDefault();setActiveChart(CHART_IDS[next]);
+   const button=tabs.querySelector('[data-chart="'+CHART_IDS[next]+'"]');if(button)button.focus();
+  });
+ }
+ if(select){
+  select.innerHTML='';
+  for(const chart of WORKSTATION_CHARTS){const option=document.createElement('option');option.value=chart.id;option.textContent=chart.label;select.appendChild(option);}
+  select.addEventListener('change',()=>setActiveChart(select.value));
+ }
+ const headerImport=$('headerImport');if(headerImport)headerImport.addEventListener('click',()=>{if(importRunning)requestImportCancel();else $('tradeFiles').click();});
+ const emptyImport=$('emptyImport');if(emptyImport)emptyImport.addEventListener('click',()=>$('tradeFiles').click());
+ const emptyReset=$('emptyReset');if(emptyReset)emptyReset.addEventListener('click',()=>setQuickRange('all'));
+ const filters=$('headerFilters');if(filters)filters.addEventListener('click',()=>setDrawer($('filterDrawer').hidden));
+ const close=$('drawerClose');if(close)close.addEventListener('click',()=>setDrawer(false));
+ const scrim=$('drawerScrim');if(scrim)scrim.addEventListener('click',()=>setDrawer(false));
+ const save=$('headerSave');if(save)save.addEventListener('click',saveWorkspace);
+ const restore=$('headerRestore');if(restore)restore.addEventListener('click',()=>$('workspaceFile').click());
+ const drawerCancel=$('drawerCancelImport');if(drawerCancel)drawerCancel.addEventListener('click',requestImportCancel);
+ const fileInput=$('tradeFiles');if(fileInput){fileInput.tabIndex=-1;fileInput.setAttribute('aria-hidden','true');}
+ if(window.ResizeObserver){const stage=$('chartStage');if(stage)new ResizeObserver(()=>scheduleChartResize(activeChart)).observe(stage);}
+ document.addEventListener('keydown',event=>{
+  const tag=(event.target&&event.target.tagName||'').toLowerCase();
+  if(['input','select','textarea'].includes(tag)||event.defaultPrevented)return;
+  if(event.key==='['||event.key===']'){
+   const current=CHART_IDS.indexOf(activeChart);
+   const next=(current+(event.key===']'?1:CHART_IDS.length-1))%CHART_IDS.length;
+   event.preventDefault();setActiveChart(CHART_IDS[next]);
+  }
+ });
+ setActiveChart('priceChart',{persist:false,render:false});
+}
 function performRefresh(onlyIds=null){
  const requestId=++refreshRequestId;const w=getWindow();if(w.e<w.s){$('status').textContent='The end date and time must be after the start date and time.';return;}
  currentRange=w;const threshold=Number($('threshold').value),tf=$('tf').value;
  $('thresholdValue').textContent=nfmt(threshold);
- if(!onlyIds){updateFocusBounds(currentRange);if(!updateKpis(currentRange))return;}
+ if(!onlyIds){
+  updateFocusBounds(currentRange);
+  if(chartDataReady())updateKpis(currentRange);else setEmptyKpis('Load data to calculate this metric');
+ }
+ updateEmptyState(currentRange);
+ if(!chartDataReady()){
+  if(!onlyIds&&!importRunning)$('status').textContent='No trade data loaded. Add a CSV or ZIP file to begin.';
+  return;
+ }
+ if(!windowHasBars(currentRange)){
+  if(!onlyIds&&!importRunning)$('status').textContent='No minute bars in this window. Widen the time range.';
+  return;
+ }
+ // A successful render clears a stale import/window error left in the status line.
+ const statusEl=$('status');
+ if(statusEl&&/^(Import failed|No minute bars|The end date)/.test(statusEl.textContent))statusEl.textContent='';
  const jobs=[['priceChart',()=>updatePrice(tf,currentRange,threshold)],['flowChart',()=>updateFlow(tf,currentRange)],['cvdChart',()=>updateCvd(tf,currentRange)],['profileChart',()=>updateProfile(currentRange)],['sizeChart',()=>updateSizeHist(currentRange)],['hourChart',()=>updateHours(currentRange)],['eventChart',()=>updateEvents(currentRange,threshold)],['leadLagChart',()=>updateLeadLag(currentRange)],['regimeChart',()=>updateRegimeHeatmap(currentRange)]];
- const selected=onlyIds?jobs.filter(([id])=>onlyIds.has(id)):jobs;
- const visibleJobs=selected.filter(([id])=>{const card=studioCardFor(id);return !card||(!card.classList.contains('panel-hidden')&&card.style.display!=='none');});
- (async()=>{for(const [,draw] of visibleJobs){if(requestId!==refreshRequestId)return;await new Promise(resolve=>requestAnimationFrame(resolve));if(requestId!==refreshRequestId)return;await draw();}if(requestId!==refreshRequestId)return;if(!onlyIds&&focusIndices.length){const k=Number($('timeFocus').value||0);updateFocusAtIndex(k);}})().catch(err=>{if(requestId===refreshRequestId){$('status').textContent='A chart could not be rendered: '+String(err);console.error(err);}});
+ if(!onlyIds){for(const [id] of jobs)dirtyCharts.add(id);}else{for(const id of onlyIds)dirtyCharts.add(id);}
+ if(onlyIds&&!onlyIds.has(activeChart))return;
+ const activeJob=jobs.find(([id])=>id===activeChart);if(!activeJob)return;
+ (async()=>{
+  if(requestId!==refreshRequestId)return;
+  await new Promise(resolve=>requestAnimationFrame(resolve));
+  if(requestId!==refreshRequestId)return;
+  await activeJob[1]();
+  renderedCharts.add(activeChart);dirtyCharts.delete(activeChart);
+  if(requestId!==refreshRequestId)return;
+  scheduleChartResize(activeChart);
+  if(focusIndices.length){const k=Number($('timeFocus').value||0);updateFocusAtIndex(k);}
+ })().catch(err=>{if(requestId===refreshRequestId){$('status').textContent='A chart could not be rendered: '+String(err);console.error(err);}});
 }
 function scheduleRefresh(ids,full){
  if(full)pendingFullRefresh=true;else{pendingRefreshIds=pendingRefreshIds||new Set();for(const id of ids)pendingRefreshIds.add(id);}
@@ -955,7 +1382,8 @@ function scheduleRefresh(ids,full){
  refreshTimer=setTimeout(()=>{refreshTimer=null;const runFull=pendingFullRefresh,runIds=pendingRefreshIds;pendingFullRefresh=false;pendingRefreshIds=null;performRefresh(runFull?null:runIds);},65);
 }
 function refresh(){scheduleRefresh(null,true);}
-function refreshCharts(ids){scheduleRefresh(ids,false);}
+function refreshCharts(ids){for(const id of ids)dirtyCharts.add(id);scheduleRefresh(ids,false);}
+window.__renderWorkstationChart=id=>setActiveChart(id);
 $('cancelImport').addEventListener('click',requestImportCancel);
 $('tf').addEventListener('change',refresh);$('start').addEventListener('change',()=>{document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('end').addEventListener('change',()=>{document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('startDate').addEventListener('change',()=>{if($('startDate').value>$('endDate').value)$('endDate').value=$('startDate').value;document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('endDate').addEventListener('change',()=>{if($('endDate').value<$('startDate').value)$('startDate').value=$('endDate').value;document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});
 // Only redraw the charts that actually depend on each control.
@@ -964,33 +1392,19 @@ document.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',
 $('importFolder').addEventListener('click',()=>$('tradeFolder').click());$('tradeFolder').addEventListener('change',e=>importTradeFiles([...e.target.files],'tradeFolder'));$('exportBars').addEventListener('click',exportSelectedBars);$('exportEvents').addEventListener('click',exportLargeTrades);$('saveWorkspace').addEventListener('click',saveWorkspace);$('loadWorkspace').addEventListener('click',()=>$('workspaceFile').click());$('workspaceFile').addEventListener('change',async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;try{$('status').textContent='Loading workspace…';await loadWorkspaceFile(f);}catch(err){$('status').textContent='Workspace import failed: '+String(err);}finally{e.target.value='';}});
 $('reset').addEventListener('click',()=>{$('tf').value='1m';$('start').value='00:00';$('end').value='23:59';$('threshold').value='672';$('profileBin').value='10';$('smooth').value='10';$('flowLookback').value='5';setQuickRange('all');});
 
-function initMobileQuickActions(){
- bindMobileQuickActions({
-  bar:$('mobileActionBar'),
-  documentRef:document,
-  windowRef:window,
-  isImportRunning:()=>importRunning,
-  requestImportCancel,
-  fileInput:$('tradeFiles'),
-  applyQuestionPreset,
-  resizeStudioCharts,
-  advancedToggle:$('toggleAdvanced')
- });
-}
 let mobileResizeFrame=0;
 function scheduleResponsiveResize(){
  if(mobileResizeFrame)return;
- const run=()=>{mobileResizeFrame=0;resizeStudioCharts();};
+ const run=()=>{mobileResizeFrame=0;resizeStudioCharts();resizeChart(activeChart);};
  if(typeof requestAnimationFrame==='function')mobileResizeFrame=requestAnimationFrame(run);else setTimeout(run,100);
 }
 window.addEventListener('resize',scheduleResponsiveResize,{passive:true});
 window.addEventListener('orientationchange',()=>setTimeout(scheduleResponsiveResize,180),{passive:true});
 if(window.visualViewport)window.visualViewport.addEventListener('resize',scheduleResponsiveResize,{passive:true});
 
-initMobileQuickActions();updateDateBounds(true);rebuildCombined();initInteractiveStudio();initGuidedExperience();setQuickRange('all');
+initWorkstation();updateDateBounds(true);rebuildCombined();initInteractiveStudio();initGuidedExperience();setQuickRange('all');refresh();
 })();
 </script>
-
 <script>
 (function(){
  let pendingInstall=null;
@@ -1004,6 +1418,5 @@ initMobileQuickActions();updateDateBounds(true);rebuildCombined();initInteractiv
  }
 })();
 </script>
-
 </body>
 </html>

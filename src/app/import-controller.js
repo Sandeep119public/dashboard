@@ -8,13 +8,23 @@ export async function readTradeFiles(files, {
   shouldCancel = () => false,
   onProgress = () => {},
   barSteps,
-  histLabels
+  histLabels,
+  expectedSymbol,
+  acceptedSymbols
 } = {}) {
   const selected = Array.from(files || []).filter(file => /\.(csv|zip)$/i.test(file.name || ''));
   if (!selected.length) throw new Error('No CSV or ZIP trade files were found in that selection.');
 
   const incoming = new Map();
   const progress = (rows, date, name) => onProgress({ type: 'rows', rows, date, name });
+  const bytes = (bytesRead, totalBytes, name, rows) => onProgress({ type: 'bytes', bytesRead, totalBytes, name, rows });
+  const parserOptions = {
+    barSteps,
+    histLabels,
+    expectedSymbol,
+    acceptedSymbols,
+    onBytes: bytes
+  };
   const acceptDays = days => {
     for (const [date, obj] of days) {
       if (incoming.has(date)) {
@@ -32,12 +42,12 @@ export async function readTradeFiles(files, {
         if (isCancelled(shouldCancel)) throw new Error('Import cancelled by user.');
         onProgress({ type: 'entry', fileName: file.name, entryName: entry.name, uncompressedBytes: entry.uncompSize });
         const stream = await zipEntryStream(file, entry);
-        const days = await parseCsvStreamByDay(stream, entry.name, progress, shouldCancel, { barSteps, histLabels });
+        const days = await parseCsvStreamByDay(stream, entry.name, progress, shouldCancel, { ...parserOptions, totalBytes: entry.uncompSize || 0 });
         acceptDays(days);
       }
     } else {
       onProgress({ type: 'csv', fileName: file.name });
-      const days = await parseCsvStreamByDay(file.stream(), file.name, progress, shouldCancel, { barSteps, histLabels });
+      const days = await parseCsvStreamByDay(file.stream(), file.name, progress, shouldCancel, { ...parserOptions, totalBytes: file.size || 0 });
       acceptDays(days);
     }
   }

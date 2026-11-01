@@ -171,3 +171,42 @@ A `file://` banner explains that the app must be served over HTTP because browse
 - GitHub push and deployment could not be verified because the local `gh` token is invalid; no CI result or live deployment is claimed.
 - Physical Android device testing, battery/thermal behavior and low-memory device behavior remain outstanding.
 - The source still does not define buyer-role semantics, timestamp timezone or size units; order-book liquidity cannot be reconstructed from trade prints.
+
+## Single-screen workstation hardening (2026-11-01)
+
+Branch: `feature/workstation-hardening` (based on the open workstation branch; `main` and the pull request were not merged or overwritten). Commits: `3f1739e` (importer, workspace view, tests) and `c42377f` (single-screen workstation, docs).
+
+### Layout and interaction
+
+- Replaced the stacked controls/chart sections with one viewport-height shell: header actions, status line, chart tabs/select, KPI strip, flexible chart stage and compact replay footer. Filters, imports, exports, chart settings and notes now live in an overlay drawer opened from **Filters**.
+- Only the active chart is displayed. All nine charts (Price, Flow, CVD, Volume profile, Trade sizes, Hourly activity, Large trades, Lead/lag, Regimes) were verified after import.
+- Plotly containers now use `autosize`, flex to the available stage height and are resized after tab switches, drawer changes and viewport changes. The fixed 455 px price layout height was removed.
+- Added dirty-chart tracking: a full refresh renders only the active chart; switching to a stale chart renders just that chart; switching to an already-rendered chart only resizes and re-applies the linked cursor. A cached nine-chart cycle made **0 `Plotly.react` calls**.
+- Added keyboard tab navigation (arrows/Home/End), `[`/`]` chart cycling, Escape-to-close-drawer, and focus restoration to the Filters button.
+- Added a real empty state for no data and for an empty date/time window, with an import action and a reset-range action.
+- Mobile header actions and chart tabs use 44 px touch targets; short landscape hides the KPI strip and stamp so the chart keeps usable height. Safe-area insets are preserved.
+
+### Import robustness
+
+- Accepted symbols: BTCUSD, BTCUSDT and BTCUSD_PERP. Mixed-symbol files are still rejected.
+- Headerless 4/5-column files, `qty`/`quantity`, `time`/`transact_time`/`trade_time`, `side`, `symbol`/`product`, `buy`/`sell` aliases, and repeated header blocks in concatenated daily exports are supported.
+- Streaming import now reports bytes as well as rows, and cancellation is checked every 25,000 rows. Empty, malformed, corrupt, cancelled, overlapping and re-imported files leave previously loaded dates intact or replace matching dates without double-counting.
+- Workspace exports now include an optional `view` object (active chart, filters, focus) in both the streaming-gzip and plain-JSON paths. Older workspaces without `view` still load. Restoring a workspace re-applies the active chart and filters.
+
+### Tests and benchmarks
+
+- Node suite: **75 passing tests, 0 failing**. This is the existing 57 importer/UI/calculation tests plus 18 new data-integrity tests covering accepted symbols, headerless layouts, repeated headers, empty/corrupt input, byte progress, cancellation, duplicate and out-of-order timestamps, midnight/month boundaries, missing intervals, OHLC/CVD/profile/histogram/event integrity, workspace view round-trips and parser reuse.
+- Parser benchmark, 500,000 canonical rows, one-minute aggregation, alternating runs: previous parser 305–320 ms; hardened parser 327–340 ms (about 6–7% slower on the mean, roughly 1.5 million rows/s). Outputs were identical (1,440 bars, total size 2,499,990) and retained heap was the same or slightly lower.
+- Browser import of the deterministic three-day ZIP (25,920 prints): **112–121 ms** at 1280×720.
+- First render of a not-yet-rendered chart: about 90–120 ms (flow about 224 ms). Cached tab switches: 0 `Plotly.react` calls.
+- Viewport sweep: 360×800, 390×844, 412×915, 768×1024, 1280×720, 1920×1080, and landscape 800×360, 844×390, 915×412. Every case had `scrollWidth === innerWidth`, the header actions and replay footer inside the viewport, and a populated Plotly canvas.
+- Import variants verified in Chromium: headerless 4-column with buy/sell aliases, headerless BTCUSDT 5-column, repeated header blocks across two days, two CSV files in one selection, re-import, empty CSV, malformed row, cancellation of a 400,000-row CSV, intraday 09:00–10:00 filtering, and workspace save/restore with the active chart preserved.
+- No page errors, failed requests or console errors were observed. The only console output was Plotly's Canvas2D `willReadFrequently` warning.
+
+### Limitations
+
+- The physical Samsung Galaxy A35 was not available; all mobile checks used Chromium emulation with desktop-class hardware. Touch feel, thermal behavior, low-memory behavior and real Android browser quirks remain unverified.
+- The full 7.44-million-row August archive was not re-imported in this pass; browser checks used a deterministic 25,920-row three-day archive and the parser benchmark used 500,000 generated rows. The earlier August equivalence results still apply to the unchanged aggregation path.
+- Headerless inference assumes ISO timestamps and that the first two positive numeric columns after the timestamp/role/symbol are price and size. Files with an extra numeric ID column before price may need a header.
+- The three-day fixture is synthetic and deterministic; it validates mechanics, not market conclusions.
+- No pull request was merged and `main` was not modified.

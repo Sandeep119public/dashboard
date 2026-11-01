@@ -6,26 +6,32 @@
 const WORKSPACE_FORMAT = 'BTCUSD-Market-Mechanics-Lab';
 const WORKSPACE_VERSION = 1;
 
-function workspaceMeta(exportedAt = new Date().toISOString()) {
-  return { format: WORKSPACE_FORMAT, version: WORKSPACE_VERSION, exported_at: exportedAt };
+function workspaceMeta(exportedAt = new Date().toISOString(), view = null) {
+  const meta = { format: WORKSPACE_FORMAT, version: WORKSPACE_VERSION, exported_at: exportedAt };
+  if (view && typeof view === 'object') meta.view = view;
+  return meta;
 }
 
 function workspaceJsonText(days, meta = workspaceMeta()) {
-  return JSON.stringify({
+  const doc = {
     format: meta.format || WORKSPACE_FORMAT,
     version: meta.version || WORKSPACE_VERSION,
-    exported_at: meta.exported_at || new Date().toISOString(),
-    days: [...days.entries()]
-  });
+    exported_at: meta.exported_at || new Date().toISOString()
+  };
+  if (meta.view && typeof meta.view === 'object') doc.view = meta.view;
+  doc.days = [...days.entries()];
+  return JSON.stringify(doc);
 }
 
 // ReadableStream<Uint8Array> of the workspace JSON, serialized one day at a time.
 function createWorkspaceJsonStream(days, meta = workspaceMeta()) {
-  const head = JSON.stringify({
+  const headDoc = {
     format: meta.format || WORKSPACE_FORMAT,
     version: meta.version || WORKSPACE_VERSION,
     exported_at: meta.exported_at || new Date().toISOString()
-  });
+  };
+  if (meta.view && typeof meta.view === 'object') headDoc.view = meta.view;
+  const head = JSON.stringify(headDoc);
   const prefix = head.slice(0, -1) + ',"days":[';
   const encoder = new TextEncoder();
   const iterator = days.entries();

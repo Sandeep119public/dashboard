@@ -1,4 +1,4 @@
-name: Importer regression tests
+name: Importer and data-integrity tests
 
 on:
   push:
@@ -33,4 +33,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node --test tests/importer-regression.test.mjs
+      - run: node --test tests

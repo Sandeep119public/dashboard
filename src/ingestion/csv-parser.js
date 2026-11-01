@@ -133,25 +133,81 @@ function roleFromLine(line,start){
  return -1;
 }
 
-function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_LABELS,expectedSymbol='BTCUSD'}={}){
- const result=new Map();let lineNo=0,header=null,idx={},currentDate=null,rows=new PackedTradeRows(),rowCount=0,ordered=true,lastSec=-Infinity,fastLayout=false;
+function normalizeSymbolList(value){
+ const list=Array.isArray(value)?value:[value];
+ const out=[];
+ for(const item of list){const symbol=String(item||'').trim().toUpperCase();if(symbol&&!out.includes(symbol))out.push(symbol);}
+ return out.length?out:['BTCUSD'];
+}
+function normalizeCell(value){return String(value===null||value===undefined?'':value).trim().toLowerCase().replace(/^\ufeff/,'');}
+function looksLikeTimestamp(value){return /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$/i.test(String(value||'').trim());}
+const HEADER_TOKENS=new Set(['price','size','qty','quantity','timestamp','time','transact_time','trade_time','buyer_role','side','product_symbol','symbol','product']);
+// A header row contains no digits, while every trade row has a numeric price or
+// timestamp. Scanning a short prefix avoids splitting or regex-testing every row
+// just to notice a repeated header block (concatenated daily exports).
+function mayBeHeader(line){
+ const n=Math.min(line.length,24);
+ for(let i=0;i<n;i++){const c=line.charCodeAt(i);if(c>=48&&c<=57)return false;}
+ return true;
+}
+function looksLikeHeader(cells){
+ const normalized=cells.map(normalizeCell);
+ const matches=normalized.filter(cell=>HEADER_TOKENS.has(cell));
+ return matches.length>=2&&matches.some(cell=>['price','size','qty','quantity','timestamp','time','transact_time','trade_time'].includes(cell));
+}
+function parseRole(value){
+ const role=normalizeCell(value);
+ if(role==='taker'||role==='buy')return 1;
+ if(role==='maker'||role==='sell')return 0;
+ return -1;
+}
+// Headerless Binance exports: locate the timestamp, buyer role and symbol columns,
+// then use the first two remaining positive numeric columns as price and size.
+function inferHeaderlessLayout(cells,acceptedSymbols){
+ const values=cells.map(value=>String(value===null||value===undefined?'':value).trim());
+ const timestamp=values.findIndex(looksLikeTimestamp);
+ const role=values.findIndex(value=>parseRole(value)>=0);
+ const product=values.findIndex(value=>{const symbol=value.toUpperCase();return acceptedSymbols.includes(symbol)||/^BTC[A-Z0-9_]*$/.test(symbol);});
+ const numeric=[];
+ for(let i=0;i<values.length;i++){
+  if(i===timestamp||i===role||i===product)continue;
+  const number=Number(values[i]);
+  if(Number.isFinite(number)&&number>0)numeric.push(i);
+ }
+ if(timestamp<0||role<0||numeric.length<2)return null;
+ return {price:numeric[0],size:numeric[1],timestamp,role,product};
+}
+function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_LABELS,expectedSymbol='BTCUSD',acceptedSymbols}={}){
+ const symbols=normalizeSymbolList(acceptedSymbols||expectedSymbol);
+ const result=new Map();let lineNo=0,header=null,idx=null,layoutReady=false,headerless=false,fastLayout=false,currentDate=null,rows=new PackedTradeRows(),rowCount=0,ordered=true,lastSec=-Infinity;
  const flush=()=>{if(currentDate!==null&&rows.length){result.set(currentDate,aggregateDay(currentDate,rows,ordered,barSteps,histLabels));rows=new PackedTradeRows();ordered=true;lastSec=-Infinity;}};
  const commit=(date,sec,price,size,role)=>{
   if(currentDate===null)currentDate=date;
   if(date!==currentDate){flush();if(result.has(date))throw new Error('Trades for '+date+' are not contiguous after timestamp normalization. Import CSV files with trades sorted chronologically.');currentDate=date;}
   if(sec<lastSec)ordered=false;lastSec=sec;rows.push(sec,price,size,role);rowCount++;
  };
+ const symbolAllowed=symbol=>{const normalized=String(symbol||'').trim().toUpperCase();return !normalized||symbols.includes(normalized);};
+ // Allocation-free symbol check for the fast path: compare the token in place.
+ const symbolAllowedAt=(line,p1)=>{for(let i=0;i<symbols.length;i++){const sym=symbols[i];if(p1===sym.length&&line.startsWith(sym))return true;}return false;};
+ const setHeader=cells=>{
+  header=cells.map(normalizeCell);
+  const column=(...names)=>{for(const name of names){const index=header.indexOf(name);if(index>=0)return index;}return -1;};
+  idx={price:column('price'),size:column('size','qty','quantity'),timestamp:column('timestamp','time','transact_time','trade_time'),role:column('buyer_role','side'),product:column('product_symbol','symbol','product')};
+  if(idx.price<0||idx.size<0||idx.timestamp<0||idx.role<0)throw new Error('The CSV must contain the price, size, timestamp, and buyer_role columns.');
+  fastLayout=idx.product===0&&idx.price===1&&idx.size===2&&idx.timestamp===3&&idx.role===4&&header.length===5;
+  layoutReady=true;
+ };
  const pushGeneralLine=line=>{
   const a=line.indexOf('"')<0?line.split(','):parseCsvRow(line);
   if(a.length<=Math.max(idx.price,idx.size,idx.timestamp,idx.role,idx.product))throw new Error('Malformed CSV row '+lineNo+': one or more required fields are missing.');
   const stamp=String(a[idx.timestamp]||'').trim();if(!stamp)throw new Error('Missing timestamp at CSV row '+lineNo+'.');
   parseTradeTimestamp(stamp);
-  const price=Number(String(a[idx.price]||'').trim()),size=Number(String(a[idx.size]||'').trim()),roleText=String(a[idx.role]||'').trim().toLowerCase();
+  const price=Number(String(a[idx.price]||'').trim()),size=Number(String(a[idx.size]||'').trim()),role=parseRole(a[idx.role]);
   if(!Number.isFinite(price)||price<=0)throw new Error('Invalid price at CSV row '+lineNo+'. Prices must be positive numbers.');
   if(!Number.isFinite(size)||size<=0)throw new Error('Invalid size at CSV row '+lineNo+'. Sizes must be positive numbers.');
-  if(roleText!=='taker'&&roleText!=='maker')throw new Error('Unknown buyer_role "'+roleText+'" at CSV row '+lineNo+'. Expected maker or taker; the file was not imported to avoid silently misclassifying flow.');
-  if(idx.product>=0){const symbol=String(a[idx.product]||'').trim().toUpperCase();if(symbol!==expectedSymbol)throw new Error('This dashboard is for BTCUSD, but CSV row '+lineNo+' has product_symbol="'+symbol+'". Mixed or different symbols are not combined.');}
-  commit(parsedDate,parsedSec,price,size,roleText==='taker'?1:0);
+  if(role<0)throw new Error('Unknown buyer_role "'+String(a[idx.role]||'').trim().toLowerCase()+'" at CSV row '+lineNo+'. Expected maker or taker; the file was not imported to avoid silently misclassifying flow.');
+  if(idx.product>=0){const symbol=String(a[idx.product]||'').trim().toUpperCase();if(!symbolAllowed(symbol))throw new Error('This dashboard is for BTCUSD, BTCUSDT or BTCUSD_PERP, but CSV row '+lineNo+' has product_symbol="'+symbol+'". Mixed or different symbols are not combined.');}
+  commit(parsedDate,parsedSec,price,size,role);
  };
  const pushFastLine=line=>{
   const p1=line.indexOf(',');if(p1<0)return false;
@@ -167,9 +223,9 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   if(!Number.isFinite(size)||size<=0)throw new Error('Invalid size at CSV row '+lineNo+'. Sizes must be positive numbers.');
   const role=roleFromLine(line,p4+1);
   if(role<0){const roleText=String(line.slice(p4+1)||'').trim().toLowerCase();throw new Error('Unknown buyer_role "'+roleText+'" at CSV row '+lineNo+'. Expected maker or taker; the file was not imported to avoid silently misclassifying flow.');}
-  if(idx.product>=0&&(p1!==expectedSymbol.length||!line.startsWith(expectedSymbol))){
+  if(idx.product>=0&&!symbolAllowedAt(line,p1)){
    const symbol=String(line.slice(0,p1)||'').trim().toUpperCase();
-   if(symbol!==expectedSymbol)throw new Error('This dashboard is for BTCUSD, but CSV row '+lineNo+' has product_symbol="'+symbol+'". Mixed or different symbols are not combined.');
+   if(!symbolAllowed(symbol))throw new Error('This dashboard is for BTCUSD, BTCUSDT or BTCUSD_PERP, but CSV row '+lineNo+' has product_symbol="'+symbol+'". Mixed or different symbols are not combined.');
   }
   commit(parsedDate,parsedSec,price,size,role);
   return true;
@@ -180,18 +236,19 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   if(!line)return;
   if(line.charCodeAt(0)<=32&&!line.trim())return;
   lineNo++;
-  if(!header){
-   const head=line.indexOf('"')<0?line.split(','):parseCsvRow(line);
-   header=head.map(x=>x.trim().toLowerCase());
-   idx={price:header.indexOf('price'),size:header.indexOf('size'),timestamp:header.indexOf('timestamp'),role:header.indexOf('buyer_role'),product:header.indexOf('product_symbol')};
-   if(idx.price<0||idx.size<0||idx.timestamp<0||idx.role<0)throw new Error('The CSV must contain the price, size, timestamp, and buyer_role columns.');
-   fastLayout=idx.product===0&&idx.price===1&&idx.size===2&&idx.timestamp===3&&idx.role===4&&header.length===5;
+  if(!layoutReady){
+   const cells=line.indexOf('"')<0?line.split(','):parseCsvRow(line);
+   if(looksLikeHeader(cells)){setHeader(cells);return;}
+   const inferred=inferHeaderlessLayout(cells,symbols);
+   if(!inferred)throw new Error('The CSV must contain the price, size, timestamp, and buyer_role columns, or use a supported headerless column order.');
+   idx=inferred;headerless=true;fastLayout=false;layoutReady=true;
+  }else if(mayBeHeader(line)&&looksLikeHeader(line.indexOf('"')<0?line.split(','):parseCsvRow(line))){
    return;
   }
   if(fastLayout&&line.indexOf('"')<0&&pushFastLine(line))return;
   pushGeneralLine(line);
  };
- return {pushLine,finish(){flush();if(!result.size)throw new Error('No valid trade rows were found in this file.');return result;},get rowCount(){return rowCount;},get currentDate(){return currentDate;},get lineNo(){return lineNo;}};
+ return {pushLine,finish(){flush();if(!result.size)throw new Error('No valid trade rows were found in this file.');return result;},get rowCount(){return rowCount;},get currentDate(){return currentDate;},get headerless(){return headerless;},get lineNo(){return lineNo;}};
 }
 function parseCsvByDay(text,options={}){
  const parser=createCsvDayParser(options);let pos=0;
@@ -200,18 +257,31 @@ function parseCsvByDay(text,options={}){
 }
 const yieldToUi=()=>new Promise(resolve=>setTimeout(resolve,0));
 async function parseCsvStreamByDay(readable,sourceName,onProgress,shouldCancel=()=>false,options={}){
- const parser=createCsvDayParser(options),reader=readable.getReader(),decoder=new TextDecoder();let pending='',lastYieldRows=0,done=false;
+ const parser=createCsvDayParser(options),reader=readable.getReader(),decoder=new TextDecoder();
+ const onBytes=typeof options.onBytes==='function'?options.onBytes:null,totalBytes=Number(options.totalBytes)||0;
+ let pending='',lastYieldRows=0,bytesRead=0,lastByteReport=0,done=false;
  try{
-  while(!done){if(shouldCancel())throw new Error('Import cancelled by user.');const item=await reader.read();done=item.done;if(item.value)pending+=decoder.decode(item.value,{stream:!done});else if(done)pending+=decoder.decode();
+  while(!done){
+   if(shouldCancel())throw new Error('Import cancelled by user.');
+   const item=await reader.read();done=item.done;
+   if(item.value){
+    bytesRead+=item.value.byteLength;
+    pending+=decoder.decode(item.value,{stream:!done});
+    // Report at most once per mebibyte so DOM updates never dominate parsing.
+    if(onBytes&&bytesRead-lastByteReport>=(1<<20)){lastByteReport=bytesRead;onBytes(bytesRead,totalBytes,sourceName,parser.rowCount);}
+   }else if(done)pending+=decoder.decode();
    let lineStart=0,lf;
    while((lf=pending.indexOf('\n',lineStart))!==-1){parser.pushLine(pending.slice(lineStart,lf));lineStart=lf+1;
-    if(parser.rowCount-lastYieldRows>=25000){lastYieldRows=parser.rowCount;if(onProgress)onProgress(parser.rowCount,parser.currentDate,sourceName);await yieldToUi();if(shouldCancel())throw new Error('Import cancelled by user.');}
+    if(parser.rowCount-lastYieldRows>=25000){lastYieldRows=parser.rowCount;if(onProgress)onProgress(parser.rowCount,parser.currentDate,sourceName);if(onBytes)onBytes(bytesRead,totalBytes,sourceName,parser.rowCount);await yieldToUi();if(shouldCancel())throw new Error('Import cancelled by user.');}
    }
    pending=pending.slice(lineStart);
    if(done&&pending.length){parser.pushLine(pending);pending='';}
   }
-  if(shouldCancel())throw new Error('Import cancelled by user.');return parser.finish();
+  if(shouldCancel())throw new Error('Import cancelled by user.');
+  const days=parser.finish();
+  if(onBytes)onBytes(bytesRead,totalBytes||bytesRead,sourceName,parser.rowCount);
+  return days;
  }catch(err){try{await reader.cancel(err);}catch(_){}throw err;}finally{try{reader.releaseLock();}catch(_){}}
 }
 
-export { parseCsvRow, parseTradeTimestamp, createCsvDayParser, parseCsvByDay, parseCsvStreamByDay };
+export { parseCsvRow, parseTradeTimestamp, createCsvDayParser, parseCsvByDay, parseCsvStreamByDay, looksLikeHeader, inferHeaderlessLayout, parseRole };
