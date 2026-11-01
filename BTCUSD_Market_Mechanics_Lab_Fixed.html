@@ -537,6 +537,8 @@ body.drawer-open{overflow:hidden}
 .focus-details .focus-metrics{margin-top:5px!important}
 .focus-details .focus-insight{margin-top:7px}
 .focus-details .focus-footnote{margin-top:5px}
+.focus-details[open] .focus-insight{display:flex!important}
+.focus-details[open] .focus-footnote{display:block!important}
 @media(max-width:900px){
  .top{align-items:center}
  .top-right{width:auto;flex:0 0 auto;gap:8px}
@@ -1385,7 +1387,7 @@ function setDrawer(open){
  document.body.classList.toggle('drawer-open',open);
  if(open){
   document.body.classList.add('show-advanced');
-  const first=drawer.querySelector('select,input,button');
+  const first=drawer.querySelector('select:not([hidden]),input:not([hidden]),button:not([hidden])');
   if(first&&first.focus)first.focus({preventScroll:true});
  }else if(button&&button.focus)button.focus({preventScroll:true});
  scheduleChartResize(activeChart);
