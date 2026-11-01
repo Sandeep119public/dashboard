@@ -66,6 +66,62 @@ test('headerless five-column exports with BTCUSDT and BTCUSD_PERP are accepted',
   }
 });
 
+
+test('canonical five-column fast parser accepts maker/taker and buy/sell role aliases', () => {
+  const csv = [
+    'product_symbol,price,size,timestamp,buyer_role',
+    'BTCUSD,60000,3,2026-08-01 10:00:00,buy',
+    'BTCUSD,59999,2,2026-08-01 10:00:01,sell',
+    'BTCUSD,60001,5,2026-08-01 10:00:02, BUY ',
+    'BTCUSD,59998,7,2026-08-01 10:00:03, Sell ',
+    'BTCUSD,60002,13,2026-08-01 10:00:04,taker',
+    'BTCUSD,59997,11,2026-08-01 10:00:05,maker'
+  ].join('\\n');
+  const day = parseCsvByDay(csv).get('2026-08-01');
+  assert.equal(day.metrics.row_count, 6);
+  close(day.metrics.buy_size, 21);
+  close(day.metrics.sell_size, 20);
+  close(day.metrics.delta, 1);
+});
+
+test('explicit symbol columns reject blank values in fast and general parser layouts', () => {
+  const fastHeader = 'product_symbol,price,size,timestamp,buyer_role';
+  assert.throws(
+    () => parseCsvByDay([fastHeader, ',60000,1,2026-08-01 00:00:00,taker'].join('\\n')),
+    /Missing product symbol at CSV row 2/
+  );
+  assert.throws(
+    () => parseCsvByDay([fastHeader, 'BTCUSD,60000,1,2026-08-01 00:00:00,taker', '   ,60001,1,2026-08-01 00:00:01,maker'].join('\\n')),
+    /Missing product symbol at CSV row 3/
+  );
+
+  const generalHeader = 'price,size,timestamp,buyer_role,symbol';
+  assert.throws(
+    () => parseCsvByDay([generalHeader, '60000,1,2026-08-01 00:00:00,taker,   '].join('\\n')),
+    /Missing product symbol at CSV row 2/
+  );
+  assert.throws(
+    () => parseCsvByDay([generalHeader, '60000,1,2026-08-01 00:00:00,taker,BTCUSD', '60001,1,2026-08-01 00:00:01,maker,'].join('\\n')),
+    /Missing product symbol at CSV row 3/
+  );
+});
+
+test('explicit symbol columns accept only configured BTC symbols', () => {
+  const header = 'product_symbol,price,size,timestamp,buyer_role';
+  const acceptedSymbols = ['BTCUSD', 'BTCUSDT', 'BTCUSD_PERP'];
+  for (const symbol of acceptedSymbols) {
+    const day = parseCsvByDay([
+      header,
+      symbol + ',60000,1,2026-08-01 00:00:00,taker'
+    ].join('\\n'), { acceptedSymbols }).get('2026-08-01');
+    assert.equal(day.metrics.row_count, 1, symbol);
+  }
+  assert.throws(
+    () => parseCsvByDay([header, 'ETHUSD,60000,1,2026-08-01 00:00:00,taker'].join('\\n'), { acceptedSymbols }),
+    /CSV row 2 has product_symbol="ETHUSD"/
+  );
+});
+
 test('column aliases (side, qty, time, symbol) map to the canonical fields', () => {
   const csv = [
     'symbol,price,qty,time,side',
