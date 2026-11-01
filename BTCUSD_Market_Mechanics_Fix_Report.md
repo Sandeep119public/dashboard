@@ -196,7 +196,7 @@ Branch: `feature/workstation-hardening` (based on the open workstation branch; `
 ### Tests and benchmarks
 
 - Node suite: **75 passing tests, 0 failing**. This is the existing 57 importer/UI/calculation tests plus 18 new data-integrity tests covering accepted symbols, headerless layouts, repeated headers, empty/corrupt input, byte progress, cancellation, duplicate and out-of-order timestamps, midnight/month boundaries, missing intervals, OHLC/CVD/profile/histogram/event integrity, workspace view round-trips and parser reuse.
-- Parser benchmark, 500,000 canonical rows, one-minute aggregation, alternating runs: previous parser 305–320 ms; hardened parser 327–340 ms (about 5% slower, roughly 1.5 million rows/s). Outputs were identical (1,440 bars, total size 2,499,990) and retained heap was the same or slightly lower.
+- Parser benchmark, 500,000 canonical rows, one-minute aggregation, alternating runs: previous parser 305–320 ms; hardened parser 327–340 ms (about 6–7% slower on the mean, roughly 1.5 million rows/s). Outputs were identical (1,440 bars, total size 2,499,990) and retained heap was the same or slightly lower.
 - Browser import of the deterministic three-day ZIP (25,920 prints): **112–121 ms** at 1280×720.
 - First render of a not-yet-rendered chart: about 90–120 ms (flow about 224 ms). Cached tab switches: 0 `Plotly.react` calls.
 - Viewport sweep: 360×800, 390×844, 412×915, 768×1024, 1280×720, 1920×1080, and landscape 800×360, 844×390, 915×412. Every case had `scrollWidth === innerWidth`, the header actions and replay footer inside the viewport, and a populated Plotly canvas.

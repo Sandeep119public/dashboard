@@ -48,7 +48,7 @@ The import hot path was optimized without changing outputs. On Node 20 with the 
 
 ### Workstation hardening benchmark (2026-11-01)
 
-The parser additions were benchmarked against the previous parser on the same generated 500,000-row canonical CSV with one-minute aggregation. Four alternating runs produced 305–320 ms for the previous parser and 327–340 ms for the hardened parser, about **5% slower** for the extra header/symbol/role validation, or roughly **1.5 million rows/s**. Outputs were identical on every run (1,440 bars, total executed size 2,499,990, same per-day metrics). Memory was the same or slightly lower (about 249 MB vs 253 MB retained heap in the last pair of runs).
+The parser additions were benchmarked against the previous parser on the same generated 500,000-row canonical CSV with one-minute aggregation. Four alternating runs produced 305–320 ms for the previous parser and 327–340 ms for the hardened parser, about **6–7% slower on the mean** for the extra header/symbol/role validation, or roughly **1.5 million rows/s**. Outputs were identical on every run (1,440 bars, total executed size 2,499,990, same per-day metrics). Memory was the same or slightly lower (about 249 MB vs 253 MB retained heap in the last pair of runs).
 
 In Chromium at 1280×720, the deterministic three-day monthly ZIP (25,920 prints) imported in **112–121 ms**. Switching to a chart that had not been rendered yet took about **90–120 ms** (flow took about 224 ms on its first render); switching back to any already-rendered chart made **zero `Plotly.react` calls** and only resized the canvas. The active-chart-only refresh removes the previous behavior where every tab switch rebuilt all timeframes.
 
