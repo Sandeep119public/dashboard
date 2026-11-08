@@ -697,6 +697,14 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   });
   $('mdRecordDepth').addEventListener('click', () => {
     feed.setDepthRecording(!feed.getDepthRecording());
+    const info = feed.getDepthHistoryInfo();
+    if (info.recording && info.count > persistedDepthCount) {
+      const sample = feed.getDepthSnapshot(info.count - 1);
+      if (sample) {
+        persistedDepthCount = info.count;
+        queueDepthArchiveSample(sample);
+      }
+    }
     updateDepthCaptureControls();
   });
   $('mdDepthReplay').addEventListener('input', () => {
