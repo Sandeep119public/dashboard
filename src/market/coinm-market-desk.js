@@ -539,7 +539,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const provenance = (footprint.source || 'live session') + '. Passive maker quantities mirror taker executions.';
     setText('mdFootprintFoot', (historical ? 'Selected past session minute. ' : 'Following current session minute. ') + (footprint.truncated
       ? 'Showing ' + integer(rows.length) + ' nearest levels from ' + integer(footprint.levelsTotal) + '. '
-      : 'Showing all ' + integer(rows.length) + ' retained price levels. ') + 'Quantities are executed taker contracts. POC is the highest-volume price; value area expands from POC to 70% of executed volume. ' + provenance);
+      : 'Showing all ' + integer(rows.length) + ' retained price levels. ') + 'Quantities are executed taker contracts. POC is the highest-volume price; value area expands from POC to 70% of executed volume. Diagonal imbalance compares adjacent traded price levels at 3:1 or greater, not a fixed tick-size ladder. ' + provenance);
   }
   function renderTape(items) {
     recentTrades = items || [];
@@ -585,6 +585,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   const feed = createCoinMMarketFeed({
     symbol: 'BTCUSD_PERP',
     maxDepthSamples: 10000,
+    depthSampleIntervalMs: 100,
     onStatus: event => {
       if (event.state === 'connecting') {
         replayingDepth = false;
