@@ -86,9 +86,11 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   let footprintOptionKey = '';
   let latestBookView = null;
   let replayingDepth = false;
-  const depthArchive = createDepthArchiveStore();
+  const depthArchive = createDepthArchiveStore({ maxSamples: 10000 });
   let persistedDepthCount = 0;
   let archiveWrite = Promise.resolve();
+  let pendingArchiveSamples = [];
+  let archiveFlushTimer = null;
 
   function imported(tf) {
     try {
@@ -492,13 +494,26 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     }
     host.appendChild(fragment);
   }
+  function queueDepthArchiveSample(sample) {
+    pendingArchiveSamples.push(sample);
+    if (archiveFlushTimer !== null) return;
+    archiveFlushTimer = setTimeout(() => {
+      archiveFlushTimer = null;
+      const batch = pendingArchiveSamples.splice(0);
+      if (!batch.length) return;
+      archiveWrite = archiveWrite.then(() => depthArchive.append(batch, 'BTCUSD_PERP'))
+        .catch(error => setText('mdBookFoot', 'Local depth archive write failed: ' + String(error && error.message || error)));
+    }, 750);
+  }
   const feed = createCoinMMarketFeed({
     symbol: 'BTCUSD_PERP',
+    maxDepthSamples: 10000,
     onStatus: event => {
       if (event.state === 'connecting') {
         replayingDepth = false;
         persistedDepthCount = 0;
         latestBookView = null;
+        restoreDepthArchive();
         selectedFootprintMinute = 'live';
         footprintOptionKey = null;
         updateFootprintSelector([]);
@@ -548,15 +563,14 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
         const sample = feed.getDepthSnapshot(info.count - 1);
         if (sample) {
           persistedDepthCount = info.count;
-          archiveWrite = archiveWrite.then(() => depthArchive.append([sample], 'BTCUSD_PERP'))
-            .catch(error => setText('mdBookFoot', 'Local depth archive write failed: ' + String(error && error.message || error)));
+          queueDepthArchiveSample(sample);
         }
       }
     }
   });
   async function restoreDepthArchive() {
     try {
-      const samples = await depthArchive.load({ symbol: 'BTCUSD_PERP', limit: 50000 });
+      const samples = await depthArchive.load({ symbol: 'BTCUSD_PERP', limit: 10000 });
       if (!samples.length) return;
       const info = feed.restoreDepthHistory(samples);
       persistedDepthCount = info.count;
