@@ -102,6 +102,9 @@ test('footprint windows aggregate executed price levels across 1m, 5m and 15m', 
   assert.equal(five.levels.find(level=>level.price===100).sellTaker,3);
   assert.equal(feed.getFootprintWindow(360000,15).totalQty,9);
   assert.equal(feed.getFootprintWindow(360000,1).totalQty,4);
+  const repeated=await feed.backfillFootprintHistory({startTime:60000,endTime:900000,maxMinutes:15,maxPages:10,maxTrades:100});
+  assert.equal(repeated.tradesCount,0);
+  assert.equal(feed.getFootprintWindow(360000,15).totalQty,9);
 });
 
 test('invalid trade and malformed kline records are rejected',()=>{
