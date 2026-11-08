@@ -279,7 +279,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     if (bookTimer !== null) return;
     bookTimer = setTimeout(() => {
       bookTimer = null;
-      renderBook(pendingBook);
+      if (!replayingDepth) renderBook(pendingBook);
     }, 220);
   }
   function renderBook(view) {
@@ -415,7 +415,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     if (footprintTimer !== null) return;
     footprintTimer = setTimeout(() => {
       footprintTimer = null;
-      renderFootprint(pendingFootprint, false);
+      if (selectedFootprintMinute === 'live') renderFootprint(pendingFootprint, false);
     }, 350);
   }
   function renderFootprint(footprint, historical = false) {
@@ -486,9 +486,11 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
         replayingDepth = false;
         latestBookView = null;
         selectedFootprintMinute = 'live';
-        footprintOptionKey = '';
+        footprintOptionKey = null;
         updateFootprintSelector([]);
         renderFootprint(null, false);
+        queueBook({ ready: false });
+        updateDepthCaptureControls();
       }
       setStatus(event.state, event.message);
     },
