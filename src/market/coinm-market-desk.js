@@ -424,7 +424,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       if (event.interval !== interval) return;
       lastCandlesInterval = event.interval;
       const local = event.interval === '10s' ? imported('10s') : [];
-      setCandleData(mergeCandles(local, event.candles || []), event.source + (local.length ? ' + imported historical 10-second trades' : ''));
+      setCandleData(mergeCandles(local, event.candles || []), event.source + (local.length ? ' + imported historical COIN-M trades' : local.incompatibleReason ? ' · ' + local.incompatibleReason : ''));
     },
     onKline: (candle, tf) => {
       if (tf !== interval) return;
@@ -455,7 +455,8 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   });
   function showImportedInterval(tf) {
     const local = tf === '10s' ? imported('10s') : [];
-    if (tf === '10s' && local.length) setCandleData(local, 'Imported historical archive · 10-second candles');
+    if (tf === '10s' && local.length) setCandleData(local, 'Imported historical COIN-M archive · 10-second candles');
+    else if (tf === '10s' && local.incompatibleReason) setCandleData([], local.incompatibleReason);
     else if (SECOND_INTERVALS.includes(tf)) setCandleData([], 'Live session only · Binance COIN-M has no historical ' + tf + ' kline endpoint');
   }
   async function chooseInterval(tf) {
