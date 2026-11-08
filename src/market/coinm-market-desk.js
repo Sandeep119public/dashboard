@@ -89,6 +89,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   let latestBookView = null;
   let replayingDepth = false;
   let selectedReplayTime = null;
+  let depthReplayMissing = false;
   let depthHeatmapTimer = null;
   const depthArchive = createDepthArchiveStore({ maxSamples: 10000 });
   let lastArchivedDepthKey = '';
@@ -182,11 +183,17 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     renderFootprint(hasFootprint ? feed.getFootprintWindow(minute, selectedFootprintInterval) : null, true);
     if (!hasFootprint) setText('mdFootprintMeta', 'NO FOOTPRINT DATA · UTC ' + utcMinute(minute));
     const nearest = feed.getDepthSnapshotIndexAt(time, 60000);
+    depthReplayMissing = nearest < 0;
     if (nearest >= 0) {
       $('mdDepthReplay').value = String(nearest);
       replayingDepth = true;
       const sample = feed.getDepthSnapshot(nearest);
       if (sample) renderBook({ ...sample, ready: true, recorded: true });
+    } else {
+      replayingDepth = true;
+      renderBook(null);
+      setText('mdBookState', 'NO DEPTH SNAPSHOT NEAR THIS TIME');
+      setText('mdBookFoot', 'No recorded order-book snapshot within 60 seconds of the selected timestamp. The live book is paused while replay is selected.');
     }
     updateDepthCaptureControls();
     scheduleDraw();
@@ -475,7 +482,9 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     }
     if (live) live.disabled = !replayingDepth;
     if (exportButton) exportButton.disabled = info.count === 0;
-    if (replayingDepth) {
+    if (replayingDepth && depthReplayMissing) {
+      setText('mdDepthReplayMeta', selectedReplayTime ? 'NO SNAPSHOT · ' + new Date(selectedReplayTime).toISOString().replace('T', ' ').slice(0, 23) + ' UTC' : 'No snapshot near selected time');
+    } else if (replayingDepth) {
       const sample = slider ? feed.getDepthSnapshot(Number(slider.value)) : null;
       setText('mdDepthReplayMeta', sample
         ? 'REPLAY · ' + new Date(sample.time).toISOString().replace('T', ' ').slice(0, 23) + ' UTC'
@@ -644,6 +653,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     onStatus: event => {
       if (event.state === 'connecting') {
         replayingDepth = false;
+        depthReplayMissing = false;
         selectedReplayTime = null;
         latestBookView = null;
         restoreDepthArchive();
@@ -823,7 +833,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     if (selectedFootprintMinute !== 'live') {
       selectedReplayTime = Number(selectedFootprintMinute);
       const nearest = feed.getDepthSnapshotIndexAt(selectedReplayTime, 60000);
-      if (nearest >= 0) { $('mdDepthReplay').value = String(nearest); replayingDepth = true; const sample = feed.getDepthSnapshot(nearest); if (sample) renderBook({ ...sample, ready: true, recorded: true }); }
+      if (nearest >= 0) { $('mdDepthReplay').value = String(nearest); replayingDepth = true; depthReplayMissing = false; const sample = feed.getDepthSnapshot(nearest); if (sample) renderBook({ ...sample, ready: true, recorded: true }); }
       updateDepthCaptureControls();
       scheduleDraw(); renderDepthHeatmap();
     } else {
@@ -851,6 +861,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const sample = feed.getDepthSnapshot(Number($('mdDepthReplay').value));
     if (!sample) return;
     replayingDepth = true;
+    depthReplayMissing = false;
     selectedReplayTime = sample.time;
     renderBook({ ...sample, ready: true, recorded: true });
     const footprintMinute = Math.floor(sample.time / 60000) * 60000;
@@ -871,6 +882,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   });
   $('mdDepthLive').addEventListener('click', () => {
     replayingDepth = false;
+    depthReplayMissing = false;
     selectedReplayTime = null;
     selectedFootprintMinute = 'live';
     $('mdFootprintMinute').value = 'live';
@@ -904,6 +916,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
         slider.value = String(info.count - 1);
         const sample = feed.getDepthSnapshot(info.count - 1);
         replayingDepth = true;
+        depthReplayMissing = false;
         renderBook({ ...sample, ready: true, recorded: true });
         selectedReplayTime = sample.time;
         renderDepthHeatmap();
