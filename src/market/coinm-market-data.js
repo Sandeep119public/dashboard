@@ -134,11 +134,41 @@ export function createMinuteFootprintState() {
     totalFills: 0,
     totalBuy: 0,
     totalSell: 0,
-    maxQty: 0
+    maxQty: 0,
+    latestPrice: null
   };
 }
 
-export function updateMinuteFootprint(state, trade, maxLevels = 3000, visibleLevels = 80) {
+export function summarizeMinuteFootprint(state, visibleLevels = 80) {
+  if (!state || !(state.levels instanceof Map) || state.minute === null) return null;
+  const referencePrice = Number(state.latestPrice);
+  let levels = Array.from(state.levels.values());
+  if (levels.length > visibleLevels) {
+    levels = levels
+      .sort((a, b) => Math.abs(a.price - referencePrice) - Math.abs(b.price - referencePrice))
+      .slice(0, visibleLevels);
+  }
+  levels.sort((a, b) => b.price - a.price);
+  const denominator = state.totalBuy + state.totalSell;
+  return {
+    minute: state.minute,
+    levels: levels.map(level => ({
+      ...level,
+      delta: level.buyTaker - level.sellTaker,
+      imbalance: level.buyTaker + level.sellTaker > 0 ? (level.buyTaker - level.sellTaker) / (level.buyTaker + level.sellTaker) : 0
+    })),
+    levelsTotal: state.levels.size,
+    truncated: state.levels.size > levels.length,
+    totalQty: state.totalQty,
+    totalFills: state.totalFills,
+    totalBuy: state.totalBuy,
+    totalSell: state.totalSell,
+    maxQty: state.maxQty,
+    imbalance: denominator > 0 ? (state.totalBuy - state.totalSell) / denominator : 0
+  };
+}
+
+export function updateMinuteFootprint(state, trade, maxLevels = 500, visibleLevels = 80) {
   if (!state || !(state.levels instanceof Map)) throw new TypeError('Footprint state must contain a levels Map.');
   const minute = Math.floor(Number(trade.time) / 60000) * 60000;
   if (!Number.isFinite(minute) || !positive(trade.price)) {
@@ -154,6 +184,7 @@ export function updateMinuteFootprint(state, trade, maxLevels = 3000, visibleLev
     state.maxQty = 0;
   }
   const price = Number(trade.price);
+  state.latestPrice = price;
   const key = String(price);
   const qty = Number(trade.qty);
   if (!positive(qty)) throw new TypeError('Footprint trade quantity must be positive.');
@@ -180,30 +211,7 @@ export function updateMinuteFootprint(state, trade, maxLevels = 3000, visibleLev
   state.totalSell += sell;
   state.maxQty = Math.max(state.maxQty, qty);
   while (state.levels.size > Math.max(1, maxLevels)) state.levels.delete(state.levels.keys().next().value);
-  let levels = Array.from(state.levels.values());
-  if (levels.length > visibleLevels) {
-    levels = levels
-      .sort((a, b) => Math.abs(a.price - price) - Math.abs(b.price - price))
-      .slice(0, visibleLevels);
-  }
-  levels.sort((a, b) => b.price - a.price);
-  const denominator = state.totalBuy + state.totalSell;
-  return {
-    minute: state.minute,
-    levels: levels.map(level => ({
-      ...level,
-      delta: level.buyTaker - level.sellTaker,
-      imbalance: level.buyTaker + level.sellTaker > 0 ? (level.buyTaker - level.sellTaker) / (level.buyTaker + level.sellTaker) : 0
-    })),
-    levelsTotal: state.levels.size,
-    truncated: state.levels.size > levels.length,
-    totalQty: state.totalQty,
-    totalFills: state.totalFills,
-    totalBuy: state.totalBuy,
-    totalSell: state.totalSell,
-    maxQty: state.maxQty,
-    imbalance: denominator > 0 ? (state.totalBuy - state.totalSell) / denominator : 0
-  };
+  return summarizeMinuteFootprint(state, visibleLevels);
 }
 
 export function aggregateTradesToCandles(trades, intervalMs) {
@@ -350,6 +358,8 @@ export function createCoinMMarketFeed(options = {}) {
   const maxFootprintLevels = Number.isFinite(Number(options.maxFootprintLevels)) ? Number(options.maxFootprintLevels) : 3000;
   const visibleFootprintLevels = Number.isFinite(Number(options.visibleFootprintLevels)) ? Number(options.visibleFootprintLevels) : 80;
   const depthLimit = Number.isFinite(Number(options.depthLimit)) ? Number(options.depthLimit) : 1000;
+  const maxFootprintMinutes = Number.isFinite(Number(options.maxFootprintMinutes)) ? Math.max(1, Math.floor(Number(options.maxFootprintMinutes))) : 240;
+  const maxDepthSamples = Number.isFinite(Number(options.maxDepthSamples)) ? Math.max(1, Math.floor(Number(options.maxDepthSamples))) : 1800;
   const onStatus = options.onStatus || (() => {});
   const onCandles = options.onCandles || (() => {});
   const onKline = options.onKline || (() => {});
@@ -378,7 +388,11 @@ export function createCoinMMarketFeed(options = {}) {
   let lastEventAt = null;
   let lastTradeAt = null;
   let lastBookAt = null;
-  const minuteFootprint = createMinuteFootprintState();
+  const footprintHistory = new Map();
+  let latestFootprintMinute = null;
+  let depthRecording = false;
+  const depthHistory = [];
+  let depthSegment = 0;
   const secondBars = new Map(SECOND_INTERVALS.map(tf => [tf, new Map()]));
   const liveKlines = new Map();
 
@@ -418,6 +432,27 @@ export function createCoinMMarketFeed(options = {}) {
     return rows.map(parseCoinMKline);
   }
 
+  async function loadOlderKlines(interval, beforeTime, limit = 1000) {
+    const before = Number(beforeTime);
+    if (!KLINE_SET.has(interval)) throw new RangeError('Older exchange candles are only available for Binance kline intervals.');
+    if (!Number.isFinite(before) || before <= 0) throw new TypeError('beforeTime must be a positive candle timestamp.');
+    const rows = await loadKlines(interval, limit, { endTime: Math.floor(before) - 1 });
+    return rows.filter(candle => candle.t < before);
+  }
+
+  function getFootprintMinutes() {
+    return Array.from(footprintHistory.keys()).sort((a, b) => a - b);
+  }
+
+  function getFootprint(minute) {
+    const state = footprintHistory.get(Number(minute));
+    return state ? summarizeMinuteFootprint(state, visibleFootprintLevels) : null;
+  }
+
+  function getLatestFootprint() {
+    return latestFootprintMinute === null ? null : getFootprint(latestFootprintMinute);
+  }
+
   function getSessionCandles(interval) {
     const map = secondBars.get(interval);
     return map ? Array.from(map.values()).map(candle => ({ ...candle })).sort((a, b) => a.t - b.t) : [];
@@ -430,13 +465,11 @@ export function createCoinMMarketFeed(options = {}) {
     lastTradeId = null;
     lastEventAt = null;
     lastTradeAt = null;
-    minuteFootprint.minute = null;
-    minuteFootprint.levels.clear();
-    minuteFootprint.totalQty = 0;
-    minuteFootprint.totalFills = 0;
-    minuteFootprint.totalBuy = 0;
-    minuteFootprint.totalSell = 0;
-    minuteFootprint.maxQty = 0;
+    footprintHistory.clear();
+    latestFootprintMinute = null;
+    depthRecording = false;
+    depthHistory.length = 0;
+    depthSegment = 0;
     for (const map of secondBars.values()) map.clear();
     for (const map of liveKlines.values()) map.clear();
   }
@@ -499,18 +532,76 @@ export function createCoinMMarketFeed(options = {}) {
       const current = secondBars.get(activeInterval).get(bucket);
       if (current) candle = { ...current };
     }
-    const footprint = updateMinuteFootprint(minuteFootprint, trade, maxFootprintLevels, visibleFootprintLevels);
+    const minute = Math.floor(trade.time / 60000) * 60000;
+    let footprintState = footprintHistory.get(minute);
+    const newFootprintMinute = !footprintState;
+    if (!footprintState) {
+      footprintState = createMinuteFootprintState();
+      footprintState.minute = minute;
+      footprintHistory.set(minute, footprintState);
+    }
+    const footprint = updateMinuteFootprint(footprintState, trade, maxFootprintLevels, visibleFootprintLevels);
+    latestFootprintMinute = minute;
+    while (footprintHistory.size > maxFootprintMinutes) footprintHistory.delete(footprintHistory.keys().next().value);
     onTrade(trade, {
       recentTrades: recentTrades.slice(),
       stats: { ...stats, since: statsSince },
       candle,
-      footprint
+      footprint,
+      footprintMinutes: newFootprintMinute ? getFootprintMinutes() : null
     });
     return true;
   }
 
   function notifyBook(changes = {}) {
     onBook(bookView(book, bookReady, changes, lastBookAt, lastUpdateId));
+  }
+
+  function copyDepthSample(sample) {
+    if (!sample) return null;
+    return {
+      time: sample.time,
+      updatedAt: sample.updatedAt,
+      lastUpdateId: sample.lastUpdateId,
+      segment: sample.segment,
+      bids: sample.bids.map(level => ({ ...level })),
+      asks: sample.asks.map(level => ({ ...level })),
+      bidDepth: sample.bidDepth,
+      askDepth: sample.askDepth,
+      changes: sample.changes || {}
+    };
+  }
+
+  function recordDepthSnapshot(changes = {}) {
+    if (!depthRecording || !bookReady) return;
+    const view = bookView(book, true, changes, lastBookAt, lastUpdateId);
+    depthHistory.push({
+      time: Number(lastBookAt) || now(),
+      updatedAt: view.updatedAt,
+      lastUpdateId: view.lastUpdateId,
+      segment: depthSegment,
+      bids: view.bids,
+      asks: view.asks,
+      bidDepth: view.bidDepth,
+      askDepth: view.askDepth,
+      changes: view.changes
+    });
+    while (depthHistory.length > maxDepthSamples) depthHistory.shift();
+  }
+
+  function getDepthHistory() {
+    return depthHistory.map(copyDepthSample);
+  }
+
+  function getDepthSnapshot(index) {
+    const i = Math.floor(Number(index));
+    return Number.isInteger(i) && i >= 0 && i < depthHistory.length ? copyDepthSample(depthHistory[i]) : null;
+  }
+
+  function setDepthRecording(enabled) {
+    depthRecording = Boolean(enabled);
+    if (depthRecording && bookReady) recordDepthSnapshot({});
+    return depthRecording;
   }
 
   function applyAndNotify(event) {
@@ -522,6 +613,7 @@ export function createCoinMMarketFeed(options = {}) {
     lastBookAt = now();
     lastEventAt = lastBookAt;
     notifyBook(changes);
+    recordDepthSnapshot(changes);
     if (!wasReady) status('connected', 'Live COIN-M trades, candles and synchronized public depth are updating.');
   }
 
@@ -670,6 +762,7 @@ export function createCoinMMarketFeed(options = {}) {
     // Advance the generation before closing the previous socket so its close
     // handler is ignored instead of scheduling an unnecessary reconnect.
     const g = ++generation;
+    depthSegment++;
     if (socket) {
       const old = socket;
       socket = null;
@@ -822,6 +915,7 @@ export function createCoinMMarketFeed(options = {}) {
       retryTimer = null;
     }
     generation++;
+    depthRecording = false;
     snapshotInFlight = false;
     snapshotReady = false;
     bookReady = false;
@@ -843,7 +937,15 @@ export function createCoinMMarketFeed(options = {}) {
     disconnect,
     setInterval,
     loadKlines,
+    loadOlderKlines,
     getSessionCandles,
+    getFootprint,
+    getFootprintMinutes,
+    getLatestFootprint,
+    setDepthRecording,
+    getDepthRecording: () => depthRecording,
+    getDepthHistory,
+    getDepthSnapshot,
     getStatus: () => ({
       connected: !stopped,
       interval: activeInterval,
@@ -851,7 +953,10 @@ export function createCoinMMarketFeed(options = {}) {
       bookReady,
       lastEventAt,
       lastTradeAt,
-      lastBookAt
+      lastBookAt,
+      footprintMinutes: footprintHistory.size,
+      depthRecording,
+      depthSamples: depthHistory.length
     })
   };
 }
