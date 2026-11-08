@@ -754,7 +754,8 @@ body.drawer-open{overflow:hidden}
     <div class="sectionhead" id="researchSectionHead"><div><h2>08 / Flow lead-lag and hourly market states</h2><p>Research views for testing whether executed flow leads returns and how activity differs by hour. Correlation is descriptive, not causal.</p></div><span class="tag">Research view</span></div>
     <div class="chartgrid research-grid">
       <div class="chartcard"><div class="charttitle"><strong>Flow imbalance vs price-return horizon</strong><span id="leadLagMeta">Uses trailing 5-minute signed-size imbalance</span></div><div id="leadLagChart" class="plot"></div></div>
-      <div class="chartcard"><div class="charttitle"><strong>Hourly regime map</strong><span id="regimeMeta">Color = signed-flow imbalance</span></div><div id="regimeChart" class="plot profile"></div></div>
+      <div class="chartcard"><div class="charttitle"><strong>Hourly market-state map</strong><span id="regimeMeta">Past-only state labels</span></div><div id="regimeChart" class="plot profile"></div></div>
+      <div class="chartcard"><div class="charttitle"><strong>Forward outcomes by state</strong><span id="stateOutcomeMeta">Retrospective close-to-close returns · overlapping hourly samples</span></div><div id="stateOutcomeChart" class="plot"></div></div>
     </div>
   </section>
 
@@ -927,6 +928,7 @@ import { createChartSeriesMath } from './src/charts/series-math.js';
 import { createLeadLagEngine } from './src/charts/lead-lag-engine.js';
 import { mountCoinMMarketDesk } from './src/market/coinm-market-desk.js';
 import { classifyMarketStates } from './src/research/market-states.js';
+import { summarizeStateOutcomes } from './src/research/state-outcomes.js';
 (function(){
 'use strict';
 const DATA = window.DATA;
@@ -964,7 +966,8 @@ const WORKSTATION_CHARTS = [
  {id:'hourChart',label:'Hourly activity'},
  {id:'eventChart',label:'Large trades'},
  {id:'leadLagChart',label:'Lead / lag'},
- {id:'regimeChart',label:'Regimes'}
+ {id:'regimeChart',label:'Regimes'},
+ {id:'stateOutcomeChart',label:'State outcomes'}
 ];
 const CHART_IDS = WORKSTATION_CHARTS.map(chart=>chart.id);
 const CHART_LABELS = Object.fromEntries(WORKSTATION_CHARTS.map(chart=>[chart.id,chart.label]));
@@ -1195,7 +1198,22 @@ async function updateLeadLag(w){
  $('leadLagMeta').textContent='Trailing '+lookback+'m imbalance · '+nfmt(result.forwardSamples)+' forward samples · '+(leadLagEngine.lastMode==='worker'?'worker':'main thread');
  const colors=corr.map(v=>v===null?'#52627a':v>=0?C.buy:C.sell);
  return plot('leadLagChart',[{type:'bar',name:'Pearson r',x:horizons,y:corr,marker:{color:colors,opacity:.88},customdata:counts,hovertemplate:'%{x}<br>Correlation %{y:.3f}<br>Pairs %{customdata:,}<extra></extra>'}],{xaxis:{title:'Return horizon after the flow measurement',gridcolor:C.grid},yaxis:{title:'Pearson correlation',range:[-1,1],gridcolor:C.grid,zeroline:true,zerolinecolor:'#91a3bb'},margin:{l:58,r:22,t:20,b:58},showlegend:false,hovermode:'closest',annotations:[{x:0,y:1.08,xref:'paper',yref:'paper',text:'+1 = positive association · −1 = negative association',showarrow:false,font:{size:10,color:C.muted},xanchor:'left'}]});
-}function updateRegimeHeatmap(w){
+}function updateStateOutcomes(w){
+ const x=B['1h'],states=classifyMarketStates(x,{lookback:200,intervalSeconds:3600});
+ const result=summarizeStateOutcomes(x,states,{intervalSeconds:3600,horizons:[1,4,24],startTime:w.s,endTime:w.e});
+ const eligible=result.states.filter(state=>state.code>0&&state.horizons.some(h=>h.samples));
+ const labels=eligible.map(state=>state.label),horizons=result.horizons;
+ const traces=horizons.map((ahead,index)=>({
+  type:'bar',name:'+'+ahead+'h',x:labels,
+  y:eligible.map(state=>state.horizons[index].medianReturnPct),
+  customdata:eligible.map(state=>{const h=state.horizons[index];return [h.samples,h.meanReturnPct,h.winRatePct];}),
+  marker:{color:index===0?C.blue:index===1?C.gold:C.purple,opacity:.88},
+  hovertemplate:'%{x}<br>Horizon +'+ahead+'h<br>Median return %{y:.3f}%<br>Mean return %{customdata[1]:.3f}%<br>Positive outcomes %{customdata[2]:.1f}%<br>Samples %{customdata[0]:,.0f}<extra></extra>'
+ }));
+ $('stateOutcomeMeta').textContent='Past-only labels · contiguous future bars only · overlapping hourly samples';
+ return plot('stateOutcomeChart',traces,{barmode:'group',xaxis:{title:'State at the start of the observation',gridcolor:C.grid,tickangle:-18},yaxis:{title:'Median forward close return (%)',zeroline:true,zerolinecolor:'#91a3bb',gridcolor:C.grid},margin:{l:62,r:20,t:18,b:88},legend:{orientation:'h',y:1.12,x:0},hovermode:'x unified',annotations:[{x:0,y:1.22,xref:'paper',yref:'paper',text:'Descriptive historical outcomes, not forecasts',showarrow:false,font:{size:10,color:C.muted},xanchor:'left'}]});
+}
+function updateRegimeHeatmap(w){
  const x=B['1h'],allDates=[...DAYS.keys()].sort(),start=selectedDates().start,end=selectedDates().end;
  const dates=allDates.filter(d=>d>=start&&d<=end),hours=Array.from({length:24},(_,i)=>String(i).padStart(2,'0')+':00');
  const states=classifyMarketStates(x,{lookback:200,intervalSeconds:3600});
@@ -1571,7 +1589,7 @@ function performRefresh(onlyIds=null){
  // A successful render clears a stale import/window error left in the status line.
  const statusEl=$('status');
  if(statusEl&&/^(Import failed|No minute bars|The end date)/.test(statusEl.textContent))statusEl.textContent='';
- const jobs=[['priceChart',()=>updatePrice(tf,currentRange,threshold)],['flowChart',()=>updateFlow(tf,currentRange)],['cvdChart',()=>updateCvd(tf,currentRange)],['profileChart',()=>updateProfile(currentRange)],['sizeChart',()=>updateSizeHist(currentRange)],['hourChart',()=>updateHours(currentRange)],['eventChart',()=>updateEvents(currentRange,threshold)],['leadLagChart',()=>updateLeadLag(currentRange)],['regimeChart',()=>updateRegimeHeatmap(currentRange)]];
+ const jobs=[['priceChart',()=>updatePrice(tf,currentRange,threshold)],['flowChart',()=>updateFlow(tf,currentRange)],['cvdChart',()=>updateCvd(tf,currentRange)],['profileChart',()=>updateProfile(currentRange)],['sizeChart',()=>updateSizeHist(currentRange)],['hourChart',()=>updateHours(currentRange)],['eventChart',()=>updateEvents(currentRange,threshold)],['leadLagChart',()=>updateLeadLag(currentRange)],['regimeChart',()=>updateRegimeHeatmap(currentRange)],['stateOutcomeChart',()=>updateStateOutcomes(currentRange)]];
  if(!onlyIds){for(const [id] of jobs)dirtyCharts.add(id);}else{for(const id of onlyIds)dirtyCharts.add(id);}
  if(onlyIds&&!onlyIds.has(activeChart))return;
  const activeJob=jobs.find(([id])=>id===activeChart);if(!activeJob)return;
