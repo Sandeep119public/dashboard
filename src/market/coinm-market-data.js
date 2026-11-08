@@ -698,6 +698,41 @@ export function createCoinMMarketFeed(options = {}) {
     return Number.isInteger(i) && i >= 0 && i < depthHistory.length ? copyDepthSample(depthHistory[i]) : null;
   }
 
+  function restoreDepthHistory(samples) {
+    if (!Array.isArray(samples)) throw new TypeError('Depth replay import must contain a samples array.');
+    const restored = [];
+    for (const sample of samples) {
+      if (!sample || !Number.isFinite(Number(sample.time)) || Number(sample.time) <= 0 ||
+          !Number.isFinite(Number(sample.lastUpdateId)) || !Array.isArray(sample.bids) ||
+          !Array.isArray(sample.asks) || sample.bids.length > 25 || sample.asks.length > 25) {
+        throw new TypeError('Depth replay contains an invalid timestamp, sequence ID or book side.');
+      }
+      const normalizeSide = side => side.map(level => {
+        const price = Number(level && level.price), qty = Number(level && level.qty);
+        if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(qty) || qty <= 0) {
+          throw new TypeError('Depth replay contains an invalid price level.');
+        }
+        return { price, qty };
+      });
+      restored.push({
+        time: Number(sample.time), updatedAt: Number.isFinite(Number(sample.updatedAt)) ? Number(sample.updatedAt) : Number(sample.time),
+        lastUpdateId: Number(sample.lastUpdateId), segment: Math.max(0, Math.floor(Number(sample.segment) || 0)),
+        bids: normalizeSide(sample.bids), asks: normalizeSide(sample.asks),
+        bidDepth: normalizeSide(sample.bids).reduce((sum, level) => sum + level.qty, 0),
+        askDepth: normalizeSide(sample.asks).reduce((sum, level) => sum + level.qty, 0),
+        changes: sample.changes && typeof sample.changes === 'object' ? sample.changes : {}
+      });
+    }
+    const unique = new Map();
+    for (const sample of [...depthHistory, ...restored]) {
+      const key = sample.segment + ':' + sample.lastUpdateId + ':' + sample.time;
+      unique.set(key, sample);
+    }
+    depthHistory.splice(0, depthHistory.length, ...Array.from(unique.values())
+      .sort((a, b) => a.time - b.time || a.lastUpdateId - b.lastUpdateId).slice(-maxDepthSamples));
+    return getDepthHistoryInfo();
+  }
+
   function setDepthRecording(enabled) {
     depthRecording = Boolean(enabled);
     if (depthRecording && bookReady) recordDepthSnapshot({});
@@ -1048,6 +1083,7 @@ export function createCoinMMarketFeed(options = {}) {
     getDepthHistory,
     getDepthHistoryInfo,
     getDepthSnapshot,
+    restoreDepthHistory,
     getStatus: () => ({
       connected: !stopped,
       interval: activeInterval,
