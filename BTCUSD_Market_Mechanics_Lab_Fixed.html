@@ -877,6 +877,31 @@ body{background:radial-gradient(ellipse at 50% -28%,rgba(35,76,92,.24),transpare
 }
 </style>
 
+
+<style id="mobile-replay-controls">
+/* Keep replay actions thumb-friendly while reducing the panel's vertical footprint. */
+@media(max-width:760px){
+  .replay-box{padding:4px 7px!important}
+  .replay-head{grid-template-columns:minmax(0,1fr) auto;gap:6px}
+  .replay-title .toolbar-label{display:none}
+  .focus-time{font-size:10px;line-height:1.2;min-height:24px;display:flex;align-items:center}
+  .replay-buttons{display:grid;grid-template-columns:40px 54px 40px 58px;align-items:center;gap:4px}
+  .replay-buttons .btn,.replay-buttons .icon-btn{min-width:0;min-height:42px;padding:5px 4px;font-size:11px}
+  .replay-buttons #focusPlay{font-weight:800}
+  .speed-control{min-width:0!important;width:58px}
+  .speed-control select{width:100%;min-height:42px;padding:4px 3px;text-align:center}
+  .time-scrubber{height:24px;min-height:24px;margin:1px 0 2px!important;touch-action:pan-x}
+  .focus-details{margin-top:2px}
+  .focus-details>summary{min-height:26px;padding-top:2px}
+}
+@media(max-width:390px){
+  .replay-head{grid-template-columns:minmax(0,1fr)}
+  .replay-buttons{grid-template-columns:repeat(3,minmax(40px,1fr)) 58px}
+  .replay-buttons .btn,.replay-buttons .icon-btn{min-height:40px}
+  .focus-time{min-height:20px}
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
