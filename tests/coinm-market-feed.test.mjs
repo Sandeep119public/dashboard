@@ -317,8 +317,9 @@ test('loads older kline pages and paginates a bounded historical range', async (
         const params = new URL(url).searchParams;
         const start = Number(params.get('startTime') || 0);
         const end = Number(params.get('endTime') || Number.MAX_SAFE_INTEGER);
+        const limit = Number(params.get('limit') || 1000);
         const rows = [kline(1700000000000, 100), kline(1700000060000, 101), kline(1700000120000, 102)]
-          .filter(row => row[0] >= start && row[0] <= end);
+          .filter(row => row[0] >= start && row[0] <= end).slice(0, limit);
         return response(rows);
       }
     }
