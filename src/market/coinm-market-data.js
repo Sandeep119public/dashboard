@@ -33,6 +33,28 @@ export function normalizeKlineEvent(k) {
   if(!k||typeof k!=='object')throw new TypeError('Expected a Binance kline stream payload.');
   return parseCoinMKline([k.t,k.o,k.h,k.l,k.c,k.v,k.T,0,k.n,k.V,k.Q,0]);
 }
+export function createMinuteFootprintState() { return { minute:null, levels:new Map() }; }
+
+export function updateMinuteFootprint(state,trade,maxLevels=3000,visibleLevels=80) {
+  if(!state||!(state.levels instanceof Map))throw new TypeError('Footprint state must contain a levels Map.');
+  const minute=Math.floor(Number(trade.time)/60000)*60000;
+  if(!Number.isFinite(minute)||!Number.isFinite(Number(trade.price))||Number(trade.price)<=0)throw new TypeError('Footprint trade contains an invalid time or price.');
+  if(state.minute!==minute){state.minute=minute;state.levels.clear();}
+  const key=String(trade.price);
+  let level=state.levels.get(key);
+  if(!level){level={price:Number(trade.price),buyTaker:0,sellTaker:0,makerBuy:0,makerSell:0,trades:0};state.levels.set(key,level);}
+  const qty=Number(trade.qty);
+  if(!Number.isFinite(qty)||qty<=0)throw new TypeError('Footprint trade quantity must be positive.');
+  const buy=Number(trade.buyTakerQty!==undefined?trade.buyTakerQty:(trade.buyerIsMaker?0:qty));
+  const sell=Number(trade.sellTakerQty!==undefined?trade.sellTakerQty:(trade.buyerIsMaker?qty:0));
+  level.buyTaker+=buy;level.sellTaker+=sell;level.makerSell+=buy;level.makerBuy+=sell;level.trades++;
+  while(state.levels.size>Math.max(1,maxLevels))state.levels.delete(state.levels.keys().next().value);
+  const all=Array.from(state.levels.values());
+  const levels=all.length<=visibleLevels?all:all.sort((a,b)=>Math.abs(a.price-Number(trade.price))-Math.abs(b.price-Number(trade.price))).slice(0,visibleLevels);
+  levels.sort((a,b)=>b.price-a.price);
+  return {minute:state.minute,levels:levels.map(x=>({...x,delta:x.buyTaker-x.sellTaker})),levelsTotal:state.levels.size,truncated:state.levels.size>levels.length};
+}
+
 export function aggregateTradesToCandles(trades,intervalMs) {
   if(!Number.isFinite(intervalMs)||intervalMs<=0)throw new RangeError('intervalMs must be positive.');
   const sorted=Array.from(trades||[]).slice().sort((a,b)=>Number(a.time)-Number(b.time)),map=new Map();
@@ -80,6 +102,7 @@ export function createCoinMMarketFeed(options={}) {
   let snapshotInFlight=false,snapshotReady=false,bookReady=false,lastUpdateId=null,depthBuffer=[];
   let book={bids:new Map(),asks:new Map(),lastUpdateId:null};
   let recentTrades=[],stats={trades:0,buyTaker:0,sellTaker:0,delta:0,lastPrice:null},statsSince=null;
+  const minuteFootprint=createMinuteFootprintState();
   const secondBars=new Map(SECOND_INTERVALS.map(tf=>[tf,new Map()]));
   const status=(state,message)=>onStatus({state,message});
   async function requestJson(url){
@@ -100,6 +123,7 @@ export function createCoinMMarketFeed(options={}) {
   }
   function resetSession(){
     recentTrades=[];stats={trades:0,buyTaker:0,sellTaker:0,delta:0,lastPrice:null};statsSince=Date.now();
+    minuteFootprint.minute=null;minuteFootprint.levels.clear();
     for(const map of secondBars.values())map.clear();
   }
   function addTrade(raw){
@@ -120,7 +144,8 @@ export function createCoinMMarketFeed(options={}) {
       const current=secondBars.get(activeInterval).get(bucket);
       if(current)candle={...current};
     }
-    onTrade(trade,{recentTrades:recentTrades.slice(),stats:{...stats,since:statsSince},candle});
+    const footprint=updateMinuteFootprint(minuteFootprint,trade);
+    onTrade(trade,{recentTrades:recentTrades.slice(),stats:{...stats,since:statsSince},candle,footprint});
   }
   function notifyBook(changes){onBook(bookView(book,bookReady,changes));}
   function applyAndNotify(event){
