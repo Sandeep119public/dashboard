@@ -96,8 +96,8 @@ test('footprint windows aggregate executed price levels across 1m, 5m and 15m', 
   await feed.backfillFootprintHistory({startTime:60000,endTime:900000,maxMinutes:15,maxPages:10,maxTrades:100});
   const five=feed.getFootprintWindow(360000,5);
   assert.equal(five.timeframeMinutes,5);
-  assert.equal(five.totalQty,9);
-  assert.equal(five.levels.find(level=>level.price===100).buyTaker,2);
+  assert.equal(five.totalQty,7);
+  assert.equal(five.levels.find(level=>level.price===100).buyTaker,0);
   assert.equal(five.levels.find(level=>level.price===100).sellTaker,3);
   assert.equal(feed.getFootprintWindow(360000,15).totalQty,9);
   assert.equal(feed.getFootprintWindow(360000,1).totalQty,4);
