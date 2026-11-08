@@ -40,10 +40,10 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
           '<section class="md-panel md-flow-panel"><div class="md-panel-head"><div><strong>Executed volume by aggressor</strong><small>Green = BUY TAKER / SELL MAKER · Red = SELL TAKER / BUY MAKER</small></div><span class="md-unit">contracts</span></div><div class="md-flow-wrap"><div id="mdFlow" class="md-flow" aria-label="Executed volume by aggressor"></div></div></section>',
         '</div>',
         '<div class="md-col md-flow-column">',
-          '<section class="md-panel md-panel-grow md-footprint-panel"><div class="md-panel-head"><div><strong>Per-price footprint</strong><small id="mdFootprintMeta">Session history · waiting for executions</small></div><div style="display:flex;align-items:center;gap:6px"><button class="btn" id="mdBackfillFootprint" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Backfill 60m</button><select id="mdFootprintMinute" aria-label="Select recorded footprint minute" style="max-width:145px;min-width:0;font-size:10px"><option value="live">Follow live minute</option></select><span class="md-unit">contracts</span></div></div><div class="md-footprint-legend"><span>BUY TAKER / SELL MAKER</span><span>SELL TAKER / BUY MAKER</span><span>Delta = buy − sell</span></div><div class="md-table-wrap"><table class="md-footprint"><thead><tr><th>Price</th><th>Buy taker<br><small>Sell maker</small></th><th>Sell taker<br><small>Buy maker</small></th><th>Delta</th><th>Prints</th></tr></thead><tbody id="mdFootprintRows"><tr><td colspan="5" class="md-muted">Connect live to collect current-minute executions by price.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdFootprintFoot">Backfill up to four hours of Binance aggregate trades (48-hour API lookback) or inspect the live session. Binance REST trade history is limited to market aggregate trades.</div></section>',
+          '<section class="md-panel md-panel-grow md-footprint-panel"><div class="md-panel-head"><div><strong>Per-price footprint</strong><small id="mdFootprintMeta">Session history · waiting for executions</small></div><div style="display:flex;align-items:center;gap:6px"><select id="mdFootprintRange" aria-label="Historical footprint backfill range" style="max-width:76px;min-width:60px;font-size:10px"><option value="60">60m</option><option value="240">4h</option></select><button class="btn" id="mdBackfillFootprint" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Backfill 60m</button><select id="mdFootprintMinute" aria-label="Select recorded footprint minute" style="max-width:145px;min-width:0;font-size:10px"><option value="live">Follow live minute</option></select><span class="md-unit">contracts</span></div></div><div class="md-footprint-legend"><span>BUY TAKER / SELL MAKER</span><span>SELL TAKER / BUY MAKER</span><span>Delta = buy − sell</span></div><div class="md-table-wrap"><table class="md-footprint"><thead><tr><th>Price</th><th>Buy taker<br><small>Sell maker</small></th><th>Sell taker<br><small>Buy maker</small></th><th>Delta</th><th>Prints</th></tr></thead><tbody id="mdFootprintRows"><tr><td colspan="5" class="md-muted">Connect live to collect current-minute executions by price.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdFootprintFoot">Backfill 60 minutes or 4 hours of Binance aggregate trades (48-hour API lookback), or import/export recorded depth captures. Historical public order-book archives are not provided by this endpoint.</div></section>',
         '</div>',
         '<div class="md-col md-side-column">',
-          '<section class="md-panel md-panel-grow md-book-panel"><div class="md-panel-head"><div><strong>Order book</strong><small id="mdBookState">Not synchronized</small></div><span class="md-unit">contracts</span></div><div class="md-depth-controls" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 7px;border-bottom:1px solid #203047"><button class="btn" id="mdRecordDepth" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Record depth</button><input id="mdDepthReplay" type="range" min="0" max="0" value="0" step="1" disabled aria-label="Replay captured order-book samples" style="width:76px;min-width:48px;flex:1"><button class="btn" id="mdDepthLive" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Live</button><button class="btn" id="mdDepthExport" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Export</button><small id="mdDepthReplayMeta" style="font-size:9px;color:#91a3bb">Not recording · session only</small></div><div class="md-book-summary"><span>Bid <b id="mdBestBid">—</b></span><span>Spread <b id="mdBookSpread">—</b></span><span>Ask <b id="mdBestAsk">—</b></span></div><div class="md-table-wrap"><table class="md-book"><thead><tr><th>Bid qty</th><th>Bid price</th><th>Ask price</th><th>Ask qty</th></tr></thead><tbody id="mdBookRows"><tr><td colspan="4" class="md-muted">Connect to synchronize depth.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdBookFoot">Depth is aggregated by price level, not individual order IDs.</div></section>',
+          '<section class="md-panel md-panel-grow md-book-panel"><div class="md-panel-head"><div><strong>Order book</strong><small id="mdBookState">Not synchronized</small></div><span class="md-unit">contracts</span></div><div class="md-depth-controls" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 7px;border-bottom:1px solid #203047"><button class="btn" id="mdRecordDepth" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Record depth</button><input id="mdDepthReplay" type="range" min="0" max="0" value="0" step="1" disabled aria-label="Replay captured order-book samples" style="width:76px;min-width:48px;flex:1"><button class="btn" id="mdDepthLive" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Live</button><button class="btn" id="mdDepthExport" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Export</button><label class="btn" for="mdDepthImport" style="min-height:25px;padding:2px 7px;font-size:10px;display:inline-flex;align-items:center;cursor:pointer">Import</label><input id="mdDepthImport" type="file" accept="application/json,.json" hidden><small id="mdDepthReplayMeta" style="font-size:9px;color:#91a3bb">Not recording · session only</small></div><div class="md-book-summary"><span>Bid <b id="mdBestBid">—</b></span><span>Spread <b id="mdBookSpread">—</b></span><span>Ask <b id="mdBestAsk">—</b></span></div><div class="md-table-wrap"><table class="md-book"><thead><tr><th>Bid qty</th><th>Bid price</th><th>Ask price</th><th>Ask qty</th></tr></thead><tbody id="mdBookRows"><tr><td colspan="4" class="md-muted">Connect to synchronize depth.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdBookFoot">Depth is aggregated by price level, not individual order IDs.</div></section>',
           '<section class="md-panel md-tape-panel"><div class="md-panel-head"><div><strong>Live trade tape</strong><small id="mdTapeMeta">Waiting for aggregate trades</small></div><span class="md-unit">contracts</span></div><div class="md-tape-head"><span>UTC</span><span>Price</span><span>Qty</span><span>Aggressor → passive</span></div><div id="mdTape" class="md-tape"><div class="md-empty">Waiting for aggregate trades…</div></div></section>',
         '</div>',
       '</div>',
@@ -619,9 +619,11 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const previousSelection = selectedFootprintMinute;
     button.disabled = true;
     button.textContent = 'Backfilling…';
-    setText('mdFootprintFoot', 'Fetching Binance COIN-M aggregate trades for the previous 60 minutes. This uses bounded REST pagination.');
+    const minutes = Math.min(240, Math.max(60, Number($('mdFootprintRange').value) || 60));
+    button.textContent = 'Backfilling…';
+    setText('mdFootprintFoot', 'Fetching Binance COIN-M aggregate trades for the previous ' + minutes + ' minutes. The request is bounded by 100 pages and 100,000 trades.');
     try {
-      const result = await feed.backfillFootprintHistory({ minutes: 60, maxPages: 20, maxTrades: 20000 });
+      const result = await feed.backfillFootprintHistory({ minutes, maxMinutes: 240, maxPages: 100, maxTrades: 100000 });
       updateFootprintSelector(result.minutes);
       if (result.minutes.length) {
         selectedFootprintMinute = String(result.minutes[result.minutes.length - 1]);
@@ -634,7 +636,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       setText('mdFootprintFoot', 'Historical backfill failed: ' + String(error && error.message || error));
     } finally {
       button.disabled = false;
-      button.textContent = 'Backfill 60m';
+      button.textContent = 'Backfill';
     }
   });
   $('mdFootprintMinute').addEventListener('change', () => {
@@ -658,6 +660,36 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     replayingDepth = false;
     if (latestBookView) renderBook(latestBookView);
     updateDepthCaptureControls();
+  });
+  $('mdDepthImport').addEventListener('change', async event => {
+    const input = event.currentTarget;
+    const file = input.files && input.files[0];
+    if (!file) return;
+    try {
+      if (file.size > 20 * 1024 * 1024) throw new RangeError('Depth capture import is limited to 20 MB.');
+      const payload = JSON.parse(await file.text());
+      if (!payload || payload.schema !== 'BTCUSD-Market-Mechanics-Lab-COINM-depth-v1' ||
+          payload.symbol !== 'BTCUSD_PERP' || payload.quantityUnit !== 'contracts' ||
+          !Array.isArray(payload.samples)) {
+        throw new TypeError('Unsupported capture. Import a BTCUSD_PERP COIN-M depth JSON exported by this workstation.');
+      }
+      const info = feed.restoreDepthHistory(payload.samples);
+      replayingDepth = false;
+      updateDepthCaptureControls();
+      if (info.count) {
+        const slider = $('mdDepthReplay');
+        slider.value = String(info.count - 1);
+        const sample = feed.getDepthSnapshot(info.count - 1);
+        replayingDepth = true;
+        renderBook({ ...sample, ready: true, recorded: true });
+        updateDepthCaptureControls();
+      }
+      setText('mdBookFoot', 'Imported ' + integer(payload.samples.length) + ' recorded snapshots. Replay uses captured top-25 price levels only; gaps between samples are not reconstructed.');
+    } catch (error) {
+      setText('mdBookFoot', 'Depth import failed: ' + String(error && error.message || error));
+    } finally {
+      input.value = '';
+    }
   });
   $('mdDepthExport').addEventListener('click', () => {
     const samples = feed.getDepthHistory();
