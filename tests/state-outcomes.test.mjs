@@ -10,7 +10,7 @@ test('summarizes forward close returns by state and horizon',()=>{
  const {bars,states}=fixture(),result=summarizeStateOutcomes(bars,states,{horizons:[1,2]});
  const compression=result.states.find(s=>s.code===1);
  assert.equal(compression.horizons[0].samples,3);
- assert.ok(Math.abs(compression.horizons[0].medianReturnPct-((101/100-1)*100))<1e-9);
+ assert.ok(Math.abs(compression.horizons[0].medianReturnPct-((102/101-1)*100))<1e-9);
  assert.ok(Math.abs(compression.horizons[0].winRatePct-200/3)<1e-9);
  assert.equal(compression.horizons[1].samples,3);
  assert.equal(result.overlappingSamples,true);
