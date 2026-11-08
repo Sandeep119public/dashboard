@@ -1,4 +1,5 @@
 import { MARKET_INTERVALS, SECOND_INTERVALS, COINM_CONTRACT_USD, createCoinMMarketFeed } from './coinm-market-data.js';
+import { createDepthArchiveStore } from './coinm-depth-archive.js';
 
 const integer = value => Math.round(Number(value) || 0).toLocaleString('en-US');
 const number = (value, digits = 2) => Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
@@ -47,7 +48,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
           '<section class="md-panel md-tape-panel"><div class="md-panel-head"><div><strong>Live trade tape</strong><small id="mdTapeMeta">Waiting for aggregate trades</small></div><span class="md-unit">contracts</span></div><div class="md-tape-head"><span>UTC</span><span>Price</span><span>Qty</span><span>Aggressor → passive</span></div><div id="mdTape" class="md-tape"><div class="md-empty">Waiting for aggregate trades…</div></div></section>',
         '</div>',
       '</div>',
-      '<details class="md-footnote"><summary>Data semantics and limits</summary><p><b>COIN-M contract units:</b> kline volume, aggregate-trade quantity and depth quantity are contracts. BTCUSD_PERP uses 100 USD face value per contract; the interface never relabels contracts as BTC or USD notional. Binance aggregate trades expose whether the buyer was maker: buyer maker = false is BUY TAKER / SELL MAKER, buyer maker = true is SELL TAKER / BUY MAKER. Both sides are mirrored views of one execution, never additional volume. Candles from 1m upward are exchange klines; seconds candles are built only from executions observed in this session and are not historical reconstructions. Public depth is aggregated at each price and does not expose maker identities or queue position. Optional recording keeps a bounded, browser-session-only series of top-25 bid/ask snapshots for replay and JSON export; it cannot backfill earlier depth or reconstruct unrecorded updates. Quantity reductions can be executions or cancellations and the public diff does not label which.</p></details>',
+      '<details class="md-footnote"><summary>Data semantics and limits</summary><p><b>COIN-M contract units:</b> kline volume, aggregate-trade quantity and depth quantity are contracts. BTCUSD_PERP uses 100 USD face value per contract; the interface never relabels contracts as BTC or USD notional. Binance aggregate trades expose whether the buyer was maker: buyer maker = false is BUY TAKER / SELL MAKER, buyer maker = true is SELL TAKER / BUY MAKER. Both sides are mirrored views of one execution, never additional volume. Candles from 1m upward are exchange klines; seconds candles are built only from executions observed in this session and are not historical reconstructions. Public depth is aggregated at each price and does not expose maker identities or queue position. Optional recording keeps a bounded series of top-25 bid/ask snapshots. IndexedDB retains up to 50,000 samples locally across reloads; JSON export/import moves captures between devices. It cannot backfill earlier depth or reconstruct unrecorded updates. Quantity reductions can be executions or cancellations and the public diff does not label which.</p></details>',
     '</div>'
   ].join('');
 
@@ -85,6 +86,9 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   let footprintOptionKey = '';
   let latestBookView = null;
   let replayingDepth = false;
+  const depthArchive = createDepthArchiveStore();
+  let persistedDepthCount = 0;
+  let archiveWrite = Promise.resolve();
 
   function imported(tf) {
     try {
@@ -493,6 +497,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     onStatus: event => {
       if (event.state === 'connecting') {
         replayingDepth = false;
+        persistedDepthCount = 0;
         latestBookView = null;
         selectedFootprintMinute = 'live';
         footprintOptionKey = null;
@@ -538,8 +543,30 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       if (view && view.ready) lastMarketAt = Date.now();
       if (!replayingDepth) queueBook(view);
       updateDepthCaptureControls();
+      const info = feed.getDepthHistoryInfo();
+      if (info.recording && info.count > persistedDepthCount) {
+        const sample = feed.getDepthSnapshot(info.count - 1);
+        if (sample) {
+          persistedDepthCount = info.count;
+          archiveWrite = archiveWrite.then(() => depthArchive.append([sample], 'BTCUSD_PERP'))
+            .catch(error => setText('mdBookFoot', 'Local depth archive write failed: ' + String(error && error.message || error)));
+        }
+      }
     }
   });
+  async function restoreDepthArchive() {
+    try {
+      const samples = await depthArchive.load({ symbol: 'BTCUSD_PERP', limit: 50000 });
+      if (!samples.length) return;
+      const info = feed.restoreDepthHistory(samples);
+      persistedDepthCount = info.count;
+      updateDepthCaptureControls();
+      setText('mdBookFoot', 'Restored ' + integer(info.count) + ' historical depth snapshots from this browser. Start replay with the slider. Archive is local to this device.');
+    } catch (error) {
+      setText('mdBookFoot', 'Could not restore local depth archive: ' + String(error && error.message || error));
+    }
+  }
+  restoreDepthArchive();
   function showImportedInterval(tf) {
     const local = tf === '10s' ? imported('10s') : [];
     if (tf === '10s' && local.length) setCandleData(local, 'Imported historical COIN-M archive · 10-second candles');
@@ -674,6 +701,8 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
         throw new TypeError('Unsupported capture. Import a BTCUSD_PERP COIN-M depth JSON exported by this workstation.');
       }
       const info = feed.restoreDepthHistory(payload.samples);
+      await depthArchive.append(payload.samples, 'BTCUSD_PERP');
+      persistedDepthCount = info.count;
       replayingDepth = false;
       updateDepthCaptureControls();
       if (info.count) {
