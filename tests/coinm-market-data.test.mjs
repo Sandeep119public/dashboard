@@ -36,9 +36,10 @@ test('trade-built candles are ordered and preserve OHLC and maker/taker quantiti
 });
 
 test('depth synchronization requires a snapshot-bridging event and continuous pu sequence',()=>{
-  assert.equal(isDepthSnapshotBridge(100,{U:101,u:105}),true);
+  assert.equal(isDepthSnapshotBridge(100,{U:95,u:100}),true);
+  assert.equal(isDepthSnapshotBridge(100,{U:90,u:99}),false);
+  assert.equal(isDepthSnapshotBridge(100,{U:101,u:105}),false);
   assert.equal(isDepthSnapshotBridge(100,{U:102,u:105}),false);
-  assert.equal(isDepthSnapshotBridge(100,{U:95,u:100}),false);
   assert.equal(isDepthUpdateContinuous(105,{U:106,u:108,pu:105}),true);
   assert.equal(isDepthUpdateContinuous(105,{U:106,u:108,pu:104}),false);
   assert.equal(isDepthUpdateContinuous(105,{U:106,u:108}),true);
