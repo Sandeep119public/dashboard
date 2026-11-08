@@ -25,15 +25,17 @@ test('mobile workstation layout keeps the chart stage flexible and controls touc
 });
 
 test('service worker cache version advances with the visual shell update', () => {
-  assert.match(sw, /btc-mechanics-shell-v34/);
+  assert.match(sw, /btc-mechanics-shell-v35/);
 });
 
 
-test('declutter pass removes repeated header and empty-state actions while preserving the primary import and settings controls', () => {
-  assert.match(html, /id="workstation-declutter-pass"/);
-  assert.match(html, /\.brand \.eyebrow,[\\s\\S]*?\.empty-hint\{display:none!important\}/);
-  assert.match(html, /id="headerImport" type="button">Import<\\/button>/);
-  assert.match(html, /id="headerFilters" type="button"[^>]*>Settings<\\/button>/);
-  assert.match(html, /id="emptyImport"/);
-  assert.match(html, /id="filterDrawer"/);
+test('declutter pass removes repeated header and empty-state actions while preserving primary controls', () => {
+  assert.ok(html.includes('id="workstation-declutter-pass"'));
+  assert.ok(html.includes('.brand .eyebrow,'));
+  assert.ok(html.includes('.empty-hint{display:none!important}'));
+  assert.ok(html.includes('id="headerImport" type="button">Import</button>'));
+  assert.ok(html.includes('id="headerFilters" type="button" aria-expanded="false" aria-controls="filterDrawer">Settings</button>'));
+  assert.ok(html.includes('id="emptyImport"'));
+  assert.ok(html.includes('id="filterDrawer"'));
 });
+
