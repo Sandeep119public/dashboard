@@ -538,10 +538,11 @@ export function createCoinMMarketFeed(options = {}) {
   }
 
   function getFootprintWindow(endMinute, timeframeMinutes = 1) {
-    const end = Math.floor(Number(endMinute) / 60000) * 60000;
+    const selectedMinute = Math.floor(Number(endMinute) / 60000) * 60000;
     const width = Math.max(1, Math.min(15, Math.floor(Number(timeframeMinutes) || 1)));
-    if (!Number.isFinite(end) || end <= 0) return null;
-    const start = end - (width - 1) * 60000;
+    if (!Number.isFinite(selectedMinute) || selectedMinute <= 0) return null;
+    const start = Math.floor(selectedMinute / (width * 60000)) * width * 60000;
+    const end = start + (width - 1) * 60000;
     const combined = createMinuteFootprintState();
     combined.minute = end;
     combined.startTime = start;
@@ -575,8 +576,47 @@ export function createCoinMMarketFeed(options = {}) {
     }
     if (!combined.levels.size) return null;
     while (combined.levels.size > maxFootprintLevels) combined.levels.delete(combined.levels.keys().next().value);
+    const summary = summarizeMinuteFootprint(combined, visibleFootprintLevels);
+    const profile = Array.from(combined.levels.values()).sort((a, b) => b.price - a.price);
+    const totalVolume = profile.reduce((sum, level) => sum + level.buyTaker + level.sellTaker, 0);
+    let pocIndex = -1;
+    for (let i = 0; i < profile.length; i++) {
+      if (pocIndex < 0 || profile[i].buyTaker + profile[i].sellTaker >
+          profile[pocIndex].buyTaker + profile[pocIndex].sellTaker) pocIndex = i;
+    }
+    const valueArea = new Set();
+    if (pocIndex >= 0 && totalVolume > 0) {
+      let included = profile[pocIndex].buyTaker + profile[pocIndex].sellTaker;
+      let low = pocIndex, high = pocIndex;
+      valueArea.add(pocIndex);
+      while (included < totalVolume * 0.70 && (low > 0 || high < profile.length - 1)) {
+        const above = low > 0 ? profile[low - 1].buyTaker + profile[low - 1].sellTaker : -1;
+        const below = high < profile.length - 1 ? profile[high + 1].buyTaker + profile[high + 1].sellTaker : -1;
+        if (above >= below && low > 0) {
+          low--;
+          included += above;
+          valueArea.add(low);
+        } else if (high < profile.length - 1) {
+          high++;
+          included += below;
+          valueArea.add(high);
+        } else break;
+      }
+    }
+    const levels = summary.levels.map(level => {
+      const index = profile.findIndex(item => item.price === level.price);
+      return { ...level, isPoc: index === pocIndex, inValueArea: valueArea.has(index) };
+    });
+    const poc = pocIndex >= 0 ? profile[pocIndex] : null;
+    const vaLevels = profile.filter((_, index) => valueArea.has(index));
+    const valueAreaVolume = vaLevels.reduce((sum, level) => sum + level.buyTaker + level.sellTaker, 0);
     return {
-      ...summarizeMinuteFootprint(combined, visibleFootprintLevels),
+      ...summary, levels,
+      pocPrice: poc ? poc.price : null,
+      valueAreaLow: vaLevels.length ? Math.min(...vaLevels.map(level => level.price)) : null,
+      valueAreaHigh: vaLevels.length ? Math.max(...vaLevels.map(level => level.price)) : null,
+      valueAreaVolume,
+      valueAreaPercent: totalVolume > 0 ? valueAreaVolume / totalVolume : 0,
       startTime: start,
       endTime: end + 60000,
       timeframeMinutes: width,
