@@ -516,6 +516,17 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       const diagonal = cell(level.diagonalSide ? level.diagonalSide + ' ' + number(level.diagonalRatio, 1) + '×' : '—', level.diagonalSide === 'BUY' ? 'md-positive' : level.diagonalSide === 'SELL' ? 'md-negative' : 'md-muted');
       const count = cell(integer(level.trades), 'md-tape-qty');
       const profileTag = cell(level.isPoc ? 'POC' : level.inValueArea ? 'VA' : '', level.isPoc ? 'md-footprint-poc' : level.inValueArea ? 'md-footprint-va' : '');
+      if (level.isPoc || level.inValueArea) {
+        profileTag.style.fontSize = '9px';
+        profileTag.style.fontWeight = '700';
+        profileTag.style.letterSpacing = '.04em';
+        profileTag.style.textAlign = 'center';
+        profileTag.style.borderRadius = '3px';
+        profileTag.style.padding = '1px 4px';
+        profileTag.style.color = level.isPoc ? '#f3c969' : '#91a3bb';
+        profileTag.style.background = level.isPoc ? 'rgba(243,201,105,.12)' : 'rgba(145,163,187,.08)';
+        tr.style.background = level.isPoc ? 'rgba(243,201,105,.045)' : 'rgba(145,163,187,.025)';
+      }
       if (delta > 0) tr.className = 'md-footprint-positive';
       else if (delta < 0) tr.className = 'md-footprint-negative';
       if (level.isPoc) tr.classList.add('md-footprint-poc-row');
