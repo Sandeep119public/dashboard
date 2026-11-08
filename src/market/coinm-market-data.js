@@ -206,6 +206,48 @@ export function updateMinuteFootprint(state, trade, maxLevels = 3000, visibleLev
   };
 }
 
+export function aggregateTradesToFootprint(trades, maxLevels = 3000, visibleLevels = 80) {
+  const levels = new Map();
+  let totalQty = 0, totalFills = 0, totalBuy = 0, totalSell = 0, latestPrice = null;
+  for (const trade of trades || []) {
+    const price = Number(trade && trade.price), qty = Number(trade && trade.qty);
+    if (!positive(price) || !positive(qty)) continue;
+    latestPrice = price;
+    const key = String(price);
+    let level = levels.get(key);
+    if (!level) {
+      level = { price, buyTaker: 0, sellTaker: 0, makerBuy: 0, makerSell: 0, trades: 0, fills: 0 };
+      levels.set(key, level);
+    }
+    const buy = trade.buyTakerQty !== undefined ? Number(trade.buyTakerQty) : (trade.buyerIsMaker ? 0 : qty);
+    const sell = trade.sellTakerQty !== undefined ? Number(trade.sellTakerQty) : (trade.buyerIsMaker ? qty : 0);
+    if (!nonNegative(buy) || !nonNegative(sell) || buy + sell <= 0) continue;
+    level.buyTaker += buy; level.sellTaker += sell;
+    level.makerSell += buy; level.makerBuy += sell;
+    level.trades++;
+    level.fills += Number.isFinite(Number(trade.fills)) && Number(trade.fills) > 0 ? Number(trade.fills) : 1;
+    totalQty += qty; totalFills += level.fills > 0 ? (Number.isFinite(Number(trade.fills)) && Number(trade.fills) > 0 ? Number(trade.fills) : 1) : 1;
+    totalBuy += buy; totalSell += sell;
+    while (levels.size > Math.max(1, maxLevels)) levels.delete(levels.keys().next().value);
+  }
+  let visible = Array.from(levels.values());
+  if (visible.length > visibleLevels && Number.isFinite(latestPrice)) {
+    visible.sort((a, b) => Math.abs(a.price - latestPrice) - Math.abs(b.price - latestPrice));
+    visible = visible.slice(0, Math.max(1, visibleLevels));
+  }
+  visible.sort((a, b) => b.price - a.price);
+  const denominator = totalBuy + totalSell;
+  return {
+    minute: null, historical: true, levels: visible.map(level => ({
+      ...level, delta: level.buyTaker - level.sellTaker,
+      imbalance: level.buyTaker + level.sellTaker > 0 ? (level.buyTaker - level.sellTaker) / (level.buyTaker + level.sellTaker) : 0
+    })),
+    levelsTotal: levels.size, truncated: levels.size > visible.length,
+    totalQty, totalFills, totalBuy, totalSell,
+    imbalance: denominator > 0 ? (totalBuy - totalSell) / denominator : 0
+  };
+}
+
 export function aggregateTradesToCandles(trades, intervalMs) {
   if (!Number.isFinite(intervalMs) || intervalMs <= 0) throw new RangeError('intervalMs must be positive.');
   const sorted = Array.from(trades || []).slice().sort((a, b) => Number(a.time) - Number(b.time));
@@ -261,6 +303,33 @@ export function mergeCandleSeries(primary = [], overlay = [], maxBars = 5000) {
   }
   const bars = Array.from(map.values()).sort((a, b) => a.t - b.t);
   return bars.length > limit ? bars.slice(-limit) : bars;
+}
+
+export function replayDepthRecording(recording, capturedAt) {
+  if (!recording || !Array.isArray(recording.snapshots) || !Array.isArray(recording.events)) {
+    throw new TypeError('Depth recording must contain snapshots and events.');
+  }
+  const target = Number(capturedAt);
+  if (!Number.isFinite(target)) throw new TypeError('Replay time must be a finite timestamp.');
+  const snapshot = recording.snapshots.filter(item => Number(item.capturedAt) <= target)
+    .sort((a, b) => Number(b.capturedAt) - Number(a.capturedAt))[0];
+  if (!snapshot) return { ready: false, reason: 'No recorded snapshot exists before this replay time.', bids: [], asks: [] };
+  const book = {
+    bids: new Map((snapshot.bids || []).map(level => [String(Number(level[0])), Number(level[1])])),
+    asks: new Map((snapshot.asks || []).map(level => [String(Number(level[0])), Number(level[1])])),
+    lastUpdateId: Number(snapshot.lastUpdateId), updatedAt: Number(snapshot.capturedAt)
+  };
+  const events = recording.events.filter(event => Number(event.capturedAt) > Number(snapshot.capturedAt) && Number(event.capturedAt) <= target)
+    .sort((a, b) => Number(a.capturedAt) - Number(b.capturedAt));
+  let lastCapturedAt = Number(snapshot.capturedAt);
+  for (const event of events) {
+    if (!isDepthUpdateContinuous(book.lastUpdateId, event)) {
+      return { ...bookView(book, false), reason: 'Recorded depth sequence has a gap; replay is incomplete.', replayedEvents: 0 };
+    }
+    applyDepthEvent(book, event);
+    lastCapturedAt = Number(event.capturedAt);
+  }
+  return { ...bookView(book, true, {}, lastCapturedAt, book.lastUpdateId), replayedEvents: events.length, capturedAt: target };
 }
 
 export function isDepthSnapshotBridge(lastId, event) {
@@ -378,6 +447,8 @@ export function createCoinMMarketFeed(options = {}) {
   let lastEventAt = null;
   let lastTradeAt = null;
   let lastBookAt = null;
+  const depthRecording = { symbol, startedAt: null, snapshots: [], events: [] };
+  const maxRecordedDepthEvents = Number.isFinite(Number(options.maxRecordedDepthEvents)) ? Math.max(100, Number(options.maxRecordedDepthEvents)) : 50000;
   const minuteFootprint = createMinuteFootprintState();
   const secondBars = new Map(SECOND_INTERVALS.map(tf => [tf, new Map()]));
   const liveKlines = new Map();
@@ -408,6 +479,71 @@ export function createCoinMMarketFeed(options = {}) {
     }
   }
 
+  async function loadKlinesRange(interval, window = {}) {
+    if (!KLINE_SET.has(interval)) throw new RangeError('Unsupported kline interval: ' + interval);
+    const pageSize = Math.min(1000, Math.max(1, Math.floor(Number(window.pageSize) || 1000)));
+    const maxPages = Math.min(100, Math.max(1, Math.floor(Number(window.maxPages) || 20)));
+    const maxBars = Math.max(1, Math.floor(Number(window.maxBars) || 20000));
+    const startTime = Number(window.startTime), endTime = Number(window.endTime);
+    if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime < startTime) {
+      throw new RangeError('A valid startTime and endTime range is required.');
+    }
+    const all = new Map();
+    let cursor = startTime, pages = 0, exhausted = false;
+    while (pages < maxPages && all.size < maxBars && cursor <= endTime) {
+      const page = await loadKlines(interval, pageSize, { startTime: cursor, endTime });
+      pages++;
+      if (!page.length) { exhausted = true; break; }
+      for (const candle of page) {
+        if (candle.t >= startTime && candle.t <= endTime) all.set(candle.t, candle);
+      }
+      const last = page[page.length - 1];
+      const next = Number(last.t) + 1;
+      if (!Number.isFinite(next) || next <= cursor || page.length < pageSize || next > endTime) { exhausted = true; break; }
+      cursor = next;
+    }
+    const candles = Array.from(all.values()).sort((a, b) => a.t - b.t).slice(0, maxBars);
+    return { interval, candles, pages, exhausted, truncated: !exhausted && (pages >= maxPages || all.size >= maxBars), nextStartTime: exhausted ? null : cursor };
+  }
+
+  async function loadOlderKlines(interval, beforeTime, limit = 1000) {
+    if (!KLINE_SET.has(interval)) throw new RangeError('Unsupported kline interval: ' + interval);
+    const before = Number(beforeTime);
+    if (!Number.isFinite(before)) throw new TypeError('beforeTime must be a finite candle timestamp.');
+    const page = await loadKlines(interval, limit, { endTime: before - 1 });
+    return page.filter(candle => candle.t < before).sort((a, b) => a.t - b.t);
+  }
+
+  async function loadHistoricalFootprint(startTime, endTime, options = {}) {
+    const start = Number(startTime), end = Number(endTime);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) {
+      throw new RangeError('Historical footprint requires a valid startTime and endTime range.');
+    }
+    const maxPages = Math.min(100, Math.max(1, Math.floor(Number(options.maxPages) || 20)));
+    const limit = Math.min(1000, Math.max(1, Math.floor(Number(options.limit) || 1000)));
+    const trades = [];
+    let fromId = null, pages = 0, exhausted = false, reachedEnd = false;
+    while (pages < maxPages && trades.length < (Number(options.maxTrades) || 20000)) {
+      const params = new URLSearchParams({ symbol, limit: String(limit) });
+      if (fromId === null) params.set('startTime', String(Math.floor(start)));
+      else params.set('fromId', String(fromId));
+      const rows = await requestJson(COINM_REST + '/dapi/v1/aggTrades?' + params.toString());
+      pages++;
+      if (!Array.isArray(rows)) throw new Error('Unexpected Binance aggregate-trade response.');
+      if (!rows.length) { exhausted = true; break; }
+      for (const row of rows) {
+        const time = Number(row.T);
+        if (time >= start && time < end) trades.push(normalizeAggTrade({ e: 'aggTrade', a: row.a, p: row.p, q: row.q, T: row.T, E: row.T, m: row.m, f: row.f, l: row.l }));
+        if (time >= end) reachedEnd = true;
+      }
+      const lastId = Number(rows[rows.length - 1].a);
+      if (!Number.isFinite(lastId) || lastId < 0 || rows.length < limit || reachedEnd) { exhausted = true; break; }
+      fromId = lastId + 1;
+    }
+    const footprint = aggregateTradesToFootprint(trades, options.maxLevels || 3000, options.visibleLevels || 80);
+    return { ...footprint, startTime: start, endTime: end, tradesCount: trades.length, pages, exhausted, truncated: !exhausted };
+  }
+
   async function loadKlines(interval, limit = 1000, window = {}) {
     if (!KLINE_SET.has(interval)) return [];
     const params = new URLSearchParams({ symbol, interval, limit: String(Math.min(1000, Math.max(1, Number(limit) || 1000))) });
@@ -424,6 +560,9 @@ export function createCoinMMarketFeed(options = {}) {
   }
 
   function resetSession() {
+    depthRecording.startedAt = now();
+    depthRecording.snapshots.length = 0;
+    depthRecording.events.length = 0;
     recentTrades = [];
     stats = emptyStats();
     statsSince = now();
@@ -515,6 +654,8 @@ export function createCoinMMarketFeed(options = {}) {
 
   function applyAndNotify(event) {
     const wasReady = bookReady;
+    depthRecording.events.push({ ...event, capturedAt: now() });
+    if (depthRecording.events.length > maxRecordedDepthEvents) depthRecording.events.splice(0, depthRecording.events.length - maxRecordedDepthEvents);
     const changes = applyDepthEvent(book, event);
     lastUpdateId = Number(event.u);
     book.lastUpdateId = lastUpdateId;
@@ -566,6 +707,9 @@ export function createCoinMMarketFeed(options = {}) {
           updatedAt: now()
         };
         lastUpdateId = book.lastUpdateId;
+        depthRecording.snapshots.push({ capturedAt: now(), lastUpdateId: book.lastUpdateId, bids: Array.from(book.bids), asks: Array.from(book.asks) });
+        if (depthRecording.snapshots.length > 100) depthRecording.snapshots.shift();
+        if (depthRecording.startedAt === null) depthRecording.startedAt = now();
         snapshotReady = true;
         snapshotInFlight = false;
         const queued = depthBuffer.splice(0);
@@ -843,6 +987,10 @@ export function createCoinMMarketFeed(options = {}) {
     disconnect,
     setInterval,
     loadKlines,
+    loadKlinesRange,
+    loadOlderKlines,
+    loadHistoricalFootprint,
+    getDepthRecording: () => ({ symbol: depthRecording.symbol, startedAt: depthRecording.startedAt, snapshots: depthRecording.snapshots.map(item => ({ ...item, bids: item.bids.map(level => [...level]), asks: item.asks.map(level => [...level]) })), events: depthRecording.events.map(item => ({ ...item, b: (item.b || []).map(level => [...level]), a: (item.a || []).map(level => [...level]) })) }),
     getSessionCandles,
     getStatus: () => ({
       connected: !stopped,
