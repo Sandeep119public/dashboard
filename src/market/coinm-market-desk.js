@@ -690,8 +690,10 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   });
   $('mdFootprintMinute').addEventListener('change', () => {
     selectedFootprintMinute = $('mdFootprintMinute').value;
-    if (selectedFootprintMinute === 'live') renderFootprint(feed.getLatestFootprint(), false);
-    else renderFootprint(feed.getFootprint(Number(selectedFootprintMinute)), true);
+    if (selectedFootprintMinute === 'live') {
+      const latest = feed.getLatestFootprint();
+      renderFootprint(latest ? feed.getFootprintWindow(latest.minute, selectedFootprintInterval) : null, false);
+    } else renderFootprint(feed.getFootprintWindow(Number(selectedFootprintMinute), selectedFootprintInterval), true);
   });
   $('mdRecordDepth').addEventListener('click', () => {
     feed.setDepthRecording(!feed.getDepthRecording());
