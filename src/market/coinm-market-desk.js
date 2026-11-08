@@ -752,10 +752,8 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     selectedFootprintMinute = $('mdFootprintMinute').value;
     if (selectedFootprintMinute !== 'live') {
       selectedReplayTime = Number(selectedFootprintMinute);
-      const history = feed.getDepthHistory();
-      let nearest = -1, distance = Infinity;
-      history.forEach((sample, index) => { const d = Math.abs(sample.time - selectedReplayTime); if (d < distance) { distance = d; nearest = index; } });
-      if (nearest >= 0 && distance <= 60000) { $('mdDepthReplay').value = String(nearest); replayingDepth = true; const sample = feed.getDepthSnapshot(nearest); if (sample) renderBook({ ...sample, ready: true, recorded: true }); }
+      const nearest = feed.getDepthSnapshotIndexAt(selectedReplayTime, 60000);
+      if (nearest >= 0) { $('mdDepthReplay').value = String(nearest); replayingDepth = true; const sample = feed.getDepthSnapshot(nearest); if (sample) renderBook({ ...sample, ready: true, recorded: true }); }
       updateDepthCaptureControls();
       scheduleDraw(); renderDepthHeatmap();
     } else { selectedReplayTime = null; scheduleDraw(); renderDepthHeatmap(); }
