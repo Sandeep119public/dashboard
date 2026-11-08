@@ -87,6 +87,8 @@ test('live market desk is fitted inside the chart stage and labels contract unit
   assert.match(deskSource, /1 contract = \$' \+ COINM_CONTRACT_USD/, 'desk must state the COIN-M contract face value');
   assert.match(deskSource, /id="mdLoadOlder"/, 'exchange candle panel must expose older-history paging');
   assert.match(deskSource, /id="mdFootprintMinute"/, 'per-price footprint must support selecting prior captured minutes');
+  assert.match(deskSource, /id="mdBackfillFootprint"/, 'footprint must expose Binance historical trade backfill');
+  assert.match(marketSource, /backfillFootprintHistory/, 'market feed must page historical aggregate trades');
   assert.match(deskSource, /id="mdRecordDepth"/, 'depth capture must be opt-in');
   assert.match(deskSource, /id="mdDepthReplay"/, 'captured depth snapshots must be replayable');
   assert.match(deskSource, /id="mdDepthExport"/, 'captured depth snapshots must be exportable');
