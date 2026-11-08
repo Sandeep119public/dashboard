@@ -409,22 +409,31 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   function renderDepthHeatmap() {
     const host = $('mdDepthHeatmap');
     if (!host || !Plotly || typeof Plotly.react !== 'function') return;
-    const samples = selectedReplayTime !== null && Number.isFinite(Number(selectedReplayTime))\n      ? feed.getDepthHistoryAround(selectedReplayTime, 1000)\n      : feed.getDepthHistory(1000);
+    const samples = selectedReplayTime !== null && Number.isFinite(Number(selectedReplayTime))
+      ? feed.getDepthHistoryAround(selectedReplayTime, 1000)
+      : feed.getDepthHistory(1000);
     if (!samples.length) {
       setText('mdHeatmapMeta', 'No captured depth history yet');
       if (Plotly.purge) Plotly.purge(host);
       return;
     }
-    const latest = samples[samples.length - 1];
-    const midpoint = latest.bids.length && latest.asks.length
-      ? (latest.bids[0].price + latest.asks[0].price) / 2
-      : (latest.bids[0]?.price || latest.asks[0]?.price || 0);
+    const cursorSample = selectedReplayTime !== null
+      ? samples.reduce((best, sample) =>
+          !best || Math.abs(sample.time - selectedReplayTime) < Math.abs(best.time - selectedReplayTime) ? sample : best, null)
+      : null;
+    const reference = cursorSample || samples[samples.length - 1];
+    const midpoint = reference.bids.length && reference.asks.length
+      ? (reference.bids[0].price + reference.asks[0].price) / 2
+      : (reference.bids[0]?.price || reference.asks[0]?.price || 0);
     const priceSet = new Set();
     for (const sample of samples) {
       for (const level of sample.bids) priceSet.add(Number(level.price));
       for (const level of sample.asks) priceSet.add(Number(level.price));
     }
-    const prices = Array.from(priceSet).sort((a, b) => Math.abs(a - midpoint) - Math.abs(b - midpoint)).slice(0, 60).sort((a, b) => a - b);
+    const prices = Array.from(priceSet)
+      .sort((a, b) => Math.abs(a - midpoint) - Math.abs(b - midpoint))
+      .slice(0, 60)
+      .sort((a, b) => a - b);
     const x = samples.map(sample => new Date(sample.time));
     const z = prices.map(price => samples.map(sample => {
       const bid = sample.bids.find(level => Number(level.price) === price);
@@ -439,7 +448,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       showlegend: false,
       xaxis: { type: 'date', gridcolor: '#203047', tickfont: { size: 8 }, rangeslider: { visible: false } },
       yaxis: { title: 'Price', gridcolor: '#203047', tickfont: { size: 8 }, nticks: 7 },
-      shapes: selectedReplayTime ? [{ type: 'line', x0: selectedReplayTime, x1: selectedReplayTime, y0: 0, y1: 1, yref: 'paper', line: { color: '#f3c969', width: 1, dash: 'dot' } }] : [],
+      shapes: selectedReplayTime !== null ? [{ type: 'line', x0: selectedReplayTime, x1: selectedReplayTime, y0: 0, y1: 1, yref: 'paper', line: { color: '#f3c969', width: 1, dash: 'dot' } }] : [],
       uirevision: 'coinm-depth-heatmap'
     };
     const trace = {
