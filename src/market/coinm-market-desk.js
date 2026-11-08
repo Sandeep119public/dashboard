@@ -408,7 +408,9 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     for (const minute of minutes.slice().sort((a, b) => b - a)) {
       const option = document.createElement('option');
       option.value = String(minute);
-      option.textContent = new Date(minute).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+      const footprint = feed.getFootprint(minute);
+      const origin = footprint && String(footprint.source || '').includes('Binance REST') ? ' · REST' : ' · session';
+      option.textContent = new Date(minute).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' + origin;
       select.appendChild(option);
     }
     if (keep !== 'live' && minutes.includes(Number(keep))) select.value = keep;
