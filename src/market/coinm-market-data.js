@@ -345,12 +345,13 @@ function bookView(book, ready, changes = {}, updatedAt = null, lastUpdateId = nu
   };
 }
 
-export function summarizeDepthLiquidityMigration(samples) {
+export function summarizeDepthLiquidityMigration(samples, segment = undefined) {
   if (!Array.isArray(samples) || samples.length < 2) return null;
-  const first = samples[0];
-  const last = samples[samples.length - 1];
-  if (!first || !last || !Array.isArray(first.bids) || !Array.isArray(first.asks) ||
-      !Array.isArray(last.bids) || !Array.isArray(last.asks)) return null;
+  const targetSegment = segment === undefined ? samples[samples.length - 1]?.segment : segment;
+  const comparable = samples.filter(sample => sample && sample.segment === targetSegment);
+  if (comparable.length < 2) return null;
+  const first = comparable[0];
+  const last = comparable[comparable.length - 1);
   const summarizeSide = (beforeLevels, afterLevels) => {
     const before = new Map(beforeLevels.map(level => [Number(level.price), Number(level.qty)]));
     const after = new Map(afterLevels.map(level => [Number(level.price), Number(level.qty)]));
