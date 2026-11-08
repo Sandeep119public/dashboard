@@ -89,6 +89,25 @@ test('depth replay imports validate, deduplicate and sort captured snapshots',()
   assert.throws(()=>feed.restoreDepthHistory([{...sample(3000,3),bids:[{price:100,qty:0}]}]),/invalid price level/i);
 });
 
+test('historical depth heatmap window centers around replay time, including old archive samples',()=>{
+  const feed=createCoinMMarketFeed({fetchImpl:async()=>({ok:true,json:async()=>[]}),WebSocketImpl:null});
+  const samples=Array.from({length:3000},(_,index)=>({
+    time:100000+index*100,updatedAt:100000+index*100,lastUpdateId:index+1,segment:1,
+    bids:[{price:100,qty:2}],asks:[{price:101,qty:3}]
+  }));
+  feed.restoreDepthHistory(samples);
+  const window=feed.getDepthHistoryAround(110000,1000);
+  assert.equal(window.length,1000);
+  assert.ok(window[0].time <= 110000);
+  assert.ok(window[window.length-1].time >= 110000);
+  assert.equal(window[0].time,100000);
+  assert.equal(window[window.length-1].time,199900);
+  const late=feed.getDepthHistoryAround(399900,1000);
+  assert.equal(late[late.length-1].time,399900);
+  assert.equal(late[0].time,300000);
+  assert.equal(feed.getDepthHistoryAround(1,1000)[0].time,100000);
+});
+
 test('depth archive restore retains the full 10,000-snapshot replay window',()=>{
   const feed=createCoinMMarketFeed({fetchImpl:async()=>({ok:true,json:async()=>[]}),WebSocketImpl:null});
   const samples=Array.from({length:2000},(_,index)=>({
