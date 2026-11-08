@@ -91,7 +91,8 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   let selectedReplayTime = null;
   let depthHeatmapTimer = null;
   const depthArchive = createDepthArchiveStore({ maxSamples: 10000 });
-  let persistedDepthCount = 0;
+  let lastArchivedDepthKey = '';
+  const pendingArchiveKeys = new Set();
   let archiveWrite = Promise.resolve();
   let pendingArchiveSamples = [];
   let archiveFlushTimer = null;
@@ -571,7 +572,13 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     }
     host.appendChild(fragment);
   }
+  function depthArchiveKey(sample) {
+    return Number(sample && sample.segment || 0) + ':' + Number(sample && sample.time || 0) + ':' + Number(sample && sample.lastUpdateId || 0);
+  }
   function queueDepthArchiveSample(sample) {
+    const key = depthArchiveKey(sample);
+    if (key === lastArchivedDepthKey || pendingArchiveKeys.has(key)) return;
+    pendingArchiveKeys.add(key);
     pendingArchiveSamples.push(sample);
     if (archiveFlushTimer !== null) return;
     archiveFlushTimer = setTimeout(() => {
@@ -579,7 +586,14 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       const batch = pendingArchiveSamples.splice(0);
       if (!batch.length) return;
       archiveWrite = archiveWrite.then(() => depthArchive.append(batch, 'BTCUSD_PERP'))
-        .catch(error => setText('mdBookFoot', 'Local depth archive write failed: ' + String(error && error.message || error)));
+        .then(() => {
+          for (const item of batch) pendingArchiveKeys.delete(depthArchiveKey(item));
+          lastArchivedDepthKey = depthArchiveKey(batch[batch.length - 1]);
+        })
+        .catch(error => {
+          for (const item of batch) pendingArchiveKeys.delete(depthArchiveKey(item));
+          setText('mdBookFoot', 'Local depth archive write failed: ' + String(error && error.message || error));
+        });
     }, 750);
   }
   const feed = createCoinMMarketFeed({
@@ -590,7 +604,6 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       if (event.state === 'connecting') {
         replayingDepth = false;
         selectedReplayTime = null;
-        persistedDepthCount = 0;
         latestBookView = null;
         restoreDepthArchive();
         selectedFootprintMinute = 'live';
@@ -639,12 +652,9 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       updateDepthCaptureControls();
       scheduleDepthHeatmap();
       const info = feed.getDepthHistoryInfo();
-      if (info.recording && info.count > persistedDepthCount) {
+      if (info.recording && info.count) {
         const sample = feed.getDepthSnapshot(info.count - 1);
-        if (sample) {
-          persistedDepthCount = info.count;
-          queueDepthArchiveSample(sample);
-        }
+        if (sample) queueDepthArchiveSample(sample);
       }
     }
   });
@@ -653,7 +663,8 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       const samples = await depthArchive.load({ symbol: 'BTCUSD_PERP', limit: 10000 });
       if (!samples.length) return;
       const info = feed.restoreDepthHistory(samples);
-      persistedDepthCount = info.count;
+      const latest = feed.getDepthSnapshot(info.count - 1);
+      if (latest) lastArchivedDepthKey = depthArchiveKey(latest);
       updateDepthCaptureControls();
       renderDepthHeatmap();
       setText('mdBookFoot', 'Restored ' + integer(info.count) + ' historical depth snapshots from this browser. Start replay with the slider. Archive is local to this device.');
@@ -789,12 +800,9 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   $('mdRecordDepth').addEventListener('click', () => {
     feed.setDepthRecording(!feed.getDepthRecording());
     const info = feed.getDepthHistoryInfo();
-    if (info.recording && info.count > persistedDepthCount) {
+    if (info.recording && info.count) {
       const sample = feed.getDepthSnapshot(info.count - 1);
-      if (sample) {
-        persistedDepthCount = info.count;
-        queueDepthArchiveSample(sample);
-      }
+      if (sample) queueDepthArchiveSample(sample);
     }
     updateDepthCaptureControls();
   });
@@ -846,7 +854,8 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       }
       const info = feed.restoreDepthHistory(payload.samples);
       await depthArchive.append(payload.samples, 'BTCUSD_PERP');
-      persistedDepthCount = info.count;
+      const latestImported = feed.getDepthSnapshot(info.count - 1);
+      if (latestImported) lastArchivedDepthKey = depthArchiveKey(latestImported);
       replayingDepth = false;
       updateDepthCaptureControls();
       if (info.count) {
