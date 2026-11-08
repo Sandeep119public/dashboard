@@ -676,6 +676,99 @@ body.drawer-open{overflow:hidden}
  .focus-details>summary{min-height:20px}
 }
 </style>
+
+<style id="workstation-visual-redesign">
+/* Visual pass: make the selected analysis surface the unmistakable centre of the workspace. */
+:root{
+  --ws-bg:#070c14;
+  --ws-panel:#0d1725;
+  --ws-panel-2:#101d2d;
+  --ws-line:#263b54;
+  --ws-muted:#8fa4bd;
+  --ws-accent:#65e0bf;
+}
+html{background:var(--ws-bg)}
+body{background:radial-gradient(ellipse at 50% -28%,rgba(35,76,92,.24),transparent 58%),var(--ws-bg)}
+.wrap{gap:7px;padding-top:calc(10px + env(safe-area-inset-top));padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+.top{min-height:42px;padding:0 3px 6px;border-bottom:1px solid rgba(75,101,130,.22)}
+.top h1{font-weight:760;letter-spacing:-.045em}
+.top h1 span{color:#a9bed4;font-weight:560}
+.top .eyebrow{color:var(--ws-accent);font-size:8px;letter-spacing:.19em}
+.stamp strong{font-variant-numeric:tabular-nums;color:#dce9f7}
+.header-actions .btn{border-radius:9px;font-weight:720;letter-spacing:.005em}
+.header-actions #headerImport{box-shadow:0 4px 16px rgba(48,173,145,.12)}
+.status-strip{min-height:0;padding:0 3px;font-size:10px}
+.chart-nav{padding:2px 3px;gap:9px}
+.chart-nav-label{font-size:8px;letter-spacing:.18em;color:#7289a4}
+.chart-select{box-shadow:0 3px 12px rgba(0,0,0,.16);transition:border-color .15s,background .15s}
+.chart-select:hover{border-color:#496784;background:#142237}
+.kpis{gap:7px}
+.metric-card{position:relative;overflow:hidden;border-color:#26394f;background:linear-gradient(145deg,rgba(18,31,48,.96),rgba(10,19,32,.98));box-shadow:0 5px 18px rgba(0,0,0,.12)}
+.metric-card:before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:2px;border-radius:2px;background:rgba(101,224,191,.46)}
+.metric-group-label{color:#7892ad;letter-spacing:.16em}
+.metric-primary>span{color:#b8c9dc}
+.metric-primary .value{font-variant-numeric:tabular-nums}
+.metric-secondary{border-color:rgba(67,91,119,.36)}
+.chart-stage{border:1px solid #23364d;background:linear-gradient(180deg,rgba(13,23,37,.72),rgba(7,13,22,.88));box-shadow:0 12px 36px rgba(0,0,0,.18);padding:5px}
+.chartcard.ws-active{border:1px solid #2b4059;background:linear-gradient(180deg,#101c2c,#0a1421);box-shadow:0 8px 26px rgba(0,0,0,.2)}
+.chartcard.ws-active .charttitle{padding:6px 9px 7px;border-bottom-color:rgba(74,102,133,.25)}
+.chartcard.ws-active .charttitle strong{font-size:11px;font-weight:760;letter-spacing:.01em}
+.chartcard.ws-active .charttitle span{color:#8299b3}
+.empty-state{border:1px dashed #35506d;background:radial-gradient(ellipse at 50% 12%,rgba(38,91,94,.18),transparent 55%),linear-gradient(145deg,#0e1a2a,#091321)}
+.empty-icon{width:48px;height:48px;border:1px solid rgba(101,224,191,.2);box-shadow:0 8px 25px rgba(39,168,139,.1)}
+.empty-state h2{font-size:clamp(17px,2.2vw,22px);font-weight:760}
+.empty-state p{font-size:12px;color:#a5b7cc}
+.empty-actions .btn{min-height:42px;padding:9px 16px}
+.replay-box{border-color:#293e58!important;background:linear-gradient(105deg,#101d2d,#0b1523)!important;box-shadow:0 6px 18px rgba(0,0,0,.14)}
+.replay-head{gap:12px}
+.focus-time{color:#d8c27f}
+.focus-details>summary{color:#b7c8dc}
+.filter-drawer{background:linear-gradient(160deg,#101d2e,#091321);border-left-color:#39516e}
+.drawer-head{background:rgba(8,15,25,.5)}
+.drawer-head strong{letter-spacing:-.01em}
+.drawer-body{scrollbar-gutter:stable}
+.filter-drawer .controls,.filter-drawer .toolbar,.filter-drawer .studio{border-color:#2b405a!important}
+.filter-drawer .control select:focus,.filter-drawer .control input:focus{border-color:var(--ws-accent)}
+@media(max-width:760px){
+  .wrap{gap:5px;padding-top:calc(7px + env(safe-area-inset-top));padding-bottom:calc(7px + env(safe-area-inset-bottom))}
+  .top{min-height:0;padding-bottom:5px}
+  .top-right{gap:7px}
+  .stamp{padding:3px 0}
+  .stamp strong{font-size:9px}
+  .header-actions{gap:5px}
+  .header-actions .btn{min-height:42px;padding:7px 11px;font-size:10px}
+  .chart-nav{grid-template-columns:34px minmax(0,1fr);gap:6px;padding:1px 2px}
+  .chart-select{min-height:42px;font-size:12px}
+  .kpis{gap:5px}
+  .metric-card{padding:6px 7px 7px;min-height:0}
+  .metric-card:before{top:7px;bottom:7px}
+  .metric-group-label{font-size:7px}
+  .metric-primary .value{font-size:clamp(13px,3.8vw,17px)}
+  .metric-secondary{margin-top:1px}
+  .chart-stage{padding:3px;border-radius:10px}
+  .chartcard.ws-active{border-radius:8px}
+  .chartcard.ws-active .charttitle{padding:5px 7px 4px}
+  .chartcard.ws-active .charttitle strong{font-size:10px}
+  .empty-state{gap:6px;padding:12px}
+  .empty-state p{max-width:34rem;font-size:11px}
+  .empty-hint{max-width:32rem}
+  .replay-box{padding:6px 7px!important}
+  .replay-buttons .btn{border-radius:8px}
+  .focus-details>summary{font-size:9px}
+}
+@media(max-width:380px){
+  .header-actions .btn{padding:6px 8px}
+  .metric-card{padding:5px 6px}
+  .metric-primary .value{font-size:12px}
+  .chart-select{font-size:11px}
+}
+@media(min-width:761px) and (min-height:700px){
+  .wrap{padding-left:max(16px,calc((100vw - 1680px)/2));padding-right:max(16px,calc((100vw - 1680px)/2))}
+  .chart-stage{padding:7px}
+  .chartcard.ws-active .charttitle{padding:7px 11px}
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
