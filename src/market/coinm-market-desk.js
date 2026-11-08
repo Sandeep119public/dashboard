@@ -41,7 +41,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
           '<section class="md-panel md-flow-panel"><div class="md-panel-head"><div><strong>Executed volume by aggressor</strong><small>Green = BUY TAKER / SELL MAKER · Red = SELL TAKER / BUY MAKER</small></div><span class="md-unit">contracts</span></div><div class="md-flow-wrap"><div id="mdFlow" class="md-flow" aria-label="Executed volume by aggressor"></div></div></section>',
         '</div>',
         '<div class="md-col md-flow-column">',
-          '<section class="md-panel md-panel-grow md-footprint-panel"><div class="md-panel-head"><div><strong>Per-price footprint</strong><small id="mdFootprintMeta">Session history · waiting for executions</small></div><div style="display:flex;align-items:center;gap:6px"><select id="mdFootprintRange" aria-label="Historical footprint backfill range" style="max-width:76px;min-width:60px;font-size:10px"><option value="60">60m</option><option value="240">4h</option></select><button class="btn" id="mdBackfillFootprint" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Backfill 60m</button><select id="mdFootprintMinute" aria-label="Select recorded footprint minute" style="max-width:145px;min-width:0;font-size:10px"><option value="live">Follow live minute</option></select><span class="md-unit">contracts</span></div></div><div class="md-footprint-legend"><span>BUY TAKER / SELL MAKER</span><span>SELL TAKER / BUY MAKER</span><span>Delta = buy − sell</span></div><div class="md-table-wrap"><table class="md-footprint"><thead><tr><th>Price</th><th>Buy taker<br><small>Sell maker</small></th><th>Sell taker<br><small>Buy maker</small></th><th>Delta</th><th>Prints</th></tr></thead><tbody id="mdFootprintRows"><tr><td colspan="5" class="md-muted">Connect live to collect current-minute executions by price.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdFootprintFoot">Backfill 60 minutes or 4 hours of Binance aggregate trades (48-hour API lookback), or import/export recorded depth captures. Historical public order-book archives are not provided by this endpoint.</div></section>',
+          '<section class="md-panel md-panel-grow md-footprint-panel"><div class="md-panel-head"><div><strong>Per-price footprint</strong><small id="mdFootprintMeta">Session history · waiting for executions</small></div><div style="display:flex;align-items:center;gap:6px"><select id="mdFootprintTf" aria-label="Footprint aggregation timeframe" style="max-width:62px;min-width:55px;font-size:10px"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option></select><select id="mdFootprintRange" aria-label="Historical footprint backfill range" style="max-width:76px;min-width:60px;font-size:10px"><option value="60">60m</option><option value="240">4h</option></select><button class="btn" id="mdBackfillFootprint" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Backfill 60m</button><select id="mdFootprintMinute" aria-label="Select recorded footprint minute" style="max-width:145px;min-width:0;font-size:10px"><option value="live">Follow live minute</option></select><span class="md-unit">contracts</span></div></div><div class="md-footprint-legend"><span>BUY TAKER / SELL MAKER</span><span>SELL TAKER / BUY MAKER</span><span>Delta = buy − sell</span></div><div class="md-table-wrap"><table class="md-footprint"><thead><tr><th>Price</th><th>Buy taker<br><small>Sell maker</small></th><th>Sell taker<br><small>Buy maker</small></th><th>Delta</th><th>Prints</th></tr></thead><tbody id="mdFootprintRows"><tr><td colspan="5" class="md-muted">Connect live to collect current-minute executions by price.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdFootprintFoot">Backfill 60 minutes or 4 hours of Binance aggregate trades (48-hour API lookback), or import/export recorded depth captures. Historical public order-book archives are not provided by this endpoint.</div></section>',
         '</div>',
         '<div class="md-col md-side-column">',
           '<section class="md-panel md-panel-grow md-book-panel"><div class="md-panel-head"><div><strong>Order book</strong><small id="mdBookState">Not synchronized</small></div><span class="md-unit">contracts</span></div><div class="md-depth-controls" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 7px;border-bottom:1px solid #203047"><button class="btn" id="mdRecordDepth" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Record depth</button><input id="mdDepthReplay" type="range" min="0" max="0" value="0" step="1" disabled aria-label="Replay captured order-book samples" style="width:76px;min-width:48px;flex:1"><button class="btn" id="mdDepthLive" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Live</button><button class="btn" id="mdDepthExport" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Export</button><label class="btn" for="mdDepthImport" style="min-height:25px;padding:2px 7px;font-size:10px;display:inline-flex;align-items:center;cursor:pointer">Import</label><input id="mdDepthImport" type="file" accept="application/json,.json" hidden><small id="mdDepthReplayMeta" style="font-size:9px;color:#91a3bb">Not recording · session only</small></div><div class="md-book-summary"><span>Bid <b id="mdBestBid">—</b></span><span>Spread <b id="mdBookSpread">—</b></span><span>Ask <b id="mdBestAsk">—</b></span></div><div class="md-table-wrap"><table class="md-book"><thead><tr><th>Bid qty</th><th>Bid price</th><th>Ask price</th><th>Ask qty</th></tr></thead><tbody id="mdBookRows"><tr><td colspan="4" class="md-muted">Connect to synchronize depth.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdBookFoot">Depth is aggregated by price level, not individual order IDs.</div></section>',
@@ -83,6 +83,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   let candleHistoryHasMore = false;
   let loadingOlderCandles = false;
   let selectedFootprintMinute = 'live';
+  let selectedFootprintInterval = 1;
   let footprintOptionKey = '';
   let latestBookView = null;
   let replayingDepth = false;
@@ -442,7 +443,9 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       return;
     }
     const rows = footprint.levels;
-    setText('mdFootprintMeta', (historical ? 'RECORDED · ' : 'LIVE SESSION · ') + 'UTC ' + utcMinute(footprint.minute) + '–' + utcMinute(footprint.minute + 60000) + ' · ' + integer(footprint.levelsTotal) + ' levels · ' + contractQty(footprint.totalQty) + ' contracts · imbalance ' + percent(footprint.imbalance));
+    const from = Number(footprint.startTime ?? footprint.minute);
+    const to = Number(footprint.endTime ?? (footprint.minute + 60000));
+    setText('mdFootprintMeta', (historical ? 'HISTORICAL · ' : 'LIVE · ') + selectedFootprintInterval + 'm · UTC ' + utcMinute(from) + '–' + utcMinute(to) + ' · ' + integer(footprint.levelsTotal) + ' levels · ' + contractQty(footprint.totalQty) + ' contracts · imbalance ' + percent(footprint.imbalance));
     host.innerHTML = '';
     const fragment = document.createDocumentFragment();
     for (const level of rows) {
@@ -544,7 +547,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       updateStats(state.stats);
       queueTape(state.recentTrades);
       if (state.footprintMinutes) updateFootprintSelector(state.footprintMinutes);
-      if (selectedFootprintMinute === 'live') queueFootprint(state.footprint);
+      if (selectedFootprintMinute === 'live') queueFootprint(feed.getFootprintWindow(state.footprint.minute, selectedFootprintInterval));
       if (SECOND_INTERVALS.includes(interval) && state.candle) {
         lastCandlesInterval = interval;
         candles = mergeCandles(candles, [state.candle]);
@@ -669,7 +672,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       if (result.minutes.length) {
         selectedFootprintMinute = String(result.minutes[result.minutes.length - 1]);
         $('mdFootprintMinute').value = selectedFootprintMinute;
-        renderFootprint(feed.getFootprint(Number(selectedFootprintMinute)), true);
+        renderFootprint(feed.getFootprintWindow(Number(selectedFootprintMinute), selectedFootprintInterval), true);
       }
       setText('mdFootprintFoot', 'Binance REST backfill · ' + integer(result.tradesCount) + ' aggregate trades across ' + integer(result.pages) + ' requests and ' + integer(result.minutes.length) + ' UTC minutes. ' + (result.truncated ? 'Result is incomplete because the safety cap was reached. ' : 'Requested interval was retrieved. ') + 'Only Binance-reported market aggregate trades are included; passive maker quantities mirror taker executions.');
     } catch (error) {
@@ -679,6 +682,11 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       button.disabled = false;
       button.textContent = 'Backfill';
     }
+  });
+  $('mdFootprintTf').addEventListener('change', () => {
+    selectedFootprintInterval = Math.max(1, Math.min(15, Number($('mdFootprintTf').value) || 1));
+    const end = selectedFootprintMinute === 'live' ? feed.getLatestFootprint()?.minute : Number(selectedFootprintMinute);
+    renderFootprint(end ? feed.getFootprintWindow(end, selectedFootprintInterval) : null, selectedFootprintMinute !== 'live');
   });
   $('mdFootprintMinute').addEventListener('change', () => {
     selectedFootprintMinute = $('mdFootprintMinute').value;
