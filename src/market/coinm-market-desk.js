@@ -153,7 +153,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const map = new Map();
     for (const candle of a || []) map.set(Number(candle.t), candle);
     for (const candle of b || []) map.set(Number(candle.t), candle);
-    return Array.from(map.values()).sort((x, y) => x.t - y.t).slice(-5000);
+    return Array.from(map.values()).sort((x, y) => x.t - y.t).slice(-20000);
   }
   function scheduleDraw() {
     pendingDraw = true;
@@ -175,8 +175,9 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       candleEl.on('plotly_click', event => {
         const point = event && event.points && event.points[0];
         const index = point && Number(point.pointNumber);
-        if (!Number.isInteger(index) || index < 0 || index >= visible.length) return;
-        selectedCandle = visible[index];
+        const currentVisible = candles.slice(-3000);
+        if (!Number.isInteger(index) || index < 0 || index >= currentVisible.length) return;
+        selectedCandle = currentVisible[index];
         const button = $('mdInspectFootprint');
         if (button) button.disabled = false;
         setText('mdFootprintSelection', 'Selected candle: ' + new Date(selectedCandle.t).toISOString().replace('T', ' ').slice(0, 19) + ' UTC');
@@ -434,12 +435,14 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     onStatus: event => setStatus(event.state, event.message),
     onCandles: event => {
       if (event.interval !== interval) return;
+      $('mdLoadOlder').disabled = SECOND_INTERVALS.includes(interval) || !event.candles || !event.candles.length;
       lastCandlesInterval = event.interval;
       const local = event.interval === '10s' ? imported('10s') : [];
       setCandleData(mergeCandles(local, event.candles || []), event.source + (local.length ? ' + imported historical COIN-M trades' : local.incompatibleReason ? ' · ' + local.incompatibleReason : ''));
     },
     onKline: (candle, tf) => {
       if (tf !== interval) return;
+      $('mdLoadOlder').disabled = false;
       lastMarketAt = Date.now();
       lastCandlesInterval = tf;
       candles = mergeCandles(candles, [candle]);
@@ -462,6 +465,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     },
     onBook: view => {
       if (view && view.ready) lastMarketAt = Date.now();
+      replayMode = false;
       const recording = feed.getDepthRecording();
       const slider = $('mdReplayTime'), save = $('mdSaveDepth'), replay = $('mdReplayDepth');
       if (recording.snapshots.length && slider) {
@@ -547,7 +551,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const button = $('mdInspectFootprint'), tf = interval, candle = selectedCandle;
     let end = Number(candle.closeTime) + 1;
     if (!Number.isFinite(end) || end <= Number(candle.t)) {
-      const duration = { '1m':60000, '3m':180000, '5m':300000, '15m':900000, '30m':1800000, '1h':3600000, '2h':7200000, '4h':14400000, '6h':21600000, '8h':28800000, '12h':43200000, '1d':86400000, '3d':259200000, '1w':604800000 }[tf];
+      const duration = { '1s':1000, '5s':5000, '10s':10000, '15s':15000, '30s':30000, '1m':60000, '3m':180000, '5m':300000, '15m':900000, '30m':1800000, '1h':3600000, '2h':7200000, '4h':14400000, '6h':21600000, '8h':28800000, '12h':43200000, '1d':86400000, '3d':259200000, '1w':604800000 }[tf];
       end = duration ? Number(candle.t) + duration : new Date(Date.UTC(new Date(candle.t).getUTCFullYear(), new Date(candle.t).getUTCMonth() + 1, 1)).getTime();
     }
     button.disabled = true; button.textContent = 'Loading trades…';
@@ -569,7 +573,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const blob = new Blob([JSON.stringify(recording)], { type: 'application/json' });
     const url = URL.createObjectURL(blob), link = document.createElement('a');
     link.href = url; link.download = 'BTCUSD_PERP-depth-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
-    link.click(); URL.revokeObjectURL(url);
+    link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   });
   $('mdReplayDepth').addEventListener('click', () => {
     const recording = feed.getDepthRecording(), at = Number($('mdReplayTime').value);
