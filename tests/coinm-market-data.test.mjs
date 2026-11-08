@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   normalizeAggTrade,parseCoinMKline,normalizeKlineEvent,aggregateTradesToCandles,
   isDepthSnapshotBridge,isDepthUpdateContinuous,applyDepthEvent,createMinuteFootprintState,updateMinuteFootprint,
-  mergeCandleSeries, COINM_CONTRACT_USD, MARKET_INTERVALS
+  mergeCandleSeries, COINM_CONTRACT_USD, MARKET_INTERVALS, createCoinMMarketFeed
 } from '../src/market/coinm-market-data.js';
 
 test('buyer maker flag maps aggressor and passive sides to mirrored quantities',()=>{
@@ -73,6 +73,17 @@ test('depth updates replace quantities and remove zero-quantity levels',()=>{
     bidAdded:2,bidReduced:4,askAdded:3,askReduced:4,
     bidChanges:{67000:2,66999:-4},askChanges:{67001:-4,67002:3}
   });
+});
+
+test('depth replay imports validate, deduplicate and sort captured snapshots',()=>{
+  const feed=createCoinMMarketFeed({fetchImpl:async()=>({ok:true,json:async()=>[]}),WebSocketImpl:null});
+  const sample=(time,id)=>({time,updatedAt:time,lastUpdateId:id,segment:1,bids:[{price:100,qty:2}],asks:[{price:101,qty:3}]});
+  const info=feed.restoreDepthHistory([sample(2000,2),sample(1000,1),sample(2000,2)]);
+  assert.equal(info.count,2);
+  assert.equal(feed.getDepthSnapshot(0).time,1000);
+  assert.equal(feed.getDepthSnapshot(1).lastUpdateId,2);
+  assert.throws(()=>feed.restoreDepthHistory([sample(3000,3).bids]),/timestamp, sequence ID or book side/i);
+  assert.throws(()=>feed.restoreDepthHistory([{...sample(3000,3),bids:[{price:100,qty:0}]}]),/invalid price level/i);
 });
 
 test('invalid trade and malformed kline records are rejected',()=>{
