@@ -1024,26 +1024,26 @@ test('lead-lag engine resolves pending work and rejects new work after dispose',
 test('imported daily bars preserve verified instrument identity for downstream unit guards', async () => {
   const { parseCsvByDay } = await import('../src/ingestion/csv-parser.js');
   const header = 'product_symbol,price,size,timestamp,buyer_role';
-  const coinM = parseCsvByDay([header, 'BTCUSD_PERP,60000,2,2026-08-01 00:00:00,taker'].join('\\n'), {
+  const coinM = parseCsvByDay([header, 'BTCUSD_PERP,60000,2,2026-08-01 00:00:00,taker'].join('\n'), {
     acceptedSymbols: ['BTCUSD', 'BTCUSDT', 'BTCUSD_PERP']
   }).get('2026-08-01');
   assert.deepEqual(coinM.instrument, { symbol: 'BTCUSD_PERP', verified: true });
-  const usdM = parseCsvByDay([header, 'BTCUSDT,60000,2,2026-08-01 00:00:00,taker'].join('\\n'), {
+  const usdM = parseCsvByDay([header, 'BTCUSDT,60000,2,2026-08-01 00:00:00,taker'].join('\n'), {
     acceptedSymbols: ['BTCUSD', 'BTCUSDT', 'BTCUSD_PERP']
   }).get('2026-08-01');
   assert.deepEqual(usdM.instrument, { symbol: 'BTCUSDT', verified: true });
-  const legacy = parseCsvByDay('price,size,timestamp,buyer_role\\n60000,2,2026-08-01 00:00:00,taker').get('2026-08-01');
+  const legacy = parseCsvByDay('price,size,timestamp,buyer_role\n60000,2,2026-08-01 00:00:00,taker').get('2026-08-01');
   assert.deepEqual(legacy.instrument, { symbol: 'BTCUSD', verified: false });
   assert.throws(() => parseCsvByDay([
     header,
     'BTCUSD,60000,1,2026-08-01 00:00:00,taker',
     'BTCUSDT,60001,1,2026-08-01 00:00:01,taker'
-  ].join('\\n'), { acceptedSymbols: ['BTCUSD', 'BTCUSDT', 'BTCUSD_PERP'] }), /Mixed or different symbols/);
+  ].join('\n'), { acceptedSymbols: ['BTCUSD', 'BTCUSDT', 'BTCUSD_PERP'] }), /Mixed or different symbols/);
 });
 
 test('live COIN-M desk refuses imported 10-second bars without explicit compatible symbol metadata', () => {
-  assert.match(deskSource, /local\\.incompatibleReason/);
-  assert.match(html, /day\\.instrument&&day\\.instrument\\.verified/);
-  assert.match(html, /!\\['BTCUSD','BTCUSD_PERP'\\]\\.includes/);
+  assert.match(deskSource, /local\.incompatibleReason/);
+  assert.match(html, /day\.instrument&&day\.instrument\.verified/);
+  assert.match(html, /!\['BTCUSD','BTCUSD_PERP'\]\.includes/);
   assert.match(html, /BTCUSDT, mixed symbols, and legacy workspaces/);
 });
