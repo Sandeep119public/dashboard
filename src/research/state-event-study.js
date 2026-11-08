@@ -50,8 +50,8 @@ export function analyzeStateEvents(bars, stateResult, options = {}) {
   const intervalSeconds = options.intervalSeconds === undefined ? 3600 : Number(options.intervalSeconds);
   if (!Number.isFinite(intervalSeconds) || intervalSeconds <= 0) throw new RangeError('intervalSeconds must be positive.');
   const horizons = (options.horizons || [1, 4, 24]).map(Number);
-  if (!horizons.length || horizons.some(value => !Number.isInteger(value) || value < 1)) {
-    throw new RangeError('Horizons must be positive whole-bar counts.');
+  if (!horizons.length || horizons.some(value => !Number.isInteger(value) || value < 1) || new Set(horizons).size !== horizons.length) {
+    throw new RangeError('Horizons must be unique positive whole-bar counts.');
   }
   const side = options.side || 'both';
   if (!['both', 'long', 'short'].includes(side)) throw new RangeError('side must be both, long or short.');
