@@ -926,6 +926,7 @@ import { createBarSubsetter } from './src/charts/bar-subsetter.js';
 import { createChartSeriesMath } from './src/charts/series-math.js';
 import { createLeadLagEngine } from './src/charts/lead-lag-engine.js';
 import { mountCoinMMarketDesk } from './src/market/coinm-market-desk.js';
+import { classifyMarketStates } from './src/research/market-states.js';
 (function(){
 'use strict';
 const DATA = window.DATA;
@@ -1197,16 +1198,19 @@ async function updateLeadLag(w){
 }function updateRegimeHeatmap(w){
  const x=B['1h'],allDates=[...DAYS.keys()].sort(),start=selectedDates().start,end=selectedDates().end;
  const dates=allDates.filter(d=>d>=start&&d<=end),hours=Array.from({length:24},(_,i)=>String(i).padStart(2,'0')+':00');
+ const states=classifyMarketStates(x,{lookback:200,intervalSeconds:3600});
  const values=new Map(),meta=new Map(),heatLo=lowerBoundTime(x.t,w.s),heatHi=upperBoundTime(x.t,w.e);
  for(let i=heatLo;i<heatHi;i++){
-   const d=isoDate(BASE+x.t[i]*1000),hr=Math.floor((x.t[i]%86400)/3600),key=d+'|'+hr,v=Number(x.v[i]||0),delta=Number(x.d[i]||0);
-   values.set(key,v?(delta/v)*100:null);
-   meta.set(key,[Number(x.n[i]||0),x.o[i]?(x.c[i]/x.o[i]-1)*100:0,x.l[i]>0?(x.h[i]/x.l[i]-1)*100:0,v]);
+   const d=isoDate(BASE+x.t[i]*1000),hr=Math.floor((x.t[i]%86400)/3600),key=d+'|'+hr,v=Number(x.v[i]||0),delta=Number(x.d[i]||0),state=states.values[i];
+   values.set(key,state.code);
+   meta.set(key,[v?(delta/v)*100:null,Number(x.n[i]||0),x.o[i]?(x.c[i]/x.o[i]-1)*100:0,x.l[i]>0?(x.h[i]/x.l[i]-1)*100:0,v,state.state,state.volatilityPct===null?null:state.volatilityPct*100,state.rangePct===null?null:state.rangePct*100,state.activityPct===null?null:state.activityPct*100,state.efficiency===null?null:state.efficiency*100]);
  }
  const z=dates.map(d=>hours.map((_,h)=>values.has(d+'|'+h)?values.get(d+'|'+h):null));
- const cd=dates.map(d=>hours.map((_,h)=>meta.get(d+'|'+h)||[0,null,null,0]));
- $('regimeMeta').textContent=dates.length+' loaded session'+(dates.length===1?'':'s')+' · color = hourly flow imbalance';
- return plot('regimeChart',[{type:'heatmap',x:hours,y:dates,z,customdata:cd,zmin:-100,zmax:100,colorscale:[[0,'#ff7e87'],[0.5,'#18243a'],[1,'#48d6ad']],colorbar:{title:'Imbalance %',thickness:10,tickfont:{size:9,color:C.muted},titlefont:{size:10,color:C.muted}},hovertemplate:'Date %{y}<br>Hour %{x}<br>Flow imbalance %{z:.1f}%<br>Prints %{customdata[0]:,.0f}<br>Hourly return %{customdata[1]:.3f}%<br>High-low span %{customdata[2]:.3f}%<br>Executed size %{customdata[3]:,.0f}<extra></extra>'}],{xaxis:{title:'Hour of timestamp as supplied',gridcolor:C.grid,tickangle:0},yaxis:{title:'Loaded date',gridcolor:C.grid,autorange:'reversed',type:'category'},margin:{l:88,r:62,t:22,b:48},showlegend:false,hovermode:'closest'});
+ const cd=dates.map(d=>hours.map((_,h)=>meta.get(d+'|'+h)||[null,0,null,null,0,'No bar',null,null,null,null]));
+ const stateColors=['#344256','#58718f','#8793a6','#c49b51','#4a9f87','#cf6d62','#536177'];
+ const colorscale=[];stateColors.forEach((color,i)=>{colorscale.push([i/7,color],[(i+1)/7,color]);});
+ $('regimeMeta').textContent=dates.length+' loaded session'+(dates.length===1?'':'s')+' · trailing 200-bar percentiles · past-only labels';
+ return plot('regimeChart',[{type:'heatmap',x:hours,y:dates,z,customdata:cd,zmin:-0.5,zmax:6.5,colorscale,colorbar:{title:'Market state',thickness:10,tickvals:[0,1,2,3,4,5,6],ticktext:states.labels,tickfont:{size:8,color:C.muted},titlefont:{size:10,color:C.muted}},hovertemplate:'Date %{y}<br>Hour %{x}<br>State %{customdata[5]}<br>Flow imbalance %{customdata[0]:.1f}%<br>Prints %{customdata[1]:,.0f}<br>Hourly return %{customdata[2]:.3f}%<br>High-low span %{customdata[3]:.3f}%<br>Executed size %{customdata[4]:,.0f}<br>Volatility percentile %{customdata[6]:.0f}%<br>Range percentile %{customdata[7]:.0f}%<br>Activity percentile %{customdata[8]:.0f}%<br>Directional efficiency %{customdata[9]:.0f}%<extra></extra>'}],{xaxis:{title:'Hour of timestamp as supplied',gridcolor:C.grid,tickangle:0},yaxis:{title:'Loaded date',gridcolor:C.grid,autorange:'reversed',type:'category'},margin:{l:88,r:62,t:22,b:48},showlegend:false,hovermode:'closest'});
 }
 let currentRange={s:0,e:86399.999};
 function loadedDates(){return [...DAYS.keys()].sort();}

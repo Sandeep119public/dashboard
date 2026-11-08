@@ -1,6 +1,6 @@
 /* Network-first app shell, cache-first chart library, offline fallback. */
 const CACHE_PREFIX = 'btc-mechanics-';
-const CACHE_NAME = 'btc-mechanics-shell-v31';
+const CACHE_NAME = 'btc-mechanics-shell-v32';
 const ROOT = self.registration.scope;
 const SHELL = [
   new URL('./', ROOT).href,
@@ -22,7 +22,8 @@ const SHELL = [
   new URL('./src/charts/series-math.js', ROOT).href,
   new URL('./src/charts/lead-lag.js', ROOT).href,
   new URL('./src/charts/lead-lag-engine.js', ROOT).href,
-  new URL('./src/charts/lead-lag.worker.js', ROOT).href
+  new URL('./src/charts/lead-lag.worker.js', ROOT).href,
+  new URL('./src/research/market-states.js', ROOT).href
 ];
 const isAppDocument = request => request.mode === 'navigate'
   || request.destination === 'document'
