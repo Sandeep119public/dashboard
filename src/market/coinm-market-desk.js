@@ -489,7 +489,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     if (footprintTimer !== null) return;
     footprintTimer = setTimeout(() => {
       footprintTimer = null;
-      if (selectedFootprintMinute === 'live') renderFootprint(pendingFootprint, false);
+      if (selectedFootprintMinute === 'live' && selectedReplayTime === null) renderFootprint(pendingFootprint, false);
     }, 350);
   }
   function renderFootprint(footprint, historical = false) {
@@ -587,6 +587,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     onStatus: event => {
       if (event.state === 'connecting') {
         replayingDepth = false;
+        selectedReplayTime = null;
         persistedDepthCount = 0;
         latestBookView = null;
         restoreDepthArchive();
@@ -771,7 +772,13 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       if (nearest >= 0) { $('mdDepthReplay').value = String(nearest); replayingDepth = true; const sample = feed.getDepthSnapshot(nearest); if (sample) renderBook({ ...sample, ready: true, recorded: true }); }
       updateDepthCaptureControls();
       scheduleDraw(); renderDepthHeatmap();
-    } else { selectedReplayTime = null; scheduleDraw(); renderDepthHeatmap(); }
+    } else {
+      selectedReplayTime = null;
+      replayingDepth = false;
+      if (latestBookView) renderBook(latestBookView);
+      updateDepthCaptureControls();
+      scheduleDraw(); renderDepthHeatmap();
+    }
     if (selectedFootprintMinute === 'live') {
       const latest = feed.getLatestFootprint();
       renderFootprint(latest ? feed.getFootprintWindow(latest.minute, selectedFootprintInterval) : null, false);
