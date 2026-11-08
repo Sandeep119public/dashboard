@@ -1383,6 +1383,10 @@ function setActiveChart(id,{persist=true,render=true}={}){
  });
  const select=$('chartSelect');if(select)select.value=id;
  updateEmptyState(currentRange);
+ const priceSection=document.querySelector('#chartStage > .sectionhead:not(#researchSectionHead)');
+ if(priceSection)priceSection.hidden=id==='marketDeskPanel'||id==='leadLagChart'||id==='regimeChart';
+ const researchSection=$('researchSectionHead');
+ if(researchSection)researchSection.hidden=id!=='leadLagChart'&&id!=='regimeChart';
  if(render&&id==='marketDeskPanel'){
   if(marketDesk)requestAnimationFrame(()=>marketDesk.activate());
  }else if(render&&chartDataReady()){
