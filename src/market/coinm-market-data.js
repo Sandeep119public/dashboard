@@ -593,6 +593,16 @@ export function createCoinMMarketFeed(options = {}) {
     return depthHistory.map(copyDepthSample);
   }
 
+  function getDepthHistoryInfo() {
+    return {
+      count: depthHistory.length,
+      firstTime: depthHistory.length ? depthHistory[0].time : null,
+      lastTime: depthHistory.length ? depthHistory[depthHistory.length - 1].time : null,
+      recording: depthRecording,
+      limit: maxDepthSamples
+    };
+  }
+
   function getDepthSnapshot(index) {
     const i = Math.floor(Number(index));
     return Number.isInteger(i) && i >= 0 && i < depthHistory.length ? copyDepthSample(depthHistory[i]) : null;
@@ -945,6 +955,7 @@ export function createCoinMMarketFeed(options = {}) {
     setDepthRecording,
     getDepthRecording: () => depthRecording,
     getDepthHistory,
+    getDepthHistoryInfo,
     getDepthSnapshot,
     getStatus: () => ({
       connected: !stopped,
