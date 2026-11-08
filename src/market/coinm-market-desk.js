@@ -461,7 +461,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const pending = Plotly.react(host, [trace], layout, { responsive: true, displaylogo: false, scrollZoom: false });
     if (pending && typeof pending.then === 'function') pending.then(() => bindReplayClick(host)); else bindReplayClick(host);
     if (pending && typeof pending.catch === 'function') pending.catch(() => {});
-    const migration = summarizeDepthLiquidityMigration(samples);
+    const migration = summarizeDepthLiquidityMigration(samples, reference.segment);
     const migrationLabel = migration
       ? ' · bids +' + contractQty(migration.bid.added) + '/-' + contractQty(migration.bid.reduced) +
         ' · asks +' + contractQty(migration.ask.added) + '/-' + contractQty(migration.ask.reduced) +
