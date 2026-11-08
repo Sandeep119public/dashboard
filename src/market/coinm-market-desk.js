@@ -452,7 +452,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const pending = Plotly.react(host, [trace], layout, { responsive: true, displaylogo: false, scrollZoom: false });
     if (pending && typeof pending.then === 'function') pending.then(() => bindReplayClick(host)); else bindReplayClick(host);
     if (pending && typeof pending.catch === 'function') pending.catch(() => {});
-    setText('mdHeatmapMeta', integer(samples.length) + ' latest samples · green bids · red asks · top-25 levels · 100 ms sampling');
+    setText('mdHeatmapMeta', integer(samples.length) + (selectedReplayTime !== null ? ' replay-window samples' : ' latest samples') + ' · green bids · red asks · top-25 levels · 100 ms sampling');
   }
   function scheduleDepthHeatmap() {
     if (depthHeatmapTimer !== null) return;
