@@ -39,9 +39,9 @@ test('enforces disjoint future windows independently at each horizon', () => {
 
 test('calculates long and short excursions and deducts round-trip costs', () => {
   const bars = {
-    t: [0, 3600], o: [100, 100], h: [100, 110], l: [100, 90], c: [100, 105]
+    t: [0, 3600, 7200], o: [100, 100, 100], h: [100, 100, 110], l: [100, 100, 90], c: [100, 100, 105]
   };
-  const states = { labels: ['Warm-up', 'Compression'], values: [{ code: 0 }, { code: 1 }] };
+  const states = { labels: ['Warm-up', 'Compression'], values: [{ code: 0 }, { code: 1 }, { code: 1 }] };
   const result = analyzeStateEvents(bars, states, { horizons: [1], costBps: 100 });
   const sides = result.states.find(state => state.code === 1).horizons[0].sides;
   const long = sides.find(side => side.side === 'long');
