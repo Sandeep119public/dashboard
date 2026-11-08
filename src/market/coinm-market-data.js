@@ -48,7 +48,7 @@ export function aggregateTradesToCandles(trades,intervalMs) {
   }
   return Array.from(map.values()).sort((a,b)=>a.t-b.t).map(c=>({...c,delta:c.buyTaker-c.sellTaker}));
 }
-export function isDepthSnapshotBridge(lastId,event){const next=Number(lastId)+1;return Number(event?.U)<=next&&Number(event?.u)>=next;}
+export function isDepthSnapshotBridge(lastId,event){const snapshotId=Number(lastId);return Number(event?.U)<=snapshotId&&Number(event?.u)>=snapshotId;}
 export function isDepthUpdateContinuous(lastId,event){
   if(event?.pu!==undefined&&event?.pu!==null)return Number(event.pu)===Number(lastId);
   const next=Number(lastId)+1;return Number(event?.U)<=next&&Number(event?.u)>=next;
@@ -156,8 +156,8 @@ export function createCoinMMarketFeed(options={}) {
       return;
     }
     if(!bookReady){
-      if(Number(event.u)<=Number(lastUpdateId))return;
-      if(Number(event.U)>Number(lastUpdateId)+1){beginBookSync(g,[event]);return;}
+      if(Number(event.u)<Number(lastUpdateId))return;
+      if(Number(event.U)>Number(lastUpdateId)){beginBookSync(g,[event]);return;}
       if(!isDepthSnapshotBridge(lastUpdateId,event))return;
       applyAndNotify(event);return;
     }
