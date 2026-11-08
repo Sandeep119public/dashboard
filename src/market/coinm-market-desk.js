@@ -86,8 +86,9 @@ export function mountCoinMMarketDesk({root,Plotly=window.Plotly,getImportedBars=
     setText('mdCandleMeta',number(visible.length)+' candles shown'+(candles.length>visible.length?' · latest '+number(visible.length)+' of '+number(candles.length):''));
     if(!Plotly||typeof Plotly.react!=='function'){setText('mdCandleMeta','Plotly unavailable; data stream remains active.');return;}
     const candleTrace={type:'candlestick',name:'BTCUSD perpetual',x,open:visible.map(c=>c.o),high:visible.map(c=>c.h),low:visible.map(c=>c.l),close:visible.map(c=>c.c),
+      customdata:visible.map(c=>[c.v,c.buyTaker,c.sellTaker,c.trades]),
       increasing:{line:{color:'#48d6ad',width:1},fillcolor:'#48d6ad'},decreasing:{line:{color:'#ff7e87',width:1},fillcolor:'#ff7e87'},
-      whiskerwidth:.35,hovertemplate:'%{x|%Y-%m-%d %H:%M:%S UTC}<br>O %{open:,.1f} · H %{high:,.1f}<br>L %{low:,.1f} · C %{close:,.1f}<extra></extra>'};
+      whiskerwidth:.35,hovertemplate:'%{x|%Y-%m-%d %H:%M:%S UTC}<br>O %{open:,.1f} · H %{high:,.1f}<br>L %{low:,.1f} · C %{close:,.1f}<br>Total qty %{customdata[0]:,.3f}<br>BUY TAKER / SELL MAKER %{customdata[1]:,.3f}<br>SELL TAKER / BUY MAKER %{customdata[2]:,.3f}<br>Trades %{customdata[3]:,.0f}<extra></extra>'};
     const baseLayout={paper_bgcolor:'#0c1422',plot_bgcolor:'#0c1422',font:{color:'#dce7f5',size:10,family:'Inter,system-ui,sans-serif'},
       margin:{l:12,r:58,t:8,b:34},showlegend:false,hovermode:'x',uirevision:'coinm-'+interval,
       xaxis:{type:'date',gridcolor:'#203047',linecolor:'#203047',tickfont:{color:'#91a3bb'},rangeslider:{visible:true,thickness:.07,bgcolor:'#091220',bordercolor:'#203047'}},
@@ -135,7 +136,7 @@ export function mountCoinMMarketDesk({root,Plotly=window.Plotly,getImportedBars=
     const spread=bestBid&&bestAsk?bestAsk.price-bestBid.price:null;
     const spreadText=spread===null?'—':number(spread,2)+' · '+number(spread/((bestAsk.price+bestBid.price)/2)*10000,2)+' bps';
     setText('mdBookSpread',spreadText);setText('mdSpread',spread===null?'—':number(spread,2));
-    const askRows=asks.slice(0,14).reverse(),bidRows=bids.slice(0,14);
+    const askRows=asks.slice(0,14),bidRows=bids.slice(0,14);
     const maxQty=Math.max(1,...askRows.map(x=>x.qty),...bidRows.map(x=>x.qty));
     const tbody=$('mdBookRows');tbody.innerHTML='';
     for(let i=0;i<14;i++) {
