@@ -130,6 +130,13 @@ test('depth liquidity migration compares observed top-25 bid and ask levels acro
   );
   assert.equal(summary.midpointChange,0);
   assert.equal(summarizeDepthLiquidityMigration([first]),null);
+  assert.equal(summarizeDepthLiquidityMigration([
+    {...first,segment:1},{...last,segment:2}
+  ]),null);
+  const sameSegment=summarizeDepthLiquidityMigration([
+    {...first,segment:1},{...last,segment:1},{...last,time:3000,segment:2}
+  ],1);
+  assert.equal(sameSegment.toTime,2000);
 });
 
 test('depth archive restore retains the full 10,000-snapshot replay window',()=>{
