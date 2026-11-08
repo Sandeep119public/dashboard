@@ -25,7 +25,7 @@ test('mobile workstation layout keeps the chart stage flexible and controls touc
 });
 
 test('service worker cache version advances with the visual shell update', () => {
-  assert.match(sw, /btc-mechanics-shell-v38/);
+  assert.match(sw, /btc-mechanics-shell-v39/);
 });
 
 
@@ -90,4 +90,15 @@ test('touch devices expose chart modebar controls with usable tap targets', () =
   assert.match(html, /\.modebar-btn\{\s*width:30px!important;height:30px!important/);
   assert.match(html, /\.modebar-btn svg\{\s*top:0!important;width:16px!important;height:16px!important/);
   assert.match(html, /scrollZoom:true/);
+});
+
+
+test('mobile replay controls remain thumb-friendly without expanding the replay panel', () => {
+  assert.ok(html.includes('id="mobile-replay-controls"'));
+  assert.match(html, /\.replay-title \.toolbar-label\{display:none\}/);
+  assert.match(html, /grid-template-columns:40px 54px 40px 58px/);
+  assert.match(html, /\.time-scrubber\{height:24px;min-height:24px/);
+  for (const id of ['focusPrev', 'focusPlay', 'focusNext', 'replaySpeed', 'timeFocus']) {
+    assert.ok(html.includes('id="' + id + '"'));
+  }
 });
