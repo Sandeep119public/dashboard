@@ -45,6 +45,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
         '</div>',
         '<div class="md-col md-side-column">',
           '<section class="md-panel md-panel-grow md-book-panel"><div class="md-panel-head"><div><strong>Order book</strong><small id="mdBookState">Not synchronized</small></div><span class="md-unit">contracts</span></div><div class="md-depth-controls" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 7px;border-bottom:1px solid #203047"><button class="btn" id="mdRecordDepth" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Record depth</button><input id="mdDepthReplay" type="range" min="0" max="0" value="0" step="1" disabled aria-label="Replay captured order-book samples" style="width:76px;min-width:48px;flex:1"><button class="btn" id="mdDepthLive" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Live</button><button class="btn" id="mdDepthExport" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Export</button><label class="btn" for="mdDepthImport" style="min-height:25px;padding:2px 7px;font-size:10px;display:inline-flex;align-items:center;cursor:pointer">Import</label><input id="mdDepthImport" type="file" accept="application/json,.json" hidden><small id="mdDepthReplayMeta" style="font-size:9px;color:#91a3bb">Not recording · session only</small></div><div class="md-book-summary"><span>Bid <b id="mdBestBid">—</b></span><span>Spread <b id="mdBookSpread">—</b></span><span>Ask <b id="mdBestAsk">—</b></span></div><div class="md-table-wrap"><table class="md-book"><thead><tr><th>Bid qty</th><th>Bid price</th><th>Ask price</th><th>Ask qty</th></tr></thead><tbody id="mdBookRows"><tr><td colspan="4" class="md-muted">Connect to synchronize depth.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdBookFoot">Depth is aggregated by price level, not individual order IDs.</div></section>',
+          '<section class="md-panel md-heatmap-panel"><div class="md-panel-head"><div><strong>Historical liquidity heatmap</strong><small id="mdHeatmapMeta">Record or import depth to build history</small></div><span class="md-unit">contracts</span></div><div id="mdDepthHeatmap" style="height:190px;min-height:150px;width:100%" aria-label="Historical bid and ask liquidity heatmap"></div></section>',
           '<section class="md-panel md-tape-panel"><div class="md-panel-head"><div><strong>Live trade tape</strong><small id="mdTapeMeta">Waiting for aggregate trades</small></div><span class="md-unit">contracts</span></div><div class="md-tape-head"><span>UTC</span><span>Price</span><span>Qty</span><span>Aggressor → passive</span></div><div id="mdTape" class="md-tape"><div class="md-empty">Waiting for aggregate trades…</div></div></section>',
         '</div>',
       '</div>',
@@ -87,6 +88,8 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   let footprintOptionKey = '';
   let latestBookView = null;
   let replayingDepth = false;
+  let selectedReplayTime = null;
+  let depthHeatmapTimer = null;
   const depthArchive = createDepthArchiveStore({ maxSamples: 10000 });
   let persistedDepthCount = 0;
   let archiveWrite = Promise.resolve();
@@ -214,6 +217,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       margin: { l: 10, r: 54, t: 6, b: 30 }, showlegend: false, hovermode: 'x',
       uirevision: 'coinm-' + interval,
       xaxis: { type: 'date', gridcolor: '#203047', linecolor: '#203047', tickfont: { color: '#91a3bb' }, rangeslider: { visible: true, thickness: 0.06, bgcolor: '#091220', bordercolor: '#203047' } },
+      shapes: selectedReplayTime ? [{ type: 'line', x0: selectedReplayTime, x1: selectedReplayTime, y0: 0, y1: 1, yref: 'paper', line: { color: '#f3c969', width: 1, dash: 'dot' } }] : [],
       yaxis: { side: 'right', gridcolor: '#203047', linecolor: '#203047', tickfont: { color: '#91a3bb' }, fixedrange: false }
     };
     const config = { responsive: true, displaylogo: false, scrollZoom: true, modeBarButtonsToRemove: ['lasso2d', 'select2d'] };
@@ -359,6 +363,60 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     setText('mdBookFoot', view.recorded
       ? 'RECORDED SNAPSHOT · ' + new Date(view.time).toISOString().replace('T', ' ').slice(0, 23) + ' UTC · connection segment ' + integer(view.segment) + '. Top 25 levels only; snapshots between samples are not reconstructed. Depth is aggregated, and reductions may be executions or cancellations.'
       : 'Top 25 depth: bid ' + contractQty(view.bidDepth) + ' · ask ' + contractQty(view.askDepth) + ' contracts. Latest diff: bids +' + contractQty(changes.bidAdded) + ' / −' + contractQty(changes.bidReduced) + ' · asks +' + contractQty(changes.askAdded) + ' / −' + contractQty(changes.askReduced) + '. Reductions may be executions or cancellations; the feed does not distinguish them.');
+  }
+  function renderDepthHeatmap() {
+    const host = $('mdDepthHeatmap');
+    if (!host || !Plotly || typeof Plotly.react !== 'function') return;
+    const samples = feed.getDepthHistory().slice(-240);
+    if (!samples.length) {
+      setText('mdHeatmapMeta', 'No captured depth history yet');
+      if (Plotly.purge) Plotly.purge(host);
+      return;
+    }
+    const latest = samples[samples.length - 1];
+    const midpoint = latest.bids.length && latest.asks.length
+      ? (latest.bids[0].price + latest.asks[0].price) / 2
+      : (latest.bids[0]?.price || latest.asks[0]?.price || 0);
+    const priceSet = new Set();
+    for (const sample of samples) {
+      for (const level of sample.bids) priceSet.add(Number(level.price));
+      for (const level of sample.asks) priceSet.add(Number(level.price));
+    }
+    const prices = Array.from(priceSet).sort((a, b) => Math.abs(a - midpoint) - Math.abs(b - midpoint)).slice(0, 60).sort((a, b) => a - b);
+    const x = samples.map(sample => new Date(sample.time));
+    const z = prices.map(price => samples.map(sample => {
+      const bid = sample.bids.find(level => Number(level.price) === price);
+      const ask = sample.asks.find(level => Number(level.price) === price);
+      return bid ? Number(bid.qty) : ask ? -Number(ask.qty) : 0;
+    }));
+    const layout = {
+      height: Math.max(150, Math.round(host.getBoundingClientRect().height || 190)),
+      paper_bgcolor: '#0c1422', plot_bgcolor: '#0c1422',
+      font: { color: '#91a3bb', size: 8 },
+      margin: { l: 52, r: 12, t: 3, b: 25 },
+      showlegend: false,
+      xaxis: { type: 'date', gridcolor: '#203047', tickfont: { size: 8 }, rangeslider: { visible: false } },
+      yaxis: { title: 'Price', gridcolor: '#203047', tickfont: { size: 8 }, nticks: 7 },
+      shapes: selectedReplayTime ? [{ type: 'line', x0: selectedReplayTime, x1: selectedReplayTime, y0: 0, y1: 1, yref: 'paper', line: { color: '#f3c969', width: 1, dash: 'dot' } }] : [],
+      uirevision: 'coinm-depth-heatmap'
+    };
+    const trace = {
+      type: 'heatmap', x, y: prices, z,
+      zmid: 0,
+      colorscale: [[0, '#ff7e87'], [0.5, '#111b2b'], [1, '#48d6ad']],
+      colorbar: { title: { text: 'Contracts', side: 'right' }, thickness: 8, tickfont: { size: 7 } },
+      hovertemplate: '%{x|%Y-%m-%d %H:%M:%S UTC}<br>Price %{y:,.1f}<br>Signed resting depth %{z:,.0f} contracts<extra></extra>'
+    };
+    const pending = Plotly.react(host, [trace], layout, { responsive: true, displaylogo: false, scrollZoom: false });
+    if (pending && typeof pending.catch === 'function') pending.catch(() => {});
+    setText('mdHeatmapMeta', integer(samples.length) + ' captured samples · green bids · red asks · top-25 levels');
+  }
+  function scheduleDepthHeatmap() {
+    if (depthHeatmapTimer !== null) return;
+    depthHeatmapTimer = setTimeout(() => {
+      depthHeatmapTimer = null;
+      renderDepthHeatmap();
+    }, 650);
   }
   function levelDelta(delta) {
     const el = document.createElement('i');
@@ -561,6 +619,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       if (view && view.ready) lastMarketAt = Date.now();
       if (!replayingDepth) queueBook(view);
       updateDepthCaptureControls();
+      scheduleDepthHeatmap();
       const info = feed.getDepthHistoryInfo();
       if (info.recording && info.count > persistedDepthCount) {
         const sample = feed.getDepthSnapshot(info.count - 1);
@@ -578,6 +637,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       const info = feed.restoreDepthHistory(samples);
       persistedDepthCount = info.count;
       updateDepthCaptureControls();
+      renderDepthHeatmap();
       setText('mdBookFoot', 'Restored ' + integer(info.count) + ' historical depth snapshots from this browser. Start replay with the slider. Archive is local to this device.');
     } catch (error) {
       setText('mdBookFoot', 'Could not restore local depth archive: ' + String(error && error.message || error));
@@ -690,6 +750,14 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   });
   $('mdFootprintMinute').addEventListener('change', () => {
     selectedFootprintMinute = $('mdFootprintMinute').value;
+    if (selectedFootprintMinute !== 'live') {
+      selectedReplayTime = Number(selectedFootprintMinute);
+      const history = feed.getDepthHistory();
+      let nearest = -1, distance = Infinity;
+      history.forEach((sample, index) => { const d = Math.abs(sample.time - selectedReplayTime); if (d < distance) { distance = d; nearest = index; } });
+      if (nearest >= 0) { $('mdDepthReplay').value = String(nearest); replayingDepth = true; const sample = feed.getDepthSnapshot(nearest); if (sample) renderBook({ ...sample, ready: true, recorded: true }); }
+      scheduleDraw(); renderDepthHeatmap();
+    } else { selectedReplayTime = null; scheduleDraw(); renderDepthHeatmap(); }
     if (selectedFootprintMinute === 'live') {
       const latest = feed.getLatestFootprint();
       renderFootprint(latest ? feed.getFootprintWindow(latest.minute, selectedFootprintInterval) : null, false);
@@ -711,13 +779,29 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const sample = feed.getDepthSnapshot(Number($('mdDepthReplay').value));
     if (!sample) return;
     replayingDepth = true;
+    selectedReplayTime = sample.time;
     renderBook({ ...sample, ready: true, recorded: true });
+    const footprintMinute = Math.floor(sample.time / 60000) * 60000;
+    if (feed.getFootprintMinutes().includes(footprintMinute)) {
+      selectedFootprintMinute = String(footprintMinute);
+      $('mdFootprintMinute').value = selectedFootprintMinute;
+      renderFootprint(feed.getFootprintWindow(footprintMinute, selectedFootprintInterval), true);
+    }
+    scheduleDraw();
+    renderDepthHeatmap();
     setText('mdDepthReplayMeta', 'REPLAY · ' + new Date(sample.time).toISOString().replace('T', ' ').slice(0, 23) + ' UTC · segment ' + integer(sample.segment));
     updateDepthCaptureControls();
   });
   $('mdDepthLive').addEventListener('click', () => {
     replayingDepth = false;
+    selectedReplayTime = null;
+    selectedFootprintMinute = 'live';
+    $('mdFootprintMinute').value = 'live';
+    const latestFootprint = feed.getLatestFootprint();
+    if (latestFootprint) renderFootprint(feed.getFootprintWindow(latestFootprint.minute, selectedFootprintInterval), false);
     if (latestBookView) renderBook(latestBookView);
+    scheduleDraw();
+    renderDepthHeatmap();
     updateDepthCaptureControls();
   });
   $('mdDepthImport').addEventListener('change', async event => {
@@ -743,6 +827,8 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
         const sample = feed.getDepthSnapshot(info.count - 1);
         replayingDepth = true;
         renderBook({ ...sample, ready: true, recorded: true });
+        selectedReplayTime = sample.time;
+        renderDepthHeatmap();
         updateDepthCaptureControls();
       }
       setText('mdBookFoot', 'Imported ' + integer(payload.samples.length) + ' recorded snapshots. Replay uses captured top-25 price levels only; gaps between samples are not reconstructed.');
