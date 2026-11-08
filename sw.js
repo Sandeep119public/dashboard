@@ -1,6 +1,6 @@
 /* Network-first app shell, cache-first chart library, offline fallback. */
 const CACHE_PREFIX = 'btc-mechanics-';
-const CACHE_NAME = 'btc-mechanics-shell-v26';
+const CACHE_NAME = 'btc-mechanics-shell-v28';
 const ROOT = self.registration.scope;
 const SHELL = [
   new URL('./', ROOT).href,
@@ -10,6 +10,8 @@ const SHELL = [
   new URL('./icon.svg', ROOT).href,
   new URL('./src/ingestion/zip-reader.js', ROOT).href,
   new URL('./src/ingestion/csv-parser.js', ROOT).href,
+  new URL('./src/market/coinm-market-data.js', ROOT).href,
+  new URL('./src/market/coinm-market-desk.js', ROOT).href,
   new URL('./src/app/import-controller.js', ROOT).href,
   new URL('./src/app/workspace-export.js', ROOT).href,
   new URL('./src/ui/mobile-quick-actions.js', ROOT).href,

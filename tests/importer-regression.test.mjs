@@ -21,6 +21,8 @@ import { createLeadLagEngine } from '../src/charts/lead-lag-engine.js';
 const html = readFileSync(new URL('../BTCUSD_Market_Mechanics_Lab_Fixed.html', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const serviceWorker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
+const deskSource = readFileSync(new URL('../src/market/coinm-market-desk.js', import.meta.url), 'utf8');
+const marketSource = readFileSync(new URL('../src/market/coinm-market-data.js', import.meta.url), 'utf8');
 const repoRoot = fileURLToPath(new URL('../', import.meta.url));
 assert.doesNotMatch(serviceWorker, /cacheIfSuccessful/, 'do not reintroduce the unused service-worker helper');
 assert.match(html, /<script type="module">/);
@@ -45,7 +47,7 @@ assert.doesNotMatch(html, /const text=JSON\.stringify\(payload\)/);
 assert.match(html, /file\.stream\(\)\.pipeThrough\(new DecompressionStream\('gzip'\)\)/, 'workspace import must stream gzip instead of buffering the file');
 assert.match(html, /text=null;[\s\S]{0,500}doc=null;[\s\S]{0,200}rebuildCombined\(\)/, 'workspace import must release text and document before rebuilding combined arrays');
 const cacheVersion = Number(/btc-mechanics-shell-v(\d+)/.exec(serviceWorker)?.[1]);
-assert.ok(cacheVersion >= 24, 'service-worker cache version must be bumped for changed shell assets');
+assert.ok(cacheVersion >= 28, 'service-worker cache version must be bumped for changed shell assets');
 
 test('inline browser module parses as valid JavaScript', () => {
   const match = html.match(/<script type="module">([\s\S]*?)<\/script>/);
@@ -61,7 +63,7 @@ test('inline browser module parses as valid JavaScript', () => {
 });
 
 test('UI copy matches the empty-data state and avoids stale sample-date claims', () => {
-  assert.ok(cacheVersion >= 24, 'changed UI shell requires a new service-worker cache version');
+  assert.ok(cacheVersion >= 28, 'changed UI shell requires a new service-worker cache version');
   assert.match(html, /id="startDate" type="date" value="" \/>/);
   assert.match(html, /id="endDate" type="date" value="" \/>/);
   assert.match(html, /id="dataStatus" class="data-status">No trade data loaded yet\. Add a daily CSV or ZIP file to begin\.<\/div>/);
@@ -75,6 +77,22 @@ test('UI copy matches the empty-data state and avoids stale sample-date claims',
   assert.match(html, /name:'Sell-side proxy size'/);
 });
 
+
+test('live market desk is fitted inside the chart stage and labels contract units', () => {
+  assert.match(html, /#marketDeskPanel #marketDeskRoot\{display:flex;flex:1 1 auto;min-height:0;min-width:0;overflow:hidden\}/, 'desk root must flex inside the fixed chart stage');
+  assert.match(html, /#marketDeskPanel \.md-root\{flex:1 1 auto;height:100%;min-height:0\}/, 'desk shell must fill the root without page overflow');
+  assert.match(html, /grid-template-areas:"chart footprint side"/, 'desktop desk must use the three-column terminal layout');
+  assert.match(html, /\.md-root\{--md-line:#263a55;--md-panel:#0d1726;display:flex;[^}]*overflow:hidden/, 'desktop panels must keep internal scrolling');
+  assert.match(html, /@media\(max-width:820px\)\{[^}]*\.md-root\{overflow-y:auto/, 'narrow screens must stack inside a scrollable desk');
+  assert.match(deskSource, /1 contract = \$' \+ COINM_CONTRACT_USD/, 'desk must state the COIN-M contract face value');
+  assert.match(deskSource, /bidChanges/, 'order book must show per-price bid changes');
+  assert.match(deskSource, /askChanges/, 'order book must show per-price ask changes');
+  assert.match(deskSource, /tone = 'stale'/, 'desk must expose a stale-feed state');
+  assert.match(deskSource, /setInterval\(updateFreshness, 1000\)/, 'freshness indicator must tick independently of market events');
+  assert.match(marketSource, /COINM_CONTRACT_USD = 100/, 'COIN-M contract size must stay explicit');
+  assert.match(marketSource, /scheduleResync/, 'a lagging depth snapshot must retry without a tight loop');
+  assert.match(marketSource, /snapshot is behind the live stream/i, 'lagging snapshot state must be explained');
+});
 
 test('combined 10-second bars are built lazily and stay out of the eager rebuild', () => {
   assert.match(html, /const EAGER_TIMEFRAMES = \['1m','5m','15m','1h'\];/, 'eager timeframes must exclude 10-second bars');
