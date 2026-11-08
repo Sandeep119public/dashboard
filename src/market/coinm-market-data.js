@@ -345,6 +345,46 @@ function bookView(book, ready, changes = {}, updatedAt = null, lastUpdateId = nu
   };
 }
 
+export function summarizeDepthLiquidityMigration(samples) {
+  if (!Array.isArray(samples) || samples.length < 2) return null;
+  const first = samples[0];
+  const last = samples[samples.length - 1];
+  if (!first || !last || !Array.isArray(first.bids) || !Array.isArray(first.asks) ||
+      !Array.isArray(last.bids) || !Array.isArray(last.asks)) return null;
+  const summarizeSide = (beforeLevels, afterLevels) => {
+    const before = new Map(beforeLevels.map(level => [Number(level.price), Number(level.qty)]));
+    const after = new Map(afterLevels.map(level => [Number(level.price), Number(level.qty)]));
+    let added = 0;
+    let reduced = 0;
+    let beforeTotal = 0;
+    let afterTotal = 0;
+    for (const qty of before.values()) beforeTotal += qty;
+    for (const qty of after.values()) afterTotal += qty;
+    for (const price of new Set([...before.keys(), ...after.keys()])) {
+      const delta = (after.get(price) || 0) - (before.get(price) || 0);
+      if (delta > 0) added += delta;
+      else reduced += -delta;
+    }
+    return { added, reduced, net: afterTotal - beforeTotal, beforeTotal, afterTotal };
+  };
+  const midpoint = sample => {
+    const bid = Number(sample.bids[0]?.price);
+    const ask = Number(sample.asks[0]?.price);
+    return Number.isFinite(bid) && Number.isFinite(ask) ? (bid + ask) / 2 : null;
+  };
+  const startMidpoint = midpoint(first);
+  const endMidpoint = midpoint(last);
+  return {
+    fromTime: Number(first.time),
+    toTime: Number(last.time),
+    bid: summarizeSide(first.bids, last.bids),
+    ask: summarizeSide(first.asks, last.asks),
+    startMidpoint,
+    endMidpoint,
+    midpointChange: startMidpoint !== null && endMidpoint !== null ? endMidpoint - startMidpoint : null
+  };
+}
+
 export function createCoinMMarketFeed(options = {}) {
   const symbol = String(options.symbol || COINM_SYMBOL).trim().toUpperCase();
   const fetchImpl = options.fetchImpl || ((...args) => fetch(...args));
