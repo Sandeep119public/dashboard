@@ -801,6 +801,28 @@ body{background:radial-gradient(ellipse at 50% -28%,rgba(35,76,92,.24),transpare
   .header-actions .btn{padding:7px 8px;font-size:11px}
 }
 </style>
+
+<style id="settings-drawer-hierarchy">
+.drawer-body>.controls{margin-bottom:10px}
+.drawer-body>.toolbar{display:grid;grid-template-columns:1fr;gap:10px;padding:11px;margin-bottom:10px}
+.drawer-tools-details,.drawer-settings-details{border:1px solid var(--ws-line,var(--border));border-radius:11px;background:rgba(10,18,30,.72);padding:0 12px;margin:0 0 10px}
+.drawer-tools-details>summary,.drawer-settings-details>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;cursor:pointer;list-style:none;color:var(--text);font-size:12px;font-weight:750}
+.drawer-tools-details>summary::-webkit-details-marker,.drawer-settings-details>summary::-webkit-details-marker{display:none}
+.drawer-tools-details>summary:after,.drawer-settings-details>summary:after{content:'＋';color:var(--ws-accent,var(--buy));font-size:16px;font-weight:500}
+.drawer-tools-details[open]>summary:after,.drawer-settings-details[open]>summary:after{content:'−'}
+.drawer-tools-content{padding:0 0 12px}
+.drawer-tools-content .quick-buttons{gap:7px}
+.drawer-tools-content .coverage-summary{margin-top:10px}
+.drawer-settings-details #chartStudio{margin:0 0 10px;padding:10px;border:0;background:transparent;box-shadow:none}
+.drawer-settings-details #chartStudio .studio-topline{margin-bottom:9px}
+.drawer-settings-details #chartStudio .studio-actions{justify-content:flex-start}
+.drawer-settings-details #chartStudio .studio-controls{padding:9px}
+.drawer-settings-details #chartStudio .panel-picker-row{margin-bottom:0}
+@media(max-width:650px){
+ .drawer-tools-content .quick-buttons .btn{flex:1 1 calc(50% - 7px);min-width:0}
+ .drawer-settings-details #chartStudio .studio-actions .btn{flex:1 1 calc(50% - 7px)}
+}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -939,7 +961,7 @@ body{background:radial-gradient(ellipse at 50% -28%,rgba(35,76,92,.24),transpare
       </section>
 
       <section class="toolbar" aria-label="Quick ranges and data tools">
-        <div class="toolbar-block">
+        <div class="toolbar-block drawer-quick-range">
           <div class="toolbar-label">Quick range <span>counts loaded dates, not calendar days</span></div>
           <div class="quick-buttons">
             <button class="btn subtle active" data-range="1" type="button">Latest day</button>
@@ -948,21 +970,25 @@ body{background:radial-gradient(ellipse at 50% -28%,rgba(35,76,92,.24),transpare
             <button class="btn subtle" data-range="all" type="button">All loaded</button>
           </div>
         </div>
-        <div class="toolbar-block">
-          <div class="toolbar-label">Export and workspace</div>
-          <div class="quick-buttons">
-            <button class="btn subtle" id="importFolder" type="button">Import folder</button>
-            <input id="tradeFolder" type="file" webkitdirectory directory multiple accept=".csv,.zip,text/csv,application/zip" hidden />
-            <button class="btn subtle" id="exportBars" type="button">Export bars as CSV</button>
-            <button class="btn subtle" id="exportEvents" type="button">Export large trades as CSV</button>
-            <button class="btn" id="saveWorkspace" type="button">Save data workspace</button>
-            <button class="btn subtle" id="loadWorkspace" type="button">Load data workspace</button>
-            <input id="workspaceFile" type="file" accept=".json,.gz,.json.gz,application/json,application/gzip" hidden />
+        <details class="drawer-tools-details">
+          <summary>File tools, exports &amp; workspace</summary>
+          <div class="drawer-tools-content">
+            <div class="quick-buttons">
+              <button class="btn subtle" id="importFolder" type="button">Import folder</button>
+              <input id="tradeFolder" type="file" webkitdirectory directory multiple accept=".csv,.zip,text/csv,application/zip" hidden />
+              <button class="btn subtle" id="exportBars" type="button">Export bars as CSV</button>
+              <button class="btn subtle" id="exportEvents" type="button">Export large trades as CSV</button>
+              <button class="btn" id="saveWorkspace" type="button">Save data workspace</button>
+              <button class="btn subtle" id="loadWorkspace" type="button">Load data workspace</button>
+              <input id="workspaceFile" type="file" accept=".json,.gz,.json.gz,application/json,application/gzip" hidden />
+            </div>
+            <div class="coverage-summary" id="coverageSummary">Coverage summary appears after data is loaded.</div>
           </div>
-        </div>
-        <div class="coverage-summary" id="coverageSummary">Coverage summary appears after data is loaded.</div>
+        </details>
       </section>
 
+      <details class="drawer-settings-details">
+        <summary>Chart appearance &amp; layout</summary>
       <section class="studio" id="chartStudio" aria-label="Chart settings">
         <div class="studio-topline">
           <div>
@@ -993,6 +1019,7 @@ body{background:radial-gradient(ellipse at 50% -28%,rgba(35,76,92,.24),transpare
           <div id="panelVisibility" class="panel-picker" aria-label="Show or hide chart panels"></div>
         </div>
       </section>
+      </details>
 
       <details class="notes-details">
         <summary>About this data and its limits</summary>
