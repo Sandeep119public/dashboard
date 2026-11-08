@@ -858,6 +858,25 @@ body{background:radial-gradient(ellipse at 50% -28%,rgba(35,76,92,.24),transpare
 }
 </style>
 
+
+<style id="touch-chart-controls">
+/* Touch users should not need hover to reach chart navigation and reset tools. */
+@media(hover:none) and (pointer:coarse){
+  .chart-stage .js-plotly-plot .modebar{opacity:1!important;top:5px!important;right:5px!important}
+  .chart-stage .js-plotly-plot .modebar-group{
+    margin-left:4px!important;padding:2px!important;
+    border:1px solid rgba(91,119,151,.62)!important;border-radius:8px!important;
+    background:rgba(7,14,24,.9)!important
+  }
+  .chart-stage .js-plotly-plot .modebar-btn{
+    width:30px!important;height:30px!important;padding:6px!important
+  }
+  .chart-stage .js-plotly-plot .modebar-btn svg{
+    top:0!important;width:16px!important;height:16px!important
+  }
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
