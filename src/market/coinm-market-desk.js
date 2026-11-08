@@ -374,9 +374,16 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     }
     if (live) live.disabled = !replayingDepth;
     if (exportButton) exportButton.disabled = info.count === 0;
-    setText('mdDepthReplayMeta', info.recording
-      ? 'Recording · ' + integer(info.count) + '/' + integer(info.limit) + ' samples'
-      : info.count ? integer(info.count) + ' captured · session memory' : 'Not recording · session only');
+    if (replayingDepth) {
+      const sample = slider ? feed.getDepthSnapshot(Number(slider.value)) : null;
+      setText('mdDepthReplayMeta', sample
+        ? 'REPLAY · ' + new Date(sample.time).toISOString().replace('T', ' ').slice(0, 23) + ' UTC'
+        : 'Selected replay sample is no longer retained');
+    } else {
+      setText('mdDepthReplayMeta', info.recording
+        ? 'Recording · ' + integer(info.count) + '/' + integer(info.limit) + ' samples'
+        : info.count ? integer(info.count) + ' captured · session memory' : 'Not recording · session only');
+    }
   }
   function queueTape(items) {
     pendingTape = items || [];
