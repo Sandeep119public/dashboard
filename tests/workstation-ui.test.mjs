@@ -25,7 +25,7 @@ test('mobile workstation layout keeps the chart stage flexible and controls touc
 });
 
 test('service worker cache version advances with the visual shell update', () => {
-  assert.match(sw, /btc-mechanics-shell-v36/);
+  assert.match(sw, /btc-mechanics-shell-v37/);
 });
 
 
@@ -70,4 +70,14 @@ test('settings drawer hides repeated section captions without removing layout ac
   assert.ok(html.includes('.studio-topline>div:first-child{display:none}'));
   assert.ok(html.includes('id="saveViewPreset"'));
   assert.ok(html.includes('id="resetStudio"'));
+});
+
+
+test('narrow-phone metric labels and values remain readable while preserving all six metrics', () => {
+  assert.match(html, /id="mobile-metric-readability"/);
+  assert.match(html, /\.metric-primary \.value\{font-size:clamp\(12\.5px,3\.7vw,14px\)/);
+  assert.match(html, /\.metric-secondary>span\{font-size:7\.5px/);
+  for (const id of ['kReturn', 'kRange', 'kTrades', 'kSize', 'kDelta', 'kImb']) {
+    assert.ok(html.includes('id="' + id + '"'));
+  }
 });
