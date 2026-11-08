@@ -178,6 +178,7 @@ export function createCoinMMarketFeed(options={}) {
     ws.onerror=()=>{if(g===generation&&!stopped)status('warning','WebSocket error. Waiting for the connection to recover…');};
     ws.onclose=()=>{
       if(g!==generation||stopped)return;socket=null;snapshotReady=false;bookReady=false;snapshotInFlight=false;
+      notifyBook();
       status('reconnecting','Market stream disconnected. Reconnecting automatically…');
       const wait=Math.min(30000,1000*Math.pow(2,Math.min(5,retryCount++)));
       retryTimer=setTimeout(()=>{if(!stopped)openSocket();},wait);
