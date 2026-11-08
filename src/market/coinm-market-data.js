@@ -442,12 +442,12 @@ export function createCoinMMarketFeed(options = {}) {
     if (!Number.isFinite(endTime) || !Number.isFinite(durationMs) || durationMs <= 0) {
       throw new RangeError('Footprint backfill requires a valid positive time range.');
     }
-    if (durationMs > maxMinutes * 60000) throw new RangeError('Footprint backfill is limited to ' + maxMinutes + ' minutes per request.');
     const startTime = Number.isFinite(requestedStart) ? requestedStart : endTime - durationMs;
     const serverNow = now();
     if (endTime > serverNow + 5000 || startTime < serverNow - 48 * 60 * 60000) {
       throw new RangeError('Binance COIN-M aggregate-trade history is available only within the most recent 48 hours.');
     }
+    if (durationMs > maxMinutes * 60000) throw new RangeError('Footprint backfill is limited to ' + maxMinutes + ' minutes per request.');
     const limit = Math.min(1000, Math.max(1, Math.floor(Number(window.limit) || 1000)));
     const maxPages = Math.min(100, Math.max(1, Math.floor(Number(window.maxPages) || 20)));
     const maxTrades = Math.max(1, Math.floor(Number(window.maxTrades) || 20000));
