@@ -41,6 +41,15 @@ The **Live market** chart tab adds a separate public Binance COIN-M BTCUSD perpe
 
 The live desk is intentionally a separate chart tab. The original CSV/ZIP importer, offline archive analysis, existing price/flow/CVD/profile/research charts, linked replay and workspace export/restore remain available. The service worker caches the two new market modules for the app shell; public market data itself is never cached as a substitute for a live connection.
 
+## State event research
+
+The research section separates two questions:
+
+- **Forward outcomes by state** retains overlapping hourly starting observations. It is useful for descriptive distributions, but adjacent observations are dependent.
+- **Non-overlapping state event study** starts an event only on the first bar after a past-only state transition. For each horizon (+1h, +4h and +24h), it accepts the next event only after the prior event's future window has ended. This removes shared future bars within each horizon; it does not make market events statistically independent.
+
+The event study reports long and short close-to-close returns, median maximum favourable/adverse excursions (MFE/MAE) from future hourly highs/lows, sample counts and win rates. The **Round-trip cost** control deducts the entered basis points from each hypothetical trade return. This is a sensitivity assumption, not a claim about the user's actual exchange fees or fill quality. MFE/MAE are path excursions, not executable fills, and the event study remains retrospective rather than predictive. State labels use the existing past-only classifier.
+
 ## Import data
 
 Use **Import** (header or the empty state) to import data. The importer supports Binance-style BTCUSD, BTCUSDT and BTCUSD_PERP CSV files, including a monthly ZIP containing one chronologically sorted CSV across multiple dates, and multiple CSV/ZIP files in one selection.
