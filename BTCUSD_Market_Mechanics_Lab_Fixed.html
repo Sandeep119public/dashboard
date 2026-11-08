@@ -279,6 +279,12 @@ input,select,button{color-scheme:dark}
 @media(max-width:760px){.controls>.bar-interval{grid-column:1/-1}}
 @media(max-width:420px){.guided-steps small{display:none}.guided-steps>div{padding:9px 8px}}
 
+
+/* Additive live COIN-M market desk */
+.md-root{display:flex;flex-direction:column;gap:10px;min-width:0;padding:10px;border:1px solid #2a3c56;border-radius:12px;background:#091321}.md-topbar{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap}.md-title{display:flex;flex-direction:column;gap:2px;min-width:0}.md-kicker{font-size:9px;letter-spacing:.13em;font-weight:900;color:var(--buy)}.md-title strong{font-size:16px;line-height:1.25}.md-title small{font-size:10px;color:var(--muted)}.md-controls{display:flex;align-items:end;gap:8px;flex-wrap:wrap}.md-controls label{display:flex;flex-direction:column;gap:4px;font-size:9px;text-transform:uppercase;color:var(--muted);font-weight:800}.md-controls select{min-height:38px;min-width:130px;background:#101b2b;color:var(--text);border:1px solid #31435d;border-radius:8px;padding:6px 9px}.md-controls button{min-height:38px}.md-disconnect{background:#3a1c27!important;border-color:#713b48!important;color:#ffdce1!important}.md-statusline{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:8px 10px;border:1px solid #23354d;background:#0d1929;border-radius:8px;font-size:10px;color:var(--muted)}.md-state{font-weight:900;letter-spacing:.07em;color:#a8b6c9}.md-connected{color:var(--buy)}.md-syncing,.md-connecting,.md-reconnecting{color:var(--gold)}.md-warning{color:#ffbd70}.md-error{color:var(--sell)}.md-disconnected{color:#a8b6c9}#mdSource{margin-left:auto;text-align:right;overflow-wrap:anywhere}.md-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.md-metrics>div{min-width:0;background:#101b2b;border:1px solid #263a55;border-radius:8px;padding:8px 9px}.md-metrics span,.md-metrics small{display:block;color:var(--muted);font-size:8px;line-height:1.35}.md-metrics span{font-weight:900;letter-spacing:.04em}.md-metrics strong{display:block;font-size:clamp(12px,1.25vw,17px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;margin:4px 0 2px}.md-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(280px,.85fr);gap:9px;align-items:start}.md-chart-column,.md-side-column{display:flex;flex-direction:column;gap:9px;min-width:0}.md-panel{min-width:0;border:1px solid #263a55;border-radius:10px;background:#0d1726;padding:8px}.md-panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding:2px 3px 6px}.md-panel-head strong{font-size:11px}.md-panel-head span{font-size:9px;color:var(--muted);text-align:right}.md-candles{height:390px;min-width:0;width:100%}.md-flow{height:175px;min-width:0;width:100%}.md-empty{padding:18px;text-align:center;color:var(--muted);font-size:10px}.md-book-summary{display:flex;justify-content:space-between;gap:5px;padding:7px 3px;border-top:1px solid #22344c;border-bottom:1px solid #22344c;font-size:9px;color:var(--muted)}.md-book-summary b{color:var(--text);font-variant-numeric:tabular-nums}.md-book-wrap{max-height:470px;overflow:auto}.md-book{width:100%;border-collapse:collapse;font-size:10px;font-variant-numeric:tabular-nums}.md-book th{position:sticky;top:0;background:#111d2e;color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.04em;padding:7px 3px;z-index:1}.md-book td{position:relative;padding:5px 4px;border-bottom:1px solid #1a2a40;text-align:right;white-space:nowrap}.md-bid-qty,.md-ask-qty{width:25%;position:relative;overflow:hidden}.md-bid-qty>span:last-child,.md-ask-qty>span:last-child{position:relative;z-index:1}.md-bid-price{color:var(--buy);font-weight:800}.md-ask-price{color:var(--sell);font-weight:800}.md-depth-bar{position:absolute;top:2px;bottom:2px;opacity:.22;border-radius:3px;pointer-events:none}.md-bid-depth{right:0;background:var(--buy)}.md-ask-depth{left:0;background:var(--sell)}.md-muted{color:var(--muted);text-align:center!important;padding:16px!important}.md-book-foot{border-top:1px solid #22344c;margin-top:7px;padding:7px 3px 1px;font-size:8px;line-height:1.5;color:var(--muted)}.md-tape-head,.md-tape-row{display:grid;grid-template-columns:62px minmax(55px,.8fr) 54px minmax(110px,1.4fr);gap:5px;align-items:center}.md-tape-head{padding:6px 4px;color:var(--muted);font-size:8px;text-transform:uppercase;border-bottom:1px solid #283b54}.md-tape{max-height:360px;overflow:auto}.md-tape-row{padding:5px 4px;border-bottom:1px solid #1a2a40;font-size:9px;font-variant-numeric:tabular-nums}.md-tape-time,.md-tape-qty{color:var(--muted)}.md-tape-sides{display:flex;gap:3px;flex-wrap:wrap}.md-side-tag{display:inline-block;padding:3px 4px;border-radius:4px;font-size:7px;line-height:1.1;white-space:nowrap}.md-tag-buy{background:#103c34;color:#8df1d5}.md-tag-sell{background:#42242b;color:#ffb2ba}.md-tag-maker-buy,.md-tag-maker-sell{background:#1a2939;color:#b8d4ef}.md-positive{color:var(--buy)!important}.md-negative{color:var(--sell)!important}.md-footnote{font-size:9px;line-height:1.55;color:#8094ad;padding:8px 10px;border:1px solid #22344c;background:#0b1625;border-radius:8px}
+@media(max-width:1050px){.md-layout{grid-template-columns:minmax(0,1fr)}.md-side-column{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+@media(max-width:650px){.md-root{padding:6px;gap:7px}.md-title strong{font-size:13px}.md-controls{width:100%}.md-controls label{flex:1;min-width:0}.md-controls select{width:100%;min-width:0;min-height:44px}.md-controls button{flex:1;min-height:44px}.md-statusline{font-size:9px;gap:6px}#mdSource{width:100%;margin-left:0;text-align:left}.md-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.md-metrics>div{padding:6px}.md-metrics>div:last-child{grid-column:1/-1}.md-layout{grid-template-columns:minmax(0,1fr)}.md-side-column{display:flex}.md-candles{height:310px}.md-flow{height:145px}.md-book-wrap{max-height:330px}.md-tape{max-height:260px}.md-tape-head,.md-tape-row{grid-template-columns:52px minmax(44px,.7fr) 42px minmax(104px,1.3fr);gap:3px}.md-panel{padding:6px}.md-panel-head{align-items:flex-start}.md-panel-head span{font-size:8px;text-align:left}}
+
 </style>
 <style id="workstation-overrides">
 :root{--ws-bg:#080d16;--ws-panel:#101a29;--ws-panel-2:#0b1422;--ws-line:#26364c;--ws-muted:#8ea1b9;--ws-gap:6px}
@@ -647,6 +653,7 @@ body.drawer-open{overflow:hidden}
 
     <div class="sectionhead"><div><h2>01 / Price path and large-trade markers</h2><p>Zoom, pan, and use the range slider. Long windows are grouped for speed; chart totals are preserved and exports keep raw bars.</p></div><span class="tag" id="priceBadge">1-minute bars</span></div>
     <div class="chartgrid">
+      <div class="chartcard full" id="marketDeskPanel"><div class="charttitle"><strong>Live market · candles, executions &amp; depth</strong><span>Binance COIN-M · exchange candles + live aggressor tape + synchronized L2</span></div><div id="marketDeskRoot"></div></div>
       <div class="chartcard full"><div class="charttitle"><strong>Price structure + large executions</strong><span>▲ buyer_role=taker · ▼ buyer_role=maker (sell-aggressor proxy)</span></div><div id="priceChart" class="plot tall"></div></div>
       <div class="chartcard"><div class="charttitle"><strong>02 / Executed flow + rolling imbalance</strong><span>Bars show the buy-side proxy above zero and the sell-side proxy below</span></div><div id="flowChart" class="plot"></div></div>
       <div class="chartcard"><div class="charttitle"><strong>03 / Cumulative volume delta (CVD)</strong><span>Starts at zero for the selected window</span></div><div id="cvdChart" class="plot"></div></div>
@@ -830,6 +837,7 @@ import { createLatestRenderQueue } from './src/charts/latest-render-queue.js';
 import { createBarSubsetter } from './src/charts/bar-subsetter.js';
 import { createChartSeriesMath } from './src/charts/series-math.js';
 import { createLeadLagEngine } from './src/charts/lead-lag-engine.js';
+import { mountCoinMMarketDesk } from './src/market/coinm-market-desk.js';
 (function(){
 'use strict';
 const DATA = window.DATA;
@@ -859,6 +867,7 @@ const EAGER_TIMEFRAMES = ['1m','5m','15m','1h'];
 const HIST_BUCKETS = [9,24,49,99,219,671,999,1999,Infinity];
 const WORKSTATION_CHARTS = [
  {id:'priceChart',label:'Price'},
+ {id:'marketDeskPanel',label:'Live market'},
  {id:'flowChart',label:'Flow'},
  {id:'cvdChart',label:'CVD'},
  {id:'profileChart',label:'Volume profile'},
@@ -918,6 +927,7 @@ function rebuildCombined(){
   const histOffset=dayIndex*1440*DATA.hist_labels.length;for(let hi=0;hi<day.hist.length;hi++)hist[histOffset+hi]=day.hist[hi];
  }
  B=bars;P=profile;E=events;HIST=hist;HIST_DATES=dates.slice();COMBINED_DATES=dates.slice();clearSubsetCache();leadLagEngine.setData(B['1m']);
+ if(marketDesk&&marketDesk.getInterval()==='10s')marketDesk.syncImportedBars();
  const delta=buy-sell, datesSpan=dates.length===1?dates[0]:dates[0]+' → '+dates[dates.length-1];
  M={date:datesSpan,row_count:rowCount,total_size:total,buy_size:buy,sell_size:sell,delta,imbalance_pct:total?delta/total*100:0,max_size:maxSize,start_price:firstPrice||0,end_price:lastPrice||0,high:high===-Infinity?0:high,low:low===Infinity?0:low,return_pct:firstPrice?(lastPrice/firstPrice-1)*100:0,range_pct:low>0?(high/low-1)*100:0};
  const x=B['1m'];let prev=null,prevT=null,arrFlow=[],arrRet=[];for(let i=0;i<x.t.length;i++){if(x.c[i]!==null&&x.o[i]!==null){if(prev!==null&&prev!==0&&x.t[i]>prevT&&x.t[i]-prevT===60){arrFlow.push(Number(x.d[i]||0));arrRet.push((x.c[i]/prev-1)*100);}prev=x.c[i];prevT=x.t[i];}}
@@ -1176,7 +1186,7 @@ async function loadWorkspaceFile(file){
  rebuildCombined();updateDateBounds(true);applyViewState(savedView);refresh();$('status').textContent='Loaded '+added+' day'+(added===1?'':'s')+' from the workspace. Data for matching dates was replaced.';
 }
 
-const STUDIO_PANEL_NAMES={priceChart:'Price + large executions',flowChart:'Executed flow',cvdChart:'Cumulative volume delta',profileChart:'Volume-at-price profile',sizeChart:'Trade-size distribution',hourChart:'Activity by hour',eventChart:'Large-trade follow-through',leadLagChart:'Flow lead-lag',regimeChart:'Hourly regime map'};
+const STUDIO_PANEL_NAMES={priceChart:'Price + large executions',marketDeskPanel:'Live candles + maker/taker + depth',flowChart:'Executed flow',cvdChart:'Cumulative volume delta',profileChart:'Volume-at-price profile',sizeChart:'Trade-size distribution',hourChart:'Activity by hour',eventChart:'Large-trade follow-through',leadLagChart:'Flow lead-lag',regimeChart:'Hourly regime map'};
 function chartDataReady(){return DAYS.size>0&&Number(M.row_count||0)>0;}
 function studioCardFor(id){const p=$(id);return p&&p.closest?p.closest('.chartcard'):null;}
 function resizeStudioCharts(){if(typeof Plotly==='undefined'||!Plotly.Plots||!Plotly.Plots.resize)return;document.querySelectorAll('.plot').forEach(p=>{if(p.offsetParent!==null&&p.data)try{Plotly.Plots.resize(p);}catch(_){}});}
@@ -1340,7 +1350,7 @@ function windowHasBars(w){
 function updateEmptyState(w){
  const empty=$('emptyState');if(!empty)return;
  const noData=!chartDataReady(),noWindow=!noData&&w&&!windowHasBars(w);
- empty.hidden=!(noData||noWindow);
+ empty.hidden=activeChart==='marketDeskPanel'||!(noData||noWindow);
  const title=$('emptyTitle'),text=$('emptyText'),importBtn=$('emptyImport'),resetBtn=$('emptyReset');
  if(noData){
   if(title)title.textContent='No trade data loaded';
@@ -1372,7 +1382,9 @@ function setActiveChart(id,{persist=true,render=true}={}){
  });
  const select=$('chartSelect');if(select)select.value=id;
  updateEmptyState(currentRange);
- if(render&&chartDataReady()){
+ if(render&&id==='marketDeskPanel'){
+  if(marketDesk)requestAnimationFrame(()=>marketDesk.activate());
+ }else if(render&&chartDataReady()){
   if(dirtyCharts.has(id)||!renderedCharts.has(id))refreshCharts([id]);
   else requestAnimationFrame(()=>{resizeChart(id);applyFocusLine();});
  }
@@ -1503,6 +1515,10 @@ window.addEventListener('resize',scheduleResponsiveResize,{passive:true});
 window.addEventListener('orientationchange',()=>setTimeout(scheduleResponsiveResize,180),{passive:true});
 if(window.visualViewport)window.visualViewport.addEventListener('resize',scheduleResponsiveResize,{passive:true});
 
+marketDesk=mountCoinMMarketDesk({root:$('marketDeskRoot'),Plotly:window.Plotly,getImportedBars:tf=>{
+ if(tf!=='10s'||!chartDataReady())return [];
+ const x=ensureBars('10s');return x.t.map((t,i)=>({t:BASE+Number(t)*1000,o:x.o[i],h:x.h[i],l:x.l[i],c:x.c[i],v:x.v[i],trades:x.n[i],buyTaker:x.b[i],sellTaker:x.s[i],makerSell:x.b[i],makerBuy:x.s[i],delta:x.d[i]}));
+}});
 initWorkstation();updateDateBounds(true);rebuildCombined();initInteractiveStudio();initGuidedExperience();setQuickRange('all');refresh();
 })();
 </script>
