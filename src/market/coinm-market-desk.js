@@ -44,7 +44,7 @@ export function mountCoinMMarketDesk({root,Plotly=window.Plotly,getImportedBars=
   }
   intervalSelect.value = '1m';
 
-  let interval='1m',connected=false,candles=[],source='',recentTrades=[],renderTimer=null,pendingDraw=false;
+  let interval='1m',connected=false,candles=[],source='',recentTrades=[],renderTimer=null,pendingDraw=false,tapeTimer=null,pendingTape=[];
   const formatQty=value=>number(value,3);
   function imported(tf) {
     try { const bars=getImportedBars(tf);return Array.isArray(bars)?bars:[]; }
@@ -63,7 +63,7 @@ export function mountCoinMMarketDesk({root,Plotly=window.Plotly,getImportedBars=
     const map=new Map();
     for(const c of a||[])map.set(Number(c.t),c);
     for(const c of b||[])map.set(Number(c.t),c);
-    return Array.from(map.values()).sort((x,y)=>x.t-y.t);
+    return Array.from(map.values()).sort((x,y)=>x.t-y.t).slice(-5000);
   }
   function scheduleDraw() {
     pendingDraw=true;
@@ -150,6 +150,11 @@ export function mountCoinMMarketDesk({root,Plotly=window.Plotly,getImportedBars=
     const c=view.changes||{};
     setText('mdBookFoot','Last update '+number(view.lastUpdateId,0)+' · level qty added/reduced since latest diff: bids +'+formatQty(c.bidAdded||0)+' / −'+formatQty(c.bidReduced||0)+' · asks +'+formatQty(c.askAdded||0)+' / −'+formatQty(c.askReduced||0)+'. Reductions may be executions or cancellations; the feed does not distinguish them.');
   }
+  function queueTape(items) {
+    pendingTape=items||[];
+    if(tapeTimer!==null)return;
+    tapeTimer=setTimeout(()=>{tapeTimer=null;renderTape(pendingTape);},100);
+  }
   function renderTape(items) {
     recentTrades=items||[];const host=$('mdTape');host.innerHTML='';
     if(!recentTrades.length){host.innerHTML='<div class="md-empty">Waiting for aggregate trades…</div>';return;}
@@ -176,10 +181,10 @@ export function mountCoinMMarketDesk({root,Plotly=window.Plotly,getImportedBars=
       setText('mdSource',source);scheduleDraw();
     },
     onTrade:(trade,state)=>{
-      updateStats(state.stats);renderTape(state.recentTrades);
-      if(SECOND_INTERVALS.includes(interval)) {
-        const local=interval==='10s'?imported('10s'):[];
-        candles=mergeCandles(local,state.candles||[]);source='Live aggregate trades since connection'+(local.length?' + imported historical trades':'');
+      updateStats(state.stats);queueTape(state.recentTrades);
+      if(SECOND_INTERVALS.includes(interval)&&state.candle) {
+        candles=mergeCandles(candles,[state.candle]);
+        source='Live aggregate trades since connection'+(interval==='10s'&&imported('10s').length?' + imported historical trades':'');
         setText('mdSource',source);scheduleDraw();
       }
     },
