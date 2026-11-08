@@ -465,7 +465,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const migrationLabel = migration
       ? ' · bids +' + contractQty(migration.bid.added) + '/-' + contractQty(migration.bid.reduced) +
         ' · asks +' + contractQty(migration.ask.added) + '/-' + contractQty(migration.ask.reduced) +
-        (migration.midpointChange === null ? '' : ' · mid ' + signedContractQty(migration.midpointChange))
+        (migration.midpointChange === null ? '' : ' · mid Δ ' + (migration.midpointChange > 0 ? '+' : '') + number(migration.midpointChange, 1))
       : '';
     setText('mdHeatmapMeta', integer(samples.length) + (selectedReplayTime !== null ? ' replay-window samples' : ' latest samples') + ' · green bids · red asks · top-25 levels · 100 ms sampling' + migrationLabel + ' · observed book changes, not executions');
   }
