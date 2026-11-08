@@ -1227,6 +1227,7 @@ export function createCoinMMarketFeed(options = {}) {
     setDepthRecording,
     getDepthRecording: () => depthRecording,
     getDepthHistory,
+    getDepthHistoryAround,
     getDepthHistoryInfo,
     getDepthSnapshot,
     getDepthSnapshotIndexAt,
