@@ -391,3 +391,46 @@ test('depth recording is opt-in, bounded, replayable and stops capturing when di
   assert.equal(feed.getDepthHistoryInfo().recording, false);
   feed.disconnect();
 });
+
+
+test('backfills bounded COIN-M aggregate trades into per-minute historical footprints', async () => {
+  FakeSocket.reset();
+  const now = 1700003600000;
+  const start = now - 180000;
+  const urls = [];
+  const fetchImpl = async url => {
+    urls.push(url);
+    const parsed = new URL(url);
+    if (parsed.pathname.endsWith('/dapi/v1/aggTrades')) {
+      const params = parsed.searchParams;
+      if (params.has('startTime')) {
+        return response([
+          { a: 10, p: '100', q: '2', T: start, m: false, f: 10, l: 10 },
+          { a: 11, p: '100', q: '3', T: start + 60000, m: true, f: 11, l: 11 }
+        ]);
+      }
+      return response([
+        { a: 12, p: '101', q: '4', T: start + 120000, m: false, f: 12, l: 12 }
+      ]);
+    }
+    return createFetch()(url);
+  };
+  const { feed } = createFeed({ fetchImpl, options: { now: () => now } });
+  const result = await feed.backfillFootprintHistory({ startTime: start, endTime: now - 1, maxPages: 5, maxTrades: 20, limit: 2 });
+  assert.equal(result.tradesCount, 3);
+  assert.equal(result.truncated, false);
+  assert.equal(result.minutes.length, 3);
+  assert.equal(result.footprints.reduce((sum, item) => sum + item.totalQty, 0), 9);
+  assert.equal(result.footprints[0].source, 'Binance REST backfill');
+  assert.equal(urls.filter(url => url.includes('/aggTrades')).length, 2);
+  assert.match(urls[0], /startTime=/);
+  assert.match(urls[1], /fromId=12/);
+});
+
+test('backfill rejects ranges outside Binance 48-hour history and configured retention', async () => {
+  FakeSocket.reset();
+  const now = 1700003600000;
+  const { feed } = createFeed({ options: { now: () => now, maxFootprintMinutes: 120 } });
+  await assert.rejects(feed.backfillFootprintHistory({ startTime: now - 49 * 3600000, endTime: now - 1 }), /most recent 48 hours/);
+  await assert.rejects(feed.backfillFootprintHistory({ minutes: 121 }), /limited to 120 minutes/);
+});
