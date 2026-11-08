@@ -1610,7 +1610,9 @@ if(window.visualViewport)window.visualViewport.addEventListener('resize',schedul
 
 marketDesk=mountCoinMMarketDesk({root:$('marketDeskRoot'),Plotly:window.Plotly,getImportedBars:tf=>{
  if(tf!=='10s'||!chartDataReady())return [];
- const x=ensureBars('10s'),start=Math.max(0,x.t.length-5000),out=[];for(let i=start;i<x.t.length;i++)out.push({t:BASE+Number(x.t[i])*1000,o:x.o[i],h:x.h[i],l:x.l[i],c:x.c[i],v:x.v[i],trades:x.n[i],buyTaker:x.b[i],sellTaker:x.s[i],makerSell:x.b[i],makerBuy:x.s[i],delta:x.d[i]});return out;
+ const out=[],days=[...DAYS.values()],symbols=new Set(days.map(day=>day.instrument&&day.instrument.symbol)),verified=days.length>0&&days.every(day=>day.instrument&&day.instrument.verified);
+ if(!verified||symbols.size!==1||!['BTCUSD','BTCUSD_PERP'].includes([...symbols][0])){out.incompatibleReason='Imported 10-second bars withheld: this COIN-M chart requires an explicit BTCUSD or BTCUSD_PERP symbol on every imported day. BTCUSDT, mixed symbols, and legacy workspaces without verified symbol metadata are not compatible.';return out;}
+ const x=ensureBars('10s'),start=Math.max(0,x.t.length-5000);for(let i=start;i<x.t.length;i++)out.push({t:BASE+Number(x.t[i])*1000,o:x.o[i],h:x.h[i],l:x.l[i],c:x.c[i],v:x.v[i],trades:x.n[i],buyTaker:x.b[i],sellTaker:x.s[i],makerSell:x.b[i],makerBuy:x.s[i],delta:x.d[i]});return out;
 }});
 initWorkstation();updateDateBounds(true);rebuildCombined();initInteractiveStudio();initGuidedExperience();setQuickRange('all');refresh();
 })();
