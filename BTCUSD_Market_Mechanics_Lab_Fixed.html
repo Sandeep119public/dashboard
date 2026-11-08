@@ -823,6 +823,22 @@ body{background:radial-gradient(ellipse at 50% -28%,rgba(35,76,92,.24),transpare
  .drawer-settings-details #chartStudio .studio-actions .btn{flex:1 1 calc(50% - 7px)}
 }
 </style>
+
+<style id="settings-drawer-declutter">
+/* Keep everyday settings visible; advanced controls stay collapsed until requested. */
+.filter-drawer .advanced-filter-details{grid-column:1/-1;min-width:0;border:1px solid var(--ws-line,var(--border));border-radius:10px;background:rgba(8,16,27,.72);padding:0 10px}
+.filter-drawer .advanced-filter-details>summary{display:flex;align-items:center;justify-content:space-between;min-height:42px;cursor:pointer;list-style:none;color:var(--text);font-size:12px;font-weight:750}
+.filter-drawer .advanced-filter-details>summary::-webkit-details-marker{display:none}
+.filter-drawer .advanced-filter-details>summary:after{content:'＋';color:var(--ws-accent,var(--buy));font-size:16px;font-weight:500}
+.filter-drawer .advanced-filter-details[open]>summary:after{content:'−'}
+.filter-drawer .advanced-filter-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0 0 10px}
+.filter-drawer .advanced-filter-grid .threshold{grid-column:1/-1}
+.filter-drawer .import-control{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip-path:inset(50%)!important;opacity:0!important;pointer-events:none!important}
+.filter-drawer .drawer-tools-details .toolbar-label{display:none}
+.filter-drawer .drawer-settings-details #chartStudio .studio-topline>div:first-child{display:none}
+.filter-drawer .drawer-settings-details #chartStudio .studio-topline{justify-content:flex-end;margin-bottom:8px}
+@media(max-width:650px){.filter-drawer .advanced-filter-grid{grid-template-columns:minmax(0,1fr)}}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -950,12 +966,17 @@ body{background:radial-gradient(ellipse at 50% -28%,rgba(35,76,92,.24),transpare
         <div class="control date-control"><label for="endDate">End date</label><input id="endDate" type="date" value="" /></div>
         <div class="control import-control"><label for="tradeFiles">Add trade files (CSV or ZIP)</label><input id="tradeFiles" type="file" multiple accept=".csv,.zip,text/csv,application/zip" /><button class="btn subtle" id="drawerCancelImport" type="button" hidden>Cancel import</button></div>
         <div class="control bar-interval"><label for="tf">Bar interval</label><select id="tf"><option value="10s">10 seconds</option><option value="1m" selected>1 minute</option><option value="5m">5 minutes</option><option value="15m">15 minutes</option><option value="1h">1 hour</option></select></div>
-        <div class="control advanced-control"><label for="start">Start time</label><input id="start" type="time" value="00:00" step="60" /></div>
-        <div class="control advanced-control"><label for="end">End time</label><input id="end" type="time" value="23:59" step="60" /></div>
-        <div class="control threshold advanced-control"><label for="threshold">Highlight trades above <span class="tag">size units</span></label><input id="threshold" type="range" min="220" max="8500" step="10" value="672"/><div class="rangeval"><span>220 · minimum stored size</span><strong id="thresholdValue">672</strong><span>8,500 · slider max</span></div></div>
-        <div class="control advanced-control"><label for="profileBin">Price bucket width</label><select id="profileBin"><option value="5">$5</option><option value="10" selected>$10</option><option value="25">$25</option><option value="50">$50</option><option value="100">$100</option></select></div>
-        <div class="control advanced-control"><label for="smooth">Smooth flow over</label><select id="smooth"><option value="3">3 bars</option><option value="10" selected>10 bars</option><option value="30">30 bars</option></select></div>
-        <div class="control advanced-control"><label for="flowLookback">Lead/lag flow lookback</label><select id="flowLookback"><option value="1">1 minute</option><option value="5" selected>5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option></select></div>
+        <details class="advanced-filter-details">
+          <summary>Advanced filters</summary>
+          <div class="advanced-filter-grid">
+            <div class="control advanced-control"><label for="start">Start time</label><input id="start" type="time" value="00:00" step="60" /></div>
+            <div class="control advanced-control"><label for="end">End time</label><input id="end" type="time" value="23:59" step="60" /></div>
+            <div class="control threshold advanced-control"><label for="threshold">Highlight trades above <span class="tag">size units</span></label><input id="threshold" type="range" min="220" max="8500" step="10" value="672"/><div class="rangeval"><span>220 · minimum stored size</span><strong id="thresholdValue">672</strong><span>8,500 · slider max</span></div></div>
+            <div class="control advanced-control"><label for="profileBin">Price bucket width</label><select id="profileBin"><option value="5">$5</option><option value="10" selected>$10</option><option value="25">$25</option><option value="50">$50</option><option value="100">$100</option></select></div>
+            <div class="control advanced-control"><label for="smooth">Smooth flow over</label><select id="smooth"><option value="3">3 bars</option><option value="10" selected>10 bars</option><option value="30">30 bars</option></select></div>
+            <div class="control advanced-control"><label for="flowLookback">Lead/lag flow lookback</label><select id="flowLookback"><option value="1">1 minute</option><option value="5" selected>5 minutes</option><option value="15">15 minutes</option><option value="30">30 minutes</option></select></div>
+          </div>
+        </details>
         <button class="btn subtle" id="reset" title="Return the date range, interval, and research filters to their defaults">Reset filters</button>
         <div id="dataStatus" class="data-status">No trade data loaded yet. Add a daily CSV or ZIP file to begin.</div>
       </section>
