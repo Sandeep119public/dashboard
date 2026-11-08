@@ -88,7 +88,7 @@ export function createCoinMMarketFeed(options={}) {
     try{const response=await fetchImpl(url,controller?{signal:controller.signal}:{});if(!response||!response.ok)throw new Error('Binance returned HTTP '+(response?response.status:'no response')+'.');return await response.json();}
     finally{if(timeout!==null)clearTimeout(timeout);}
   }
-  async function loadKlines(interval,limit=500){
+  async function loadKlines(interval,limit=1000){
     if(!KLINE_SET.has(interval))return [];
     const q=new URLSearchParams({symbol,interval,limit:String(Math.min(1000,Math.max(1,limit)))});
     const rows=await requestJson(COINM_REST+'/dapi/v1/klines?'+q.toString());
@@ -192,7 +192,7 @@ export function createCoinMMarketFeed(options={}) {
   }
   async function refreshInterval(){
     if(KLINE_SET.has(activeInterval)){
-      try{const candles=await loadKlines(activeInterval,500);onCandles({interval:activeInterval,candles,source:'Binance COIN-M REST klines'});return candles;}
+      try{const candles=await loadKlines(activeInterval,1000);onCandles({interval:activeInterval,candles,source:'Binance COIN-M REST klines'});return candles;}
       catch(error){status('warning','Live stream may connect, but historical candles could not be loaded: '+String(error&&error.message||error));return [];}
     }
     const candles=getSessionCandles(activeInterval);onCandles({interval:activeInterval,candles,source:'Live aggregate trades since connection'});return candles;
