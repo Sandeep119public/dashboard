@@ -1,6 +1,6 @@
 const DB_NAME = 'btc-usd-market-mechanics';
 const STORE_NAME = 'depth-snapshots';
-const DEFAULT_LIMIT = 50000;
+const DEFAULT_LIMIT = 10000;
 
 function cloneSample(sample) {
   return {
