@@ -24,6 +24,7 @@ export function mountCoinMMarketDesk({root,Plotly=window.Plotly,getImportedBars=
         '<div class="md-chart-column">',
           '<section class="md-panel"><div class="md-panel-head"><strong>Exchange candlesticks</strong><span id="mdCandleMeta">Waiting for market data</span></div><div id="mdCandles" class="md-candles"></div><div id="mdCandleEmpty" class="md-empty">Connect live to load historical Binance COIN-M candles.</div></section>',
           '<section class="md-panel"><div class="md-panel-head"><strong>Executed volume by aggressor</strong><span>Green = BUY TAKER / SELL MAKER · Red = SELL TAKER / BUY MAKER</span></div><div id="mdFlow" class="md-flow"></div></section>',
+          '<section class="md-panel md-footprint-panel"><div class="md-panel-head"><strong>Live per-price footprint</strong><span id="mdFootprintMeta">Current UTC minute · waiting for executions</span></div><div class="md-footprint-legend"><span>BUY TAKER / SELL MAKER</span><span>SELL TAKER / BUY MAKER</span><span>Delta = buy − sell</span></div><div class="md-footprint-wrap"><table class="md-footprint"><thead><tr><th>Price</th><th>Buy taker<br><small>Sell maker</small></th><th>Sell taker<br><small>Buy maker</small></th><th>Delta</th><th>Prints</th></tr></thead><tbody id="mdFootprintRows"><tr><td colspan="5" class="md-muted">Connect live to collect current-minute executions by price.</td></tr></tbody></table></div><div class="md-book-foot" id="mdFootprintFoot">Live-only footprint. It resets at each UTC minute and is not historical reconstruction.</div></section>',
         '</div>',
         '<div class="md-side-column">',
           '<section class="md-panel md-book-panel"><div class="md-panel-head"><strong>Live order book</strong><span id="mdBookState">Not synchronized</span></div><div class="md-book-summary"><span>Bid <b id="mdBestBid">—</b></span><span>Spread <b id="mdBookSpread">—</b></span><span>Ask <b id="mdBestAsk">—</b></span></div><div class="md-book-wrap"><table class="md-book"><thead><tr><th>Bid qty</th><th>Bid price</th><th>Ask price</th><th>Ask qty</th></tr></thead><tbody id="mdBookRows"><tr><td colspan="4" class="md-muted">Connect to synchronize depth.</td></tr></tbody></table></div><div class="md-book-foot" id="mdBookFoot">Depth is aggregated by price level, not individual order IDs.</div></section>',
@@ -44,7 +45,7 @@ export function mountCoinMMarketDesk({root,Plotly=window.Plotly,getImportedBars=
   }
   intervalSelect.value = '1m';
 
-  let interval='1m',connected=false,candles=[],source='',recentTrades=[],renderTimer=null,pendingDraw=false,tapeTimer=null,pendingTape=[];
+  let interval='1m',connected=false,candles=[],source='',recentTrades=[],renderTimer=null,pendingDraw=false,tapeTimer=null,pendingTape=[],footprintTimer=null,pendingFootprint=null;
   const formatQty=value=>number(value,3);
   function imported(tf) {
     try { const bars=getImportedBars(tf);return Array.isArray(bars)?bars:[]; }
@@ -155,6 +156,35 @@ export function mountCoinMMarketDesk({root,Plotly=window.Plotly,getImportedBars=
     if(tapeTimer!==null)return;
     tapeTimer=setTimeout(()=>{tapeTimer=null;renderTape(pendingTape);},100);
   }
+  function queueFootprint(footprint) {
+    pendingFootprint=footprint||null;
+    if(footprintTimer!==null)return;
+    footprintTimer=setTimeout(()=>{footprintTimer=null;renderFootprint(pendingFootprint);},150);
+  }
+  function renderFootprint(footprint) {
+    const host=$('mdFootprintRows');
+    if(!host)return;
+    if(!footprint||!footprint.levels||!footprint.levels.length) {
+      host.innerHTML='<tr><td colspan="5" class="md-muted">Waiting for current-minute executions…</td></tr>';
+      setText('mdFootprintMeta','Current UTC minute · waiting for executions');return;
+    }
+    const rows=footprint.levels,minute=new Date(footprint.minute).toISOString().slice(11,16);
+    setText('mdFootprintMeta','UTC '+minute+'–'+new Date(footprint.minute+60000).toISOString().slice(11,16)+' · '+number(footprint.levelsTotal,0)+' price levels');
+    host.innerHTML='';
+    const frag=document.createDocumentFragment();
+    for(const level of rows) {
+      const tr=document.createElement('tr'),delta=Number(level.delta||0);
+      const price=cell(number(level.price,1),'');
+      const buy=cell(formatQty(level.buyTaker),'md-footprint-buy');
+      const sell=cell(formatQty(level.sellTaker),'md-footprint-sell');
+      const d=cell((delta>0?'+':'')+formatQty(delta),'md-footprint-delta '+(delta>0?'md-positive':delta<0?'md-negative':''));
+      const count=cell(number(level.trades,0),'md-tape-qty');
+      if(delta>0)tr.className='md-footprint-positive';else if(delta<0)tr.className='md-footprint-negative';
+      tr.append(price,buy,sell,d,count);frag.appendChild(tr);
+    }
+    host.appendChild(frag);
+    setText('mdFootprintFoot',footprint.truncated?'Showing the '+number(rows.length,0)+' price levels nearest the latest trade from '+number(footprint.levelsTotal,0)+' levels seen this UTC minute. Quantities at each price are executed taker volume and the mirrored passive maker side.':'All '+number(rows.length,0)+' price levels seen this UTC minute. Executed quantities are mirrored to passive maker counterparties, not double-counted.');
+  }
   function renderTape(items) {
     recentTrades=items||[];const host=$('mdTape');host.innerHTML='';
     if(!recentTrades.length){host.innerHTML='<div class="md-empty">Waiting for aggregate trades…</div>';return;}
@@ -181,7 +211,7 @@ export function mountCoinMMarketDesk({root,Plotly=window.Plotly,getImportedBars=
       setText('mdSource',source);scheduleDraw();
     },
     onTrade:(trade,state)=>{
-      updateStats(state.stats);queueTape(state.recentTrades);
+      updateStats(state.stats);queueTape(state.recentTrades);queueFootprint(state.footprint);
       if(SECOND_INTERVALS.includes(interval)&&state.candle) {
         candles=mergeCandles(candles,[state.candle]);
         source='Live aggregate trades since connection'+(interval==='10s'&&imported('10s').length?' + imported historical trades':'');
