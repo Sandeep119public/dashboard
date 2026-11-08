@@ -89,6 +89,20 @@ test('depth replay imports validate, deduplicate and sort captured snapshots',()
   assert.throws(()=>feed.restoreDepthHistory([{...sample(3000,3),bids:[{price:100,qty:0}]}]),/invalid price level/i);
 });
 
+test('depth archive restore retains the full 10,000-snapshot replay window',()=>{
+  const feed=createCoinMMarketFeed({fetchImpl:async()=>({ok:true,json:async()=>[]}),WebSocketImpl:null});
+  const samples=Array.from({length:2000},(_,index)=>({
+    time:100000+index*100,updatedAt:100000+index*100,lastUpdateId:index+1,segment:1,
+    bids:[{price:100,qty:2}],asks:[{price:101,qty:3}]
+  }));
+  const info=feed.restoreDepthHistory(samples);
+  assert.equal(info.count,2000);
+  assert.equal(info.limit,10000);
+  assert.equal(feed.getDepthSnapshot(0).time,100000);
+  assert.equal(feed.getDepthSnapshotIndexAt(100000),0);
+  assert.equal(feed.getDepthSnapshotIndexAt(299900),1999);
+});
+
 test('footprint windows aggregate executed price levels across 1m, 5m and 15m', async()=>{
   const rows=[
     {a:1,p:'100',q:'2',T:360000,m:false,f:1,l:1},
