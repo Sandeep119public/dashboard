@@ -568,7 +568,11 @@ export function createCoinMMarketFeed(options = {}) {
       asks: sample.asks.map(level => ({ ...level })),
       bidDepth: sample.bidDepth,
       askDepth: sample.askDepth,
-      changes: sample.changes || {}
+      changes: sample.changes ? {
+        ...sample.changes,
+        bidChanges: { ...(sample.changes.bidChanges || {}) },
+        askChanges: { ...(sample.changes.askChanges || {}) }
+      } : {}
     };
   }
 
