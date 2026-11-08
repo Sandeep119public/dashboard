@@ -111,7 +111,7 @@ export function analyzeStateEvents(bars, stateResult, options = {}) {
       if (!valid || !Number.isFinite(highest) || !Number.isFinite(lowest)) continue;
 
       const longGross = (futureClose / event.entry - 1) * 100;
-      const shortGross = (event.entry / futureClose - 1) * 100;
+      const shortGross = ((event.entry - futureClose) / event.entry) * 100;
       const bucket = byCode.get(event.code);
       const horizonBucket = bucket.horizons[horizons.indexOf(horizon)];
       for (const sideBucket of horizonBucket.sides) {
@@ -120,7 +120,7 @@ export function analyzeStateEvents(bars, stateResult, options = {}) {
         sideBucket.rows.push({
           grossReturnPct,
           netReturnPct: grossReturnPct - costBps / 100,
-          mfePct: isLong ? (highest / event.entry - 1) * 100 : (event.entry / lowest - 1) * 100,
+          mfePct: isLong ? (highest / event.entry - 1) * 100 : ((event.entry - lowest) / event.entry) * 100,
           maePct: isLong ? (1 - lowest / event.entry) * 100 : (highest / event.entry - 1) * 100
         });
       }
