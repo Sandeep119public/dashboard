@@ -409,7 +409,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   function renderDepthHeatmap() {
     const host = $('mdDepthHeatmap');
     if (!host || !Plotly || typeof Plotly.react !== 'function') return;
-    const samples = feed.getDepthHistory(1000);
+    const samples = selectedReplayTime !== null && Number.isFinite(Number(selectedReplayTime))\n      ? feed.getDepthHistoryAround(selectedReplayTime, 1000)\n      : feed.getDepthHistory(1000);
     if (!samples.length) {
       setText('mdHeatmapMeta', 'No captured depth history yet');
       if (Plotly.purge) Plotly.purge(host);
