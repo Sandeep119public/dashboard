@@ -108,6 +108,30 @@ test('historical depth heatmap window centers around replay time, including old 
   assert.equal(feed.getDepthHistoryAround(1,1000)[0].time,100000);
 });
 
+test('depth liquidity migration compares observed top-25 bid and ask levels across replay window',()=>{
+  const first={
+    time:1000,
+    bids:[{price:100,qty:5},{price:99,qty:4}],
+    asks:[{price:101,qty:6}]
+  };
+  const last={
+    time:2000,
+    bids:[{price:100,qty:7},{price:99,qty:2}],
+    asks:[{price:101,qty:4},{price:102,qty:3}]
+  };
+  const summary=summarizeDepthLiquidityMigration([first,last]);
+  assert.deepEqual(
+    [summary.bid.added,summary.bid.reduced,summary.bid.net],
+    [2,2,0]
+  );
+  assert.deepEqual(
+    [summary.ask.added,summary.ask.reduced,summary.ask.net],
+    [3,2,1]
+  );
+  assert.equal(summary.midpointChange,0);
+  assert.equal(summarizeDepthLiquidityMigration([first]),null);
+});
+
 test('depth archive restore retains the full 10,000-snapshot replay window',()=>{
   const feed=createCoinMMarketFeed({fetchImpl:async()=>({ok:true,json:async()=>[]}),WebSocketImpl:null});
   const samples=Array.from({length:2000},(_,index)=>({
