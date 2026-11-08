@@ -881,6 +881,7 @@ const CHART_IDS = WORKSTATION_CHARTS.map(chart=>chart.id);
 const CHART_LABELS = Object.fromEntries(WORKSTATION_CHARTS.map(chart=>[chart.id,chart.label]));
 const TIME_CHARTS = ['priceChart','flowChart','cvdChart'];
 let activeChart='priceChart';
+let marketDesk=null;
 const dirtyCharts=new Set(CHART_IDS);
 const renderedCharts=new Set();
 let chartResizeFrame=0;
