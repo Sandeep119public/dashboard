@@ -25,7 +25,7 @@ test('mobile workstation layout keeps the chart stage flexible and controls touc
 });
 
 test('service worker cache version advances with the visual shell update', () => {
-  assert.match(sw, /btc-mechanics-shell-v37/);
+  assert.match(sw, /btc-mechanics-shell-v38/);
 });
 
 
@@ -80,4 +80,14 @@ test('narrow-phone metric labels and values remain readable while preserving all
   for (const id of ['kReturn', 'kRange', 'kTrades', 'kSize', 'kDelta', 'kImb']) {
     assert.ok(html.includes('id="' + id + '"'));
   }
+});
+
+
+test('touch devices expose chart modebar controls with usable tap targets', () => {
+  assert.ok(html.includes('id="touch-chart-controls"'));
+  assert.match(html, /@media\(hover:none\) and \(pointer:coarse\)/);
+  assert.match(html, /\.chart-stage \.js-plotly-plot \.modebar\{opacity:1!important/);
+  assert.match(html, /\.modebar-btn\{\s*width:30px!important;height:30px!important/);
+  assert.match(html, /\.modebar-btn svg\{\s*top:0!important;width:16px!important;height:16px!important/);
+  assert.match(html, /scrollZoom:true/);
 });
