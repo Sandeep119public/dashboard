@@ -171,19 +171,6 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const candleBox = candleEl.getBoundingClientRect();
     if (candleBox.width < 60 || candleBox.height < 40) return;
     const visible = candles.slice(-3000);
-    if (!candleEl.__coinmClickBound && typeof candleEl.on === 'function') {
-      candleEl.on('plotly_click', event => {
-        const point = event && event.points && event.points[0];
-        const index = point && Number(point.pointNumber);
-        const currentVisible = candles.slice(-3000);
-        if (!Number.isInteger(index) || index < 0 || index >= currentVisible.length) return;
-        selectedCandle = currentVisible[index];
-        const button = $('mdInspectFootprint');
-        if (button) button.disabled = false;
-        setText('mdFootprintSelection', 'Selected candle: ' + new Date(selectedCandle.t).toISOString().replace('T', ' ').slice(0, 19) + ' UTC');
-      });
-      candleEl.__coinmClickBound = true;
-    }
     if (!visible.length) {
       setVisible('mdCandleEmpty', true);
       setText('mdCandleMeta', 'No candles for this interval yet');
@@ -221,6 +208,20 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const config = { responsive: true, displaylogo: false, scrollZoom: true, modeBarButtonsToRemove: ['lasso2d', 'select2d'] };
     try {
       const pending = Plotly.react(candleEl, [candleTrace], baseLayout, config);
+      if (pending && typeof pending.then === 'function') pending.then(() => {
+        if (candleEl.__coinmClickBound || typeof candleEl.on !== 'function') return;
+        candleEl.on('plotly_click', event => {
+          const point = event && event.points && event.points[0];
+          const index = point && Number(point.pointNumber);
+          const currentVisible = candles.slice(-3000);
+          if (!Number.isInteger(index) || index < 0 || index >= currentVisible.length) return;
+          selectedCandle = currentVisible[index];
+          const button = $('mdInspectFootprint');
+          if (button) button.disabled = false;
+          setText('mdFootprintSelection', 'Selected candle: ' + new Date(selectedCandle.t).toISOString().replace('T', ' ').slice(0, 19) + ' UTC');
+        });
+        candleEl.__coinmClickBound = true;
+      }).catch(() => {});
       if (pending && typeof pending.catch === 'function') pending.catch(error => setText('mdCandleMeta', 'Candlestick render failed: ' + String(error)));
       const flowEl = $('mdFlow');
       if (flowEl && flowEl.getBoundingClientRect().width >= 60) {
