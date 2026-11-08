@@ -409,7 +409,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   function renderDepthHeatmap() {
     const host = $('mdDepthHeatmap');
     if (!host || !Plotly || typeof Plotly.react !== 'function') return;
-    const samples = feed.getDepthHistory(240);
+    const samples = feed.getDepthHistory(1000);
     if (!samples.length) {
       setText('mdHeatmapMeta', 'No captured depth history yet');
       if (Plotly.purge) Plotly.purge(host);
@@ -452,7 +452,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const pending = Plotly.react(host, [trace], layout, { responsive: true, displaylogo: false, scrollZoom: false });
     if (pending && typeof pending.then === 'function') pending.then(() => bindReplayClick(host)); else bindReplayClick(host);
     if (pending && typeof pending.catch === 'function') pending.catch(() => {});
-    setText('mdHeatmapMeta', integer(samples.length) + ' captured samples · green bids · red asks · top-25 levels');
+    setText('mdHeatmapMeta', integer(samples.length) + ' latest samples · green bids · red asks · top-25 levels · 100 ms sampling');
   }
   function scheduleDepthHeatmap() {
     if (depthHeatmapTimer !== null) return;
