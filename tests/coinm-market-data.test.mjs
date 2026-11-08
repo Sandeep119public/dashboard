@@ -93,25 +93,27 @@ test('footprint windows aggregate executed price levels across 1m, 5m and 15m', 
   const rows=[
     {a:1,p:'100',q:'2',T:360000,m:false,f:1,l:1},
     {a:2,p:'100',q:'3',T:420000,m:true,f:2,l:2},
-    {a:3,p:'101',q:'4',T:480000,m:false,f:3,l:3}
+    {a:3,p:'101',q:'4',T:480000,m:false,f:3,l:3},
+    {a:4,p:'99',q:'0.5',T:390000,m:true,f:4,l:4}
   ];
   const feed=createCoinMMarketFeed({fetchImpl:async()=>({ok:true,json:async()=>rows}),WebSocketImpl:null,now:()=>900000});
   await feed.backfillFootprintHistory({startTime:360000,endTime:900000,maxMinutes:15,maxPages:10,maxTrades:100});
   const five=feed.getFootprintWindow(480000,5);
   assert.equal(five.timeframeMinutes,5);
-  assert.equal(five.totalQty,9);
+  assert.equal(five.totalQty,9.5);
   assert.equal(five.levels.find(level=>level.price===100).buyTaker,0);
   assert.equal(five.levels.find(level=>level.price===100).sellTaker,3);
-  assert.equal(feed.getFootprintWindow(480000,15).totalQty,9);
+  assert.equal(feed.getFootprintWindow(480000,15).totalQty,9.5);
   assert.equal(feed.getFootprintWindow(480000,1).totalQty,4);
   const profile=feed.getFootprintWindow(480000,15);
   assert.equal(profile.pocPrice,100);
+  assert.equal(profile.levels.find(level=>level.price===100).diagonalSide,'BUY');
   assert.equal(profile.valueAreaLow,100);
   assert.equal(profile.valueAreaHigh,101);
   assert.ok(profile.valueAreaPercent >= 0.70);
   const repeated=await feed.backfillFootprintHistory({startTime:60000,endTime:900000,maxMinutes:15,maxPages:10,maxTrades:100});
   assert.equal(repeated.tradesCount,0);
-  assert.equal(feed.getFootprintWindow(480000,15).totalQty,9);
+  assert.equal(feed.getFootprintWindow(480000,15).totalQty,9.5);
 });
 
 test('invalid trade and malformed kline records are rejected',()=>{
