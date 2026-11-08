@@ -51,8 +51,10 @@ test('calculates long and short excursions and deducts round-trip costs', () => 
   assert.ok(Math.abs(long.medianNetReturnPct - 4) < 1e-9);
   assert.ok(Math.abs(long.medianMfePct - 10) < 1e-9);
   assert.ok(Math.abs(long.medianMaePct - 10) < 1e-9);
-  assert.ok(short.medianNetReturnPct < -5.7);
-  assert.ok(short.medianMfePct > 11);
+  assert.ok(Math.abs(short.medianGrossReturnPct + 5) < 1e-9);
+  assert.ok(Math.abs(short.medianNetReturnPct + 6) < 1e-9);
+  assert.ok(Math.abs(short.medianMfePct - 10) < 1e-9);
+  assert.ok(Math.abs(short.medianMaePct - 10) < 1e-9);
 });
 
 test('a missing-hour gap starts a new state event and invalidates crossing windows', () => {
