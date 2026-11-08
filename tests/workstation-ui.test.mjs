@@ -25,7 +25,7 @@ test('mobile workstation layout keeps the chart stage flexible and controls touc
 });
 
 test('service worker cache version advances with the visual shell update', () => {
-  assert.match(sw, /btc-mechanics-shell-v35/);
+  assert.match(sw, /btc-mechanics-shell-v36/);
 });
 
 
@@ -42,7 +42,7 @@ test('declutter pass removes repeated header and empty-state actions while prese
 
 
 test('settings drawer keeps quick ranges visible and collapses secondary tools and chart appearance', () => {
-  assert.match(html, /class="drawer-quick-range"/);
+  assert.match(html, /class="toolbar-block drawer-quick-range"/);
   assert.match(html, /<details class="drawer-tools-details">/);
   assert.match(html, /<details class="drawer-settings-details">/);
   assert.match(html, /id="importFolder"/);
