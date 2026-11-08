@@ -170,6 +170,39 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     for (const candle of b || []) map.set(Number(candle.t), candle);
     return Array.from(map.values()).sort((x, y) => x.t - y.t).slice(-5000);
   }
+  function seekReplayToTimestamp(timestamp) {
+    const time = Number(timestamp);
+    if (!Number.isFinite(time) || time <= 0) return;
+    selectedReplayTime = time;
+    const minute = Math.floor(time / 60000) * 60000;
+    selectedFootprintMinute = String(minute);
+    updateFootprintSelector(feed.getFootprintMinutes());
+    $('mdFootprintMinute').value = selectedFootprintMinute;
+    const hasFootprint = feed.getFootprintMinutes().includes(minute);
+    renderFootprint(hasFootprint ? feed.getFootprintWindow(minute, selectedFootprintInterval) : null, true);
+    if (!hasFootprint) setText('mdFootprintMeta', 'NO FOOTPRINT DATA · UTC ' + utcMinute(minute));
+    const nearest = feed.getDepthSnapshotIndexAt(time, 60000);
+    if (nearest >= 0) {
+      $('mdDepthReplay').value = String(nearest);
+      replayingDepth = true;
+      const sample = feed.getDepthSnapshot(nearest);
+      if (sample) renderBook({ ...sample, ready: true, recorded: true });
+    }
+    updateDepthCaptureControls();
+    scheduleDraw();
+    renderDepthHeatmap();
+  }
+  function bindReplayClick(host) {
+    if (!host || typeof host.on !== 'function' || host.dataset.replayClickBound === 'true') return;
+    host.dataset.replayClickBound = 'true';
+    host.on('plotly_click', event => {
+      const point = event && Array.isArray(event.points) ? event.points[0] : null;
+      if (!point) return;
+      const raw = point.x;
+      const time = typeof raw === 'number' ? raw : new Date(raw).getTime();
+      seekReplayToTimestamp(time);
+    });
+  }
   function scheduleDraw() {
     pendingDraw = true;
     if (renderTimer !== null) return;
@@ -224,6 +257,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const config = { responsive: true, displaylogo: false, scrollZoom: true, modeBarButtonsToRemove: ['lasso2d', 'select2d'] };
     try {
       const pending = Plotly.react(candleEl, [candleTrace], baseLayout, config);
+      if (pending && typeof pending.then === 'function') pending.then(() => bindReplayClick(candleEl)); else bindReplayClick(candleEl);
       if (pending && typeof pending.catch === 'function') pending.catch(error => setText('mdCandleMeta', 'Candlestick render failed: ' + String(error)));
       const flowEl = $('mdFlow');
       if (flowEl && flowEl.getBoundingClientRect().width >= 60) {
@@ -409,6 +443,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       hovertemplate: '%{x|%Y-%m-%d %H:%M:%S UTC}<br>Price %{y:,.1f}<br>Signed resting depth %{z:,.0f} contracts<extra></extra>'
     };
     const pending = Plotly.react(host, [trace], layout, { responsive: true, displaylogo: false, scrollZoom: false });
+    if (pending && typeof pending.then === 'function') pending.then(() => bindReplayClick(host)); else bindReplayClick(host);
     if (pending && typeof pending.catch === 'function') pending.catch(() => {});
     setText('mdHeatmapMeta', integer(samples.length) + ' captured samples · green bids · red asks · top-25 levels');
   }
@@ -480,7 +515,13 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       select.appendChild(option);
     }
     if (keep !== 'live' && minutes.includes(Number(keep))) select.value = keep;
-    else {
+    else if (keep !== 'live' && Number.isFinite(Number(keep))) {
+      const missing = document.createElement('option');
+      missing.value = keep;
+      missing.textContent = 'No footprint · ' + new Date(Number(keep)).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+      select.appendChild(missing);
+      select.value = keep;
+    } else {
       selectedFootprintMinute = 'live';
       select.value = 'live';
     }
