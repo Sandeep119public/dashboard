@@ -371,7 +371,7 @@ test('older exchange candles page strictly before the oldest retained candle', a
 
 test('depth recording is opt-in, bounded, replayable and stops capturing when disabled', async () => {
   FakeSocket.reset();
-  const { feed } = createFeed({ options: { maxDepthSamples: 2 } });
+  const { feed } = createFeed({ options: { maxDepthSamples: 2, depthSampleIntervalMs: 0 } });
   await feed.connect('1m');
   const socket = FakeSocket.all[0];
   await syncBook(feed, socket, 1000);
