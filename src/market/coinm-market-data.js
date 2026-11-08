@@ -751,6 +751,20 @@ export function createCoinMMarketFeed(options = {}) {
     };
   }
 
+  function getDepthSnapshotIndexAt(time, maxDistance = Infinity) {
+    const target = Number(time);
+    if (!Number.isFinite(target) || !depthHistory.length) return -1;
+    let low = 0, high = depthHistory.length - 1;
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (depthHistory[mid].time < target) low = mid + 1;
+      else high = mid;
+    }
+    let best = low;
+    if (low > 0 && Math.abs(depthHistory[low - 1].time - target) <= Math.abs(depthHistory[low].time - target)) best = low - 1;
+    return Math.abs(depthHistory[best].time - target) <= Number(maxDistance) ? best : -1;
+  }
+
   function getDepthSnapshot(index) {
     const i = Math.floor(Number(index));
     return Number.isInteger(i) && i >= 0 && i < depthHistory.length ? copyDepthSample(depthHistory[i]) : null;
@@ -1142,6 +1156,7 @@ export function createCoinMMarketFeed(options = {}) {
     getDepthHistory,
     getDepthHistoryInfo,
     getDepthSnapshot,
+    getDepthSnapshotIndexAt,
     restoreDepthHistory,
     getStatus: () => ({
       connected: !stopped,
