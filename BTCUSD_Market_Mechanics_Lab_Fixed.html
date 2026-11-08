@@ -756,6 +756,7 @@ body.drawer-open{overflow:hidden}
       <div class="chartcard"><div class="charttitle"><strong>Flow imbalance vs price-return horizon</strong><span id="leadLagMeta">Uses trailing 5-minute signed-size imbalance</span></div><div id="leadLagChart" class="plot"></div></div>
       <div class="chartcard"><div class="charttitle"><strong>Hourly market-state map</strong><span id="regimeMeta">Past-only state labels</span></div><div id="regimeChart" class="plot profile"></div></div>
       <div class="chartcard"><div class="charttitle"><strong>Forward outcomes by state</strong><span id="stateOutcomeMeta">Retrospective close-to-close returns · overlapping hourly samples</span></div><div id="stateOutcomeChart" class="plot"></div></div>
+      <div class="chartcard"><div class="charttitle"><strong>Non-overlapping state event study</strong><span id="eventStudyMeta">State transitions · disjoint future windows</span><label class="event-cost-control" for="eventStudyCostBps">Round-trip cost <input id="eventStudyCostBps" type="number" min="0" max="500" step="1" value="10" inputmode="decimal" /> bps</label></div><div id="eventStudyChart" class="plot"></div></div>
     </div>
   </section>
 
@@ -929,6 +930,7 @@ import { createLeadLagEngine } from './src/charts/lead-lag-engine.js';
 import { mountCoinMMarketDesk } from './src/market/coinm-market-desk.js';
 import { classifyMarketStates } from './src/research/market-states.js';
 import { summarizeStateOutcomes } from './src/research/state-outcomes.js';
+import { analyzeStateEvents } from './src/research/state-event-study.js';
 (function(){
 'use strict';
 const DATA = window.DATA;
@@ -967,7 +969,8 @@ const WORKSTATION_CHARTS = [
  {id:'eventChart',label:'Large trades'},
  {id:'leadLagChart',label:'Lead / lag'},
  {id:'regimeChart',label:'Regimes'},
- {id:'stateOutcomeChart',label:'State outcomes'}
+ {id:'stateOutcomeChart',label:'State outcomes'},
+ {id:'eventStudyChart',label:'Event study'}
 ];
 const CHART_IDS = WORKSTATION_CHARTS.map(chart=>chart.id);
 const CHART_LABELS = Object.fromEntries(WORKSTATION_CHARTS.map(chart=>[chart.id,chart.label]));
@@ -1213,6 +1216,23 @@ async function updateLeadLag(w){
  $('stateOutcomeMeta').textContent='Past-only labels · contiguous future bars only · overlapping hourly samples';
  return plot('stateOutcomeChart',traces,{barmode:'group',xaxis:{title:'State at the start of the observation',gridcolor:C.grid,tickangle:-18},yaxis:{title:'Median forward close return (%)',zeroline:true,zerolinecolor:'#91a3bb',gridcolor:C.grid},margin:{l:62,r:20,t:18,b:88},legend:{orientation:'h',y:1.12,x:0},hovermode:'x unified',annotations:[{x:0,y:1.22,xref:'paper',yref:'paper',text:'Descriptive historical outcomes, not forecasts',showarrow:false,font:{size:10,color:C.muted},xanchor:'left'}]});
 }
+function updateStateEventStudy(w){
+ const x=B['1h'],states=classifyMarketStates(x,{lookback:200,intervalSeconds:3600});
+ const costInput=$('eventStudyCostBps'),costBps=Math.max(0,Math.min(500,Number(costInput&&costInput.value)||0));
+ const result=analyzeStateEvents(x,states,{intervalSeconds:3600,horizons:[1,4,24],side:'both',costBps,startTime:w.s,endTime:w.e});
+ const eligible=result.states.filter(state=>state.code>0&&state.horizons.some(h=>h.sides.some(side=>side.samples)));
+ const labels=eligible.map(state=>state.label),horizons=result.horizons;
+ const palette=[C.blue,C.gold,C.purple];
+ const traces=horizons.flatMap((ahead,index)=>['long','short'].map(side=>({
+  type:'bar',name:(side==='long'?'Long':'Short')+' +'+ahead+'h',x:labels,
+  y:eligible.map(state=>{const item=state.horizons[index].sides.find(value=>value.side===side);return item&&item.medianNetReturnPct;}),
+  customdata:eligible.map(state=>{const item=state.horizons[index].sides.find(value=>value.side===side);return item?[item.samples,item.medianMfePct,item.medianMaePct,item.medianGrossReturnPct,item.meanNetReturnPct,item.winRatePct]:[0,null,null,null,null,null];}),
+  marker:{color:palette[index],opacity:side==='long'?.9:.48,line:{color:side==='long'?palette[index]:C.muted,width:1}},
+  hovertemplate:'%{x}<br>'+side.toUpperCase()+' +'+ahead+'h<br>Median net return %{y:.3f}%<br>Median MFE %{customdata[1]:.3f}%<br>Median MAE %{customdata[2]:.3f}%<br>Median gross return %{customdata[3]:.3f}%<br>Mean net return %{customdata[4]:.3f}%<br>Win rate %{customdata[5]:.1f}%<br>Disjoint events %{customdata[0]:,.0f}<extra></extra>'
+ })));
+ $('eventStudyMeta').textContent=result.detectedEvents+' state transitions · disjoint windows · '+costBps+' bps round-trip';
+ return plot('eventStudyChart',traces,{barmode:'group',xaxis:{title:'State entered at event start',gridcolor:C.grid,tickangle:-18},yaxis:{title:'Median net close return (%)',zeroline:true,zerolinecolor:'#91a3bb',gridcolor:C.grid},margin:{l:62,r:20,t:18,b:88},legend:{orientation:'h',y:1.16,x:0,font:{size:9}},hovermode:'x unified',annotations:[{x:0,y:1.28,xref:'paper',yref:'paper',text:'Transition events · no overlapping future windows · MFE / MAE are path excursions',showarrow:false,font:{size:10,color:C.muted},xanchor:'left'}]});
+}
 function updateRegimeHeatmap(w){
  const x=B['1h'],allDates=[...DAYS.keys()].sort(),start=selectedDates().start,end=selectedDates().end;
  const dates=allDates.filter(d=>d>=start&&d<=end),hours=Array.from({length:24},(_,i)=>String(i).padStart(2,'0')+':00');
@@ -1297,7 +1317,7 @@ async function loadWorkspaceFile(file){
  rebuildCombined();updateDateBounds(true);applyViewState(savedView);refresh();$('status').textContent='Loaded '+added+' day'+(added===1?'':'s')+' from the workspace. Data for matching dates was replaced.';
 }
 
-const STUDIO_PANEL_NAMES={priceChart:'Price + large executions',marketDeskPanel:'Live candles + maker/taker + depth',flowChart:'Executed flow',cvdChart:'Cumulative volume delta',profileChart:'Volume-at-price profile',sizeChart:'Trade-size distribution',hourChart:'Activity by hour',eventChart:'Large-trade follow-through',leadLagChart:'Flow lead-lag',regimeChart:'Hourly regime map'};
+const STUDIO_PANEL_NAMES={priceChart:'Price + large executions',marketDeskPanel:'Live candles + maker/taker + depth',flowChart:'Executed flow',cvdChart:'Cumulative volume delta',profileChart:'Volume-at-price profile',sizeChart:'Trade-size distribution',hourChart:'Activity by hour',eventChart:'Large-trade follow-through',leadLagChart:'Flow lead-lag',regimeChart:'Hourly market-state map',stateOutcomeChart:'Forward outcomes by state',eventStudyChart:'Non-overlapping state event study'};
 function chartDataReady(){return DAYS.size>0&&Number(M.row_count||0)>0;}
 function studioCardFor(id){const p=$(id);return p&&p.closest?p.closest('.chartcard'):null;}
 function resizeStudioCharts(){if(typeof Plotly==='undefined'||!Plotly.Plots||!Plotly.Plots.resize)return;document.querySelectorAll('.plot').forEach(p=>{if(p.offsetParent!==null&&p.data)try{Plotly.Plots.resize(p);}catch(_){}});}
@@ -1439,7 +1459,9 @@ function initChartGuides(){
   hourChart:'Compare print counts and signed flow by hour of the timestamp in the file. The source does not specify a timezone, so do not assume these are local hours.',
   eventChart:'Shows median price changes after large executions at selected horizons. It is descriptive follow-through, not quote-mid impact or proof that the trade caused the move.',
   leadLagChart:'Compares flow over a complete, contiguous lookback with same-bar and later returns. Samples with missing bars or missing exact horizon endpoints are excluded. Same-bar correlation is contemporaneous, not predictive; later horizons are hypothesis tests, not proof of edge.',
-  regimeChart:'Each cell summarizes an hour on a loaded date. A blank cell means no data was loaded for that date/hour, not that trading activity was zero.'
+  regimeChart:'Each cell summarizes an hour on a loaded date. A blank cell means no data was loaded for that date/hour, not that trading activity was zero.',
+  stateOutcomeChart:'Groups overlapping hourly starting observations by past-only state labels. Forward windows are retrospective, contiguous close-to-close outcomes, not forecasts or independent trials.',
+  eventStudyChart:'Uses only the first bar after each state transition, then skips overlapping future windows separately for each horizon. Long and short results are shown after the configurable round-trip cost. MFE and MAE use future high/low excursions from the event close, not executable fills.'
  };
  for(const [id,txt] of Object.entries(guides)){const plot=$(id);if(!plot)continue;const card=plot.closest('.chartcard');const title=card&&card.querySelector('.charttitle');if(!card||!title||card.querySelector('.chart-howto'))continue;const details=document.createElement('details');details.className='chart-howto';const summary=document.createElement('summary');summary.textContent='How to read this chart';const p=document.createElement('p');p.textContent=txt;details.append(summary,p);title.insertAdjacentElement('afterend',details);}
 }
@@ -1589,7 +1611,7 @@ function performRefresh(onlyIds=null){
  // A successful render clears a stale import/window error left in the status line.
  const statusEl=$('status');
  if(statusEl&&/^(Import failed|No minute bars|The end date)/.test(statusEl.textContent))statusEl.textContent='';
- const jobs=[['priceChart',()=>updatePrice(tf,currentRange,threshold)],['flowChart',()=>updateFlow(tf,currentRange)],['cvdChart',()=>updateCvd(tf,currentRange)],['profileChart',()=>updateProfile(currentRange)],['sizeChart',()=>updateSizeHist(currentRange)],['hourChart',()=>updateHours(currentRange)],['eventChart',()=>updateEvents(currentRange,threshold)],['leadLagChart',()=>updateLeadLag(currentRange)],['regimeChart',()=>updateRegimeHeatmap(currentRange)],['stateOutcomeChart',()=>updateStateOutcomes(currentRange)]];
+ const jobs=[['priceChart',()=>updatePrice(tf,currentRange,threshold)],['flowChart',()=>updateFlow(tf,currentRange)],['cvdChart',()=>updateCvd(tf,currentRange)],['profileChart',()=>updateProfile(currentRange)],['sizeChart',()=>updateSizeHist(currentRange)],['hourChart',()=>updateHours(currentRange)],['eventChart',()=>updateEvents(currentRange,threshold)],['leadLagChart',()=>updateLeadLag(currentRange)],['regimeChart',()=>updateRegimeHeatmap(currentRange)],['stateOutcomeChart',()=>updateStateOutcomes(currentRange)],['eventStudyChart',()=>updateStateEventStudy(currentRange)]];
  if(!onlyIds){for(const [id] of jobs)dirtyCharts.add(id);}else{for(const id of onlyIds)dirtyCharts.add(id);}
  if(onlyIds&&!onlyIds.has(activeChart))return;
  const activeJob=jobs.find(([id])=>id===activeChart);if(!activeJob)return;
@@ -1613,7 +1635,7 @@ function refresh(){scheduleRefresh(null,true);}
 function refreshCharts(ids){for(const id of ids)dirtyCharts.add(id);scheduleRefresh(ids,false);}
 window.__renderWorkstationChart=id=>setActiveChart(id);
 $('cancelImport').addEventListener('click',requestImportCancel);
-$('tf').addEventListener('change',refresh);$('start').addEventListener('change',()=>{document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('end').addEventListener('change',()=>{document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('startDate').addEventListener('change',()=>{if($('startDate').value>$('endDate').value)$('endDate').value=$('startDate').value;document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('endDate').addEventListener('change',()=>{if($('endDate').value<$('startDate').value)$('startDate').value=$('endDate').value;document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});
+$('tf').addEventListener('change',refresh);$('eventStudyCostBps').addEventListener('change',()=>refreshCharts(['eventStudyChart']));$('start').addEventListener('change',()=>{document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('end').addEventListener('change',()=>{document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('startDate').addEventListener('change',()=>{if($('startDate').value>$('endDate').value)$('endDate').value=$('startDate').value;document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});$('endDate').addEventListener('change',()=>{if($('endDate').value<$('startDate').value)$('startDate').value=$('endDate').value;document.querySelectorAll('[data-range]').forEach(b=>b.classList.remove('active'));refresh();});
 // Only redraw the charts that actually depend on each control.
 $('threshold').addEventListener('input',()=>refreshCharts(['priceChart','eventChart']));$('profileBin').addEventListener('change',()=>refreshCharts(['profileChart']));$('smooth').addEventListener('change',()=>refreshCharts(['flowChart']));$('flowLookback').addEventListener('change',()=>refreshCharts(['leadLagChart']));$('tradeFiles').addEventListener('change',e=>importTradeFiles([...e.target.files]));
 document.querySelectorAll('[data-range]').forEach(b=>b.addEventListener('click',()=>setQuickRange(b.dataset.range)));
