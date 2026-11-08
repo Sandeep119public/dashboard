@@ -391,6 +391,7 @@ export function createCoinMMarketFeed(options = {}) {
   let lastTradeAt = null;
   let lastBookAt = null;
   const footprintHistory = new Map();
+  const footprintTradeIds = new Set();
   let latestFootprintMinute = null;
   let depthRecording = false;
   const depthHistory = [];
@@ -472,8 +473,12 @@ export function createCoinMMarketFeed(options = {}) {
           if (time > cursorEnd) { passedEnd = true; break; }
           if (time < cursorStart) continue;
           const id = Number(row.a);
-          if (Number.isFinite(id) && seen.has(id)) continue;
-          if (Number.isFinite(id)) seen.add(id);
+          if (Number.isFinite(id) && (seen.has(id) || footprintTradeIds.has(id))) continue;
+          if (Number.isFinite(id)) {
+            seen.add(id);
+            footprintTradeIds.add(id);
+            if (footprintTradeIds.size > 200000) footprintTradeIds.delete(footprintTradeIds.values().next().value);
+          }
           const trade = normalizeAggTrade({ ...row, e: 'aggTrade' });
           const minute = Math.floor(trade.time / 60000) * 60000;
           let state = footprintHistory.get(minute);
@@ -593,6 +598,7 @@ export function createCoinMMarketFeed(options = {}) {
     stats = emptyStats();
     statsSince = now();
     lastTradeId = null;
+    footprintTradeIds.clear();
     lastEventAt = null;
     lastTradeAt = null;
     footprintHistory.clear();
@@ -669,6 +675,10 @@ export function createCoinMMarketFeed(options = {}) {
       footprintState = createMinuteFootprintState();
       footprintState.minute = minute;
       footprintHistory.set(minute, footprintState);
+    }
+    if (Number.isFinite(trade.id)) {
+      footprintTradeIds.add(trade.id);
+      if (footprintTradeIds.size > 200000) footprintTradeIds.delete(footprintTradeIds.values().next().value);
     }
     const footprint = updateMinuteFootprint(footprintState, trade, maxFootprintLevels, visibleFootprintLevels);
     latestFootprintMinute = minute;
