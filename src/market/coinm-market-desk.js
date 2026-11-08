@@ -1,4 +1,4 @@
-import { MARKET_INTERVALS, SECOND_INTERVALS, COINM_CONTRACT_USD, createCoinMMarketFeed } from './coinm-market-data.js';
+import { MARKET_INTERVALS, SECOND_INTERVALS, COINM_CONTRACT_USD, createCoinMMarketFeed, summarizeDepthLiquidityMigration } from './coinm-market-data.js';
 import { createDepthArchiveStore } from './coinm-depth-archive.js';
 
 const integer = value => Math.round(Number(value) || 0).toLocaleString('en-US');
@@ -461,7 +461,13 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const pending = Plotly.react(host, [trace], layout, { responsive: true, displaylogo: false, scrollZoom: false });
     if (pending && typeof pending.then === 'function') pending.then(() => bindReplayClick(host)); else bindReplayClick(host);
     if (pending && typeof pending.catch === 'function') pending.catch(() => {});
-    setText('mdHeatmapMeta', integer(samples.length) + (selectedReplayTime !== null ? ' replay-window samples' : ' latest samples') + ' · green bids · red asks · top-25 levels · 100 ms sampling');
+    const migration = summarizeDepthLiquidityMigration(samples);
+    const migrationLabel = migration
+      ? ' · bids +' + contractQty(migration.bid.added) + '/-' + contractQty(migration.bid.reduced) +
+        ' · asks +' + contractQty(migration.ask.added) + '/-' + contractQty(migration.ask.reduced) +
+        (migration.midpointChange === null ? '' : ' · mid ' + signedContractQty(migration.midpointChange))
+      : '';
+    setText('mdHeatmapMeta', integer(samples.length) + (selectedReplayTime !== null ? ' replay-window samples' : ' latest samples') + ' · green bids · red asks · top-25 levels · 100 ms sampling' + migrationLabel + ' · observed book changes, not executions');
   }
   function scheduleDepthHeatmap() {
     if (depthHeatmapTimer !== null) return;
