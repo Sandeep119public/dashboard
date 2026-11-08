@@ -285,6 +285,18 @@ input,select,button{color-scheme:dark}
 @media(max-width:1050px){.md-layout{grid-template-columns:minmax(0,1fr)}.md-side-column{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 @media(max-width:650px){.md-root{padding:6px;gap:7px}.md-title strong{font-size:13px}.md-controls{width:100%}.md-controls label{flex:1;min-width:0}.md-controls select{width:100%;min-width:0;min-height:44px}.md-controls button{flex:1;min-height:44px}.md-statusline{font-size:9px;gap:6px}#mdSource{width:100%;margin-left:0;text-align:left}.md-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.md-metrics>div{padding:6px}.md-metrics>div:last-child{grid-column:1/-1}.md-layout{grid-template-columns:minmax(0,1fr)}.md-side-column{display:flex}.md-candles{height:310px}.md-flow{height:145px}.md-book-wrap{max-height:330px}.md-tape{max-height:260px}.md-tape-head,.md-tape-row{grid-template-columns:52px minmax(44px,.7fr) 42px minmax(104px,1.3fr);gap:3px}.md-panel{padding:6px}.md-panel-head{align-items:flex-start}.md-panel-head span{font-size:8px;text-align:left}}
 
+
+/* Live executed footprint */
+.md-footprint-legend{display:flex;gap:10px;flex-wrap:wrap;padding:4px 3px 7px;color:var(--muted);font-size:8px}
+.md-footprint-wrap{max-height:370px;overflow:auto}
+.md-footprint{width:100%;border-collapse:collapse;font-size:10px;font-variant-numeric:tabular-nums}
+.md-footprint th{position:sticky;top:0;background:#111d2e;color:var(--muted);font-size:8px;padding:7px 5px;z-index:1}
+.md-footprint td{padding:6px 5px;border-bottom:1px solid #1a2a40;text-align:right}
+.md-footprint td:first-child{text-align:left;font-weight:800}
+.md-footprint-buy{color:var(--buy)}.md-footprint-sell{color:var(--sell)}.md-footprint-delta{font-weight:900}
+.md-footprint-positive{background:rgba(72,214,173,.07)}.md-footprint-negative{background:rgba(255,126,135,.07)}
+@media(max-width:650px){.md-footprint-wrap{max-height:300px}.md-footprint{font-size:9px}.md-footprint th{font-size:7px}.md-footprint td{padding:6px 3px}}
+
 </style>
 <style id="workstation-overrides">
 :root{--ws-bg:#080d16;--ws-panel:#101a29;--ws-panel-2:#0b1422;--ws-line:#26364c;--ws-muted:#8ea1b9;--ws-gap:6px}
