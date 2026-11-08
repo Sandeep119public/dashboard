@@ -1,4 +1,4 @@
-import { MARKET_INTERVALS, SECOND_INTERVALS, COINM_CONTRACT_USD, createCoinMMarketFeed } from './coinm-market-data.js';
+import { MARKET_INTERVALS, SECOND_INTERVALS, COINM_CONTRACT_USD, createCoinMMarketFeed, replayDepthRecording } from './coinm-market-data.js';
 
 const integer = value => Math.round(Number(value) || 0).toLocaleString('en-US');
 const number = (value, digits = 2) => Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
@@ -24,7 +24,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     '<div class="md-root" data-feed="disconnected">',
       '<div class="md-topbar">',
         '<div class="md-title"><div class="md-kicker">BINANCE COIN-M · BTCUSD_PERP</div><strong>Live candles, executed flow &amp; public depth</strong><small>Exchange OHLC · aggregate trades · sequenced depth · 1 contract = $' + COINM_CONTRACT_USD + ' face value</small></div>',
-        '<div class="md-controls"><label for="mdInterval">Candle timeframe<select id="mdInterval"></select></label><button class="btn primary" id="mdConnect" type="button" aria-pressed="false">Connect live</button></div>',
+        '<div class="md-controls"><label for="mdInterval">Candle timeframe<select id="mdInterval"></select></label><button class="btn" id="mdLoadOlder" type="button" disabled>Load older candles</button><button class="btn primary" id="mdConnect" type="button" aria-pressed="false">Connect live</button></div>',
       '</div>',
       '<div class="md-statusline"><span id="mdState" class="md-state md-disconnected">DISCONNECTED</span><span id="mdFresh" class="md-fresh md-fresh-idle">Feed paused</span><span id="mdDetail" class="md-detail" aria-live="polite">Connect to load the latest 1,000 exchange candles and live market data.</span><span id="mdSource">No candle source</span></div>',
       '<div class="md-metrics">',
@@ -40,14 +40,14 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
           '<section class="md-panel md-flow-panel"><div class="md-panel-head"><div><strong>Executed volume by aggressor</strong><small>Green = BUY TAKER / SELL MAKER · Red = SELL TAKER / BUY MAKER</small></div><span class="md-unit">contracts</span></div><div class="md-flow-wrap"><div id="mdFlow" class="md-flow" aria-label="Executed volume by aggressor"></div></div></section>',
         '</div>',
         '<div class="md-col md-flow-column">',
-          '<section class="md-panel md-panel-grow md-footprint-panel"><div class="md-panel-head"><div><strong>Live per-price footprint</strong><small id="mdFootprintMeta">Current UTC minute · waiting for executions</small></div><span class="md-unit">contracts</span></div><div class="md-footprint-legend"><span>BUY TAKER / SELL MAKER</span><span>SELL TAKER / BUY MAKER</span><span>Delta = buy − sell</span></div><div class="md-table-wrap"><table class="md-footprint"><thead><tr><th>Price</th><th>Buy taker<br><small>Sell maker</small></th><th>Sell taker<br><small>Buy maker</small></th><th>Delta</th><th>Prints</th></tr></thead><tbody id="mdFootprintRows"><tr><td colspan="5" class="md-muted">Connect live to collect current-minute executions by price.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdFootprintFoot">Live-only footprint. It resets at each UTC minute and is not historical reconstruction.</div></section>',
+          '<section class="md-panel md-panel-grow md-footprint-panel"><div class="md-panel-head"><div><strong>Per-price execution footprint</strong><small id="mdFootprintMeta">Live current UTC minute · select a candle for historical trades</small></div><span class="md-unit">contracts</span></div><div class="md-panel-actions"><button class="btn" id="mdInspectFootprint" type="button" disabled>Inspect selected candle</button><small id="mdFootprintSelection">Click a candlestick to select its interval</small></div><div class="md-footprint-legend"><span>BUY TAKER / SELL MAKER</span><span>SELL TAKER / BUY MAKER</span><span>Delta = buy − sell</span></div><div class="md-table-wrap"><table class="md-footprint"><thead><tr><th>Price</th><th>Buy taker<br><small>Sell maker</small></th><th>Sell taker<br><small>Buy maker</small></th><th>Delta</th><th>Prints</th></tr></thead><tbody id="mdFootprintRows"><tr><td colspan="5" class="md-muted">Connect live to collect current-minute executions by price.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdFootprintFoot">Live footprint resets each UTC minute. Select an exchange candle to reconstruct its footprint from historical aggregate trades.</div></section>',
         '</div>',
         '<div class="md-col md-side-column">',
-          '<section class="md-panel md-panel-grow md-book-panel"><div class="md-panel-head"><div><strong>Live order book</strong><small id="mdBookState">Not synchronized</small></div><span class="md-unit">contracts</span></div><div class="md-book-summary"><span>Bid <b id="mdBestBid">—</b></span><span>Spread <b id="mdBookSpread">—</b></span><span>Ask <b id="mdBestAsk">—</b></span></div><div class="md-table-wrap"><table class="md-book"><thead><tr><th>Bid qty</th><th>Bid price</th><th>Ask price</th><th>Ask qty</th></tr></thead><tbody id="mdBookRows"><tr><td colspan="4" class="md-muted">Connect to synchronize depth.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdBookFoot">Depth is aggregated by price level, not individual order IDs.</div></section>',
+          '<section class="md-panel md-panel-grow md-book-panel"><div class="md-panel-head"><div><strong>Live order book</strong><small id="mdBookState">Not synchronized</small></div><span class="md-unit">contracts</span></div><div class="md-book-summary"><span>Bid <b id="mdBestBid">—</b></span><span>Spread <b id="mdBookSpread">—</b></span><span>Ask <b id="mdBestAsk">—</b></span></div><div class="md-table-wrap"><table class="md-book"><thead><tr><th>Bid qty</th><th>Bid price</th><th>Ask price</th><th>Ask qty</th></tr></thead><tbody id="mdBookRows"><tr><td colspan="4" class="md-muted">Connect to synchronize depth.</td></tr></tbody></table></div><div class="md-panel-actions"><button class="btn" id="mdSaveDepth" type="button" disabled>Download depth capture</button><label>Replay time <input id="mdReplayTime" type="range" min="0" max="0" value="0" disabled></label><button class="btn" id="mdReplayDepth" type="button" disabled>Replay</button></div><div class="md-panel-foot" id="mdBookFoot">Depth is aggregated by price. A session recording can be downloaded and replayed; individual maker identities and queue position are unavailable.</div></section>',
           '<section class="md-panel md-tape-panel"><div class="md-panel-head"><div><strong>Live trade tape</strong><small id="mdTapeMeta">Waiting for aggregate trades</small></div><span class="md-unit">contracts</span></div><div class="md-tape-head"><span>UTC</span><span>Price</span><span>Qty</span><span>Aggressor → passive</span></div><div id="mdTape" class="md-tape"><div class="md-empty">Waiting for aggregate trades…</div></div></section>',
         '</div>',
       '</div>',
-      '<details class="md-footnote"><summary>Data semantics and limits</summary><p><b>COIN-M contract units:</b> kline volume, aggregate-trade quantity and depth quantity are contracts. BTCUSD_PERP uses 100 USD face value per contract; the interface never relabels contracts as BTC or USD notional. Binance aggregate trades expose whether the buyer was maker: buyer maker = false is BUY TAKER / SELL MAKER, buyer maker = true is SELL TAKER / BUY MAKER. Both sides are mirrored views of one execution, never additional volume. Candles from 1m upward are exchange klines; seconds candles are built only from executions observed in this session and are not historical reconstructions. Public depth is aggregated at each price and does not expose maker identities, queue position or historical order-book replay. Quantity reductions can be executions or cancellations and the public diff does not label which.</p></details>',
+      '<details class="md-footnote"><summary>Data semantics and limits</summary><p><b>COIN-M contract units:</b> kline volume, aggregate-trade quantity and depth quantity are contracts. BTCUSD_PERP uses 100 USD face value per contract; the interface never relabels contracts as BTC or USD notional. Binance aggregate trades expose whether the buyer was maker: buyer maker = false is BUY TAKER / SELL MAKER, buyer maker = true is SELL TAKER / BUY MAKER. Both sides are mirrored views of one execution, never additional volume. Candles from 1m upward are exchange klines; seconds candles are built only from executions observed in this session and are not historical reconstructions. Public depth is aggregated by price and does not expose maker identities or queue position. The session can record sequenced snapshots and diffs for replay; Binance does not provide a public historical depth archive. Quantity reductions can be executions or cancellations.</p></details>',
     '</div>'
   ].join('');
 
@@ -79,6 +79,8 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   let lastMarketAt = null;
   let lastCandlesInterval = null;
   let feedState = 'disconnected';
+  let selectedCandle = null;
+  let replayMode = false;
 
   function imported(tf) {
     try {
@@ -169,6 +171,18 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const candleBox = candleEl.getBoundingClientRect();
     if (candleBox.width < 60 || candleBox.height < 40) return;
     const visible = candles.slice(-3000);
+    if (!candleEl.__coinmClickBound && typeof candleEl.on === 'function') {
+      candleEl.on('plotly_click', event => {
+        const point = event && event.points && event.points[0];
+        const index = point && Number(point.pointNumber);
+        if (!Number.isInteger(index) || index < 0 || index >= visible.length) return;
+        selectedCandle = visible[index];
+        const button = $('mdInspectFootprint');
+        if (button) button.disabled = false;
+        setText('mdFootprintSelection', 'Selected candle: ' + new Date(selectedCandle.t).toISOString().replace('T', ' ').slice(0, 19) + ' UTC');
+      });
+      candleEl.__coinmClickBound = true;
+    }
     if (!visible.length) {
       setVisible('mdCandleEmpty', true);
       setText('mdCandleMeta', 'No candles for this interval yet');
@@ -283,7 +297,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const asks = view.asks || [];
     const bestBid = bids[0];
     const bestAsk = asks[0];
-    setText('mdBookState', 'SYNCED · update ' + integer(view.lastUpdateId));
+    setText('mdBookState', (replayMode ? 'REPLAY · ' : 'SYNCED · ') + 'update ' + integer(view.lastUpdateId));
     setText('mdBestBid', bestBid ? number(bestBid.price, 1) : '—');
     setText('mdBestAsk', bestAsk ? number(bestAsk.price, 1) : '—');
     const spread = bestBid && bestAsk ? bestAsk.price - bestBid.price : null;
@@ -366,7 +380,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       return;
     }
     const rows = footprint.levels;
-    setText('mdFootprintMeta', 'UTC ' + utcMinute(footprint.minute) + '–' + utcMinute(footprint.minute + 60000) + ' · ' + integer(footprint.levelsTotal) + ' levels · ' + contractQty(footprint.totalQty) + ' contracts · imbalance ' + percent(footprint.imbalance));
+    setText('mdFootprintMeta', footprint.historical ? 'Historical selected candle · ' + integer(footprint.tradesCount || 0) + ' aggregate trades · ' + integer(footprint.pages || 0) + ' REST pages' : 'Live UTC ' + utcMinute(footprint.minute) + '–' + utcMinute(footprint.minute + 60000) + ' · ' + integer(footprint.levelsTotal) + ' levels · ' + contractQty(footprint.totalQty) + ' contracts · imbalance ' + percent(footprint.imbalance));
     host.innerHTML = '';
     const fragment = document.createDocumentFragment();
     for (const level of rows) {
@@ -383,9 +397,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       fragment.appendChild(tr);
     }
     host.appendChild(fragment);
-    setText('mdFootprintFoot', footprint.truncated
-      ? 'Showing the ' + integer(rows.length) + ' price levels nearest the latest trade from ' + integer(footprint.levelsTotal) + ' levels seen this UTC minute. Quantities are executed taker contracts; the passive maker side is mirrored, not added again.'
-      : 'All ' + integer(rows.length) + ' price levels seen this UTC minute. Quantities are executed taker contracts; the passive maker side is mirrored, not added again.');
+    setText('mdFootprintFoot', (footprint.historical ? 'Historical Binance aggregate trades for the selected candle. ' : 'Live footprint for the current UTC minute. ') + (footprint.truncated ? 'Showing ' + integer(rows.length) + ' of ' + integer(footprint.levelsTotal) + ' price levels. ' : 'All ' + integer(rows.length) + ' price levels shown. ') + 'Quantities are executed taker contracts; passive maker quantities mirror the same executions and are not added again.' + (footprint.pagesTruncated ? ' Historical retrieval reached its page cap; this footprint is incomplete.' : '');
   }
   function renderTape(items) {
     recentTrades = items || [];
@@ -450,6 +462,17 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     },
     onBook: view => {
       if (view && view.ready) lastMarketAt = Date.now();
+      const recording = feed.getDepthRecording();
+      const slider = $('mdReplayTime'), save = $('mdSaveDepth'), replay = $('mdReplayDepth');
+      if (recording.snapshots.length && slider) {
+        const first = recording.snapshots[0].capturedAt;
+        const last = recording.events.length ? recording.events[recording.events.length - 1].capturedAt : first;
+        slider.min = String(first); slider.max = String(Math.max(first, last));
+        if (!slider.value || Number(slider.value) < first || Number(slider.value) > last) slider.value = String(last);
+        slider.disabled = false;
+        if (save) save.disabled = false;
+        if (replay) replay.disabled = false;
+      }
       queueBook(view);
     }
   });
@@ -465,6 +488,8 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     intervalSelect.value = tf;
     setText('mdCandleMeta', 'Loading ' + intervalLabel(tf) + ' candles…');
     if (SECOND_INTERVALS.includes(tf)) showImportedInterval(tf);
+    $('mdLoadOlder').hidden = SECOND_INTERVALS.includes(tf);
+    $('mdLoadOlder').disabled = !connected || SECOND_INTERVALS.includes(tf) || !candles.length;
     if (!connected) {
       if (!SECOND_INTERVALS.includes(tf)) setCandleData([], 'Connect live to load Binance COIN-M ' + tf + ' candles');
       return;
@@ -499,6 +524,63 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     }
   });
   intervalSelect.addEventListener('change', () => chooseInterval(intervalSelect.value));
+  $('mdLoadOlder').addEventListener('click', async () => {
+    if (!connected || SECOND_INTERVALS.includes(interval) || !candles.length) return;
+    const button = $('mdLoadOlder'), tf = interval, before = Number(candles[0].t);
+    button.disabled = true; button.textContent = 'Loading…';
+    try {
+      const older = await feed.loadOlderKlines(tf, before, 1000);
+      if (interval !== tf) return;
+      if (!older.length) { button.textContent = 'No older candles'; return; }
+      candles = mergeCandles(older, candles);
+      setText('mdCandleMeta', integer(candles.length) + ' candles loaded · ' + integer(older.length) + ' older');
+      scheduleDraw(); button.textContent = 'Load older candles';
+    } catch (error) {
+      setText('mdCandleMeta', 'Older candle load failed: ' + String(error && error.message || error));
+      button.textContent = 'Retry older candles';
+    } finally {
+      if (interval === tf && button.textContent !== 'No older candles') button.disabled = false;
+    }
+  });
+  $('mdInspectFootprint').addEventListener('click', async () => {
+    if (!selectedCandle) return;
+    const button = $('mdInspectFootprint'), tf = interval, candle = selectedCandle;
+    let end = Number(candle.closeTime) + 1;
+    if (!Number.isFinite(end) || end <= Number(candle.t)) {
+      const duration = { '1m':60000, '3m':180000, '5m':300000, '15m':900000, '30m':1800000, '1h':3600000, '2h':7200000, '4h':14400000, '6h':21600000, '8h':28800000, '12h':43200000, '1d':86400000, '3d':259200000, '1w':604800000 }[tf];
+      end = duration ? Number(candle.t) + duration : new Date(Date.UTC(new Date(candle.t).getUTCFullYear(), new Date(candle.t).getUTCMonth() + 1, 1)).getTime();
+    }
+    button.disabled = true; button.textContent = 'Loading trades…';
+    setText('mdFootprintSelection', 'Fetching historical aggregate trades for selected candle…');
+    try {
+      const footprint = await feed.loadHistoricalFootprint(Number(candle.t), end, { maxPages: 20, maxTrades: 20000 });
+      if (interval !== tf || selectedCandle !== candle) return;
+      queueFootprint(footprint);
+      setText('mdFootprintSelection', integer(footprint.tradesCount) + ' trades across ' + integer(footprint.pages) + ' pages');
+    } catch (error) {
+      setText('mdFootprintSelection', 'Historical footprint failed: ' + String(error && error.message || error));
+    } finally {
+      button.disabled = !selectedCandle; button.textContent = 'Inspect selected candle';
+    }
+  });
+  $('mdSaveDepth').addEventListener('click', () => {
+    const recording = feed.getDepthRecording();
+    if (!recording.snapshots.length) return;
+    const blob = new Blob([JSON.stringify(recording)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = url; link.download = 'BTCUSD_PERP-depth-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+    link.click(); URL.revokeObjectURL(url);
+  });
+  $('mdReplayDepth').addEventListener('click', () => {
+    const recording = feed.getDepthRecording(), at = Number($('mdReplayTime').value);
+    const view = replayDepthRecording(recording, at);
+    replayMode = true;
+    if (!view.ready) { setText('mdBookState', 'Replay unavailable · ' + view.reason); return; }
+    renderBook(view);
+    setText('mdBookFoot', 'REPLAY · recorded local session depth at ' + new Date(at).toISOString() + '. Sequence-valid from the latest preceding snapshot. Not historical Binance archive data.');
+  });
+  $('mdReplayTime').addEventListener('input', () => { replayMode = false; });
+  $('mdLoadOlder').hidden = false;
   const resize = () => {
     if (resizeTimer !== null) return;
     resizeTimer = setTimeout(() => {
@@ -515,6 +597,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   return {
     activate() {
       resize();
+      replayMode = false;
       if (pendingDraw || candles.length) scheduleDraw();
     },
     getInterval() { return interval; },
