@@ -833,7 +833,19 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     if (selectedFootprintMinute !== 'live') {
       selectedReplayTime = Number(selectedFootprintMinute);
       const nearest = feed.getDepthSnapshotIndexAt(selectedReplayTime, 60000);
-      if (nearest >= 0) { $('mdDepthReplay').value = String(nearest); replayingDepth = true; depthReplayMissing = false; const sample = feed.getDepthSnapshot(nearest); if (sample) renderBook({ ...sample, ready: true, recorded: true }); }
+      if (nearest >= 0) {
+        $('mdDepthReplay').value = String(nearest);
+        replayingDepth = true;
+        depthReplayMissing = false;
+        const sample = feed.getDepthSnapshot(nearest);
+        if (sample) renderBook({ ...sample, ready: true, recorded: true });
+      } else {
+        replayingDepth = true;
+        depthReplayMissing = true;
+        renderBook(null);
+        setText('mdBookState', 'NO DEPTH SNAPSHOT NEAR THIS TIME');
+        setText('mdBookFoot', 'No recorded order-book snapshot within 60 seconds of the selected footprint minute.');
+      }
       updateDepthCaptureControls();
       scheduleDraw(); renderDepthHeatmap();
     } else {
