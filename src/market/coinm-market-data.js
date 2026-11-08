@@ -361,7 +361,7 @@ export function createCoinMMarketFeed(options = {}) {
   const visibleFootprintLevels = Number.isFinite(Number(options.visibleFootprintLevels)) ? Number(options.visibleFootprintLevels) : 80;
   const depthLimit = Number.isFinite(Number(options.depthLimit)) ? Number(options.depthLimit) : 1000;
   const maxFootprintMinutes = Number.isFinite(Number(options.maxFootprintMinutes)) ? Math.max(1, Math.floor(Number(options.maxFootprintMinutes))) : 240;
-  const maxDepthSamples = Number.isFinite(Number(options.maxDepthSamples)) ? Math.max(1, Math.floor(Number(options.maxDepthSamples))) : 1800;
+  const maxDepthSamples = Number.isFinite(Number(options.maxDepthSamples)) ? Math.max(1, Math.floor(Number(options.maxDepthSamples))) : 10000;
   const depthSampleIntervalMs = Number.isFinite(Number(options.depthSampleIntervalMs)) ? Math.max(0, Number(options.depthSampleIntervalMs)) : 100;
   const onStatus = options.onStatus || (() => {});
   const onCandles = options.onCandles || (() => {});
