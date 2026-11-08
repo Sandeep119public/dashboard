@@ -40,7 +40,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
           '<section class="md-panel md-flow-panel"><div class="md-panel-head"><div><strong>Executed volume by aggressor</strong><small>Green = BUY TAKER / SELL MAKER · Red = SELL TAKER / BUY MAKER</small></div><span class="md-unit">contracts</span></div><div class="md-flow-wrap"><div id="mdFlow" class="md-flow" aria-label="Executed volume by aggressor"></div></div></section>',
         '</div>',
         '<div class="md-col md-flow-column">',
-          '<section class="md-panel md-panel-grow md-footprint-panel"><div class="md-panel-head"><div><strong>Per-price footprint</strong><small id="mdFootprintMeta">Session history · waiting for executions</small></div><div style="display:flex;align-items:center;gap:6px"><select id="mdFootprintMinute" aria-label="Select recorded footprint minute" style="max-width:145px;min-width:0;font-size:10px"><option value="live">Follow live minute</option></select><span class="md-unit">contracts</span></div></div><div class="md-footprint-legend"><span>BUY TAKER / SELL MAKER</span><span>SELL TAKER / BUY MAKER</span><span>Delta = buy − sell</span></div><div class="md-table-wrap"><table class="md-footprint"><thead><tr><th>Price</th><th>Buy taker<br><small>Sell maker</small></th><th>Sell taker<br><small>Buy maker</small></th><th>Delta</th><th>Prints</th></tr></thead><tbody id="mdFootprintRows"><tr><td colspan="5" class="md-muted">Connect live to collect current-minute executions by price.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdFootprintFoot">Session footprint history is retained by UTC minute for up to four hours while connected. It is not backfilled from Binance trade history.</div></section>',
+          '<section class="md-panel md-panel-grow md-footprint-panel"><div class="md-panel-head"><div><strong>Per-price footprint</strong><small id="mdFootprintMeta">Session history · waiting for executions</small></div><div style="display:flex;align-items:center;gap:6px"><button class="btn" id="mdBackfillFootprint" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Backfill 60m</button><select id="mdFootprintMinute" aria-label="Select recorded footprint minute" style="max-width:145px;min-width:0;font-size:10px"><option value="live">Follow live minute</option></select><span class="md-unit">contracts</span></div></div><div class="md-footprint-legend"><span>BUY TAKER / SELL MAKER</span><span>SELL TAKER / BUY MAKER</span><span>Delta = buy − sell</span></div><div class="md-table-wrap"><table class="md-footprint"><thead><tr><th>Price</th><th>Buy taker<br><small>Sell maker</small></th><th>Sell taker<br><small>Buy maker</small></th><th>Delta</th><th>Prints</th></tr></thead><tbody id="mdFootprintRows"><tr><td colspan="5" class="md-muted">Connect live to collect current-minute executions by price.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdFootprintFoot">Backfill up to four hours of Binance aggregate trades (48-hour API lookback) or inspect the live session. Binance REST trade history is limited to market aggregate trades.</div></section>',
         '</div>',
         '<div class="md-col md-side-column">',
           '<section class="md-panel md-panel-grow md-book-panel"><div class="md-panel-head"><div><strong>Order book</strong><small id="mdBookState">Not synchronized</small></div><span class="md-unit">contracts</span></div><div class="md-depth-controls" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 7px;border-bottom:1px solid #203047"><button class="btn" id="mdRecordDepth" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Record depth</button><input id="mdDepthReplay" type="range" min="0" max="0" value="0" step="1" disabled aria-label="Replay captured order-book samples" style="width:76px;min-width:48px;flex:1"><button class="btn" id="mdDepthLive" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Live</button><button class="btn" id="mdDepthExport" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Export</button><small id="mdDepthReplayMeta" style="font-size:9px;color:#91a3bb">Not recording · session only</small></div><div class="md-book-summary"><span>Bid <b id="mdBestBid">—</b></span><span>Spread <b id="mdBookSpread">—</b></span><span>Ask <b id="mdBestAsk">—</b></span></div><div class="md-table-wrap"><table class="md-book"><thead><tr><th>Bid qty</th><th>Bid price</th><th>Ask price</th><th>Ask qty</th></tr></thead><tbody id="mdBookRows"><tr><td colspan="4" class="md-muted">Connect to synchronize depth.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdBookFoot">Depth is aggregated by price level, not individual order IDs.</div></section>',
@@ -408,7 +408,9 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     for (const minute of minutes.slice().sort((a, b) => b - a)) {
       const option = document.createElement('option');
       option.value = String(minute);
-      option.textContent = new Date(minute).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+      const footprint = feed.getFootprint(minute);
+      const origin = footprint && String(footprint.source || '').includes('Binance REST') ? ' · REST' : ' · session';
+      option.textContent = new Date(minute).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' + origin;
       select.appendChild(option);
     }
     if (keep !== 'live' && minutes.includes(Number(keep))) select.value = keep;
@@ -451,7 +453,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       fragment.appendChild(tr);
     }
     host.appendChild(fragment);
-    const provenance = 'Recorded from this browser session only; Binance trade history is not backfilled here. Passive maker quantities mirror taker executions.';
+    const provenance = (footprint.source || 'live session') + '. Passive maker quantities mirror taker executions.';
     setText('mdFootprintFoot', (historical ? 'Selected past session minute. ' : 'Following current session minute. ') + (footprint.truncated
       ? 'Showing ' + integer(rows.length) + ' nearest levels from ' + integer(footprint.levelsTotal) + '. '
       : 'Showing all ' + integer(rows.length) + ' retained price levels. ') + 'Quantities are executed taker contracts. ' + provenance);
@@ -610,6 +612,29 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     } finally {
       loadingOlderCandles = false;
       updateCandleHistoryControls();
+    }
+  });
+  $('mdBackfillFootprint').addEventListener('click', async () => {
+    const button = $('mdBackfillFootprint');
+    const previousSelection = selectedFootprintMinute;
+    button.disabled = true;
+    button.textContent = 'Backfilling…';
+    setText('mdFootprintFoot', 'Fetching Binance COIN-M aggregate trades for the previous 60 minutes. This uses bounded REST pagination.');
+    try {
+      const result = await feed.backfillFootprintHistory({ minutes: 60, maxPages: 20, maxTrades: 20000 });
+      updateFootprintSelector(result.minutes);
+      if (result.minutes.length) {
+        selectedFootprintMinute = String(result.minutes[result.minutes.length - 1]);
+        $('mdFootprintMinute').value = selectedFootprintMinute;
+        renderFootprint(feed.getFootprint(Number(selectedFootprintMinute)), true);
+      }
+      setText('mdFootprintFoot', 'Binance REST backfill · ' + integer(result.tradesCount) + ' aggregate trades across ' + integer(result.pages) + ' requests and ' + integer(result.minutes.length) + ' UTC minutes. ' + (result.truncated ? 'Result is incomplete because the safety cap was reached. ' : 'Requested interval was retrieved. ') + 'Only Binance-reported market aggregate trades are included; passive maker quantities mirror taker executions.');
+    } catch (error) {
+      selectedFootprintMinute = previousSelection;
+      setText('mdFootprintFoot', 'Historical backfill failed: ' + String(error && error.message || error));
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Backfill 60m';
     }
   });
   $('mdFootprintMinute').addEventListener('change', () => {

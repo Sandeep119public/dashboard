@@ -129,6 +129,7 @@ export function normalizeKlineEvent(k) {
 export function createMinuteFootprintState() {
   return {
     minute: null,
+    source: 'live session',
     levels: new Map(),
     totalQty: 0,
     totalFills: 0,
@@ -152,6 +153,7 @@ export function summarizeMinuteFootprint(state, visibleLevels = 80) {
   const denominator = state.totalBuy + state.totalSell;
   return {
     minute: state.minute,
+    source: state.source || 'live session',
     levels: levels.map(level => ({
       ...level,
       delta: level.buyTaker - level.sellTaker,
@@ -430,6 +432,87 @@ export function createCoinMMarketFeed(options = {}) {
     const rows = await requestJson(COINM_REST + '/dapi/v1/klines?' + params.toString());
     if (!Array.isArray(rows)) throw new Error('Unexpected Binance kline response.');
     return rows.map(parseCoinMKline);
+  }
+
+  async function backfillFootprintHistory(window = {}) {
+    const endTime = Number(window.endTime ?? now());
+    const requestedStart = Number(window.startTime);
+    const durationMs = Number.isFinite(requestedStart) ? endTime - requestedStart : Number(window.minutes || 60) * 60000;
+    const maxMinutes = Math.min(maxFootprintMinutes, Math.max(1, Math.floor(Number(window.maxMinutes) || maxFootprintMinutes)));
+    if (!Number.isFinite(endTime) || !Number.isFinite(durationMs) || durationMs <= 0) {
+      throw new RangeError('Footprint backfill requires a valid positive time range.');
+    }
+    const startTime = Number.isFinite(requestedStart) ? requestedStart : endTime - durationMs;
+    const serverNow = now();
+    if (endTime > serverNow + 5000 || startTime < serverNow - 48 * 60 * 60000) {
+      throw new RangeError('Binance COIN-M aggregate-trade history is available only within the most recent 48 hours.');
+    }
+    if (durationMs > maxMinutes * 60000) throw new RangeError('Footprint backfill is limited to ' + maxMinutes + ' minutes per request.');
+    const limit = Math.min(1000, Math.max(1, Math.floor(Number(window.limit) || 1000)));
+    const maxPages = Math.min(100, Math.max(1, Math.floor(Number(window.maxPages) || 20)));
+    const maxTrades = Math.max(1, Math.floor(Number(window.maxTrades) || 20000));
+    const seen = new Set();
+    let pages = 0, tradesCount = 0, cursorStart = startTime, truncated = false;
+    while (cursorStart <= endTime && pages < maxPages && tradesCount < maxTrades) {
+      const cursorEnd = Math.min(endTime, cursorStart + 59 * 60000 - 1);
+      const firstParams = new URLSearchParams({
+        symbol, startTime: String(Math.floor(cursorStart)),
+        endTime: String(Math.floor(cursorEnd)), limit: String(limit)
+      });
+      let rows = await requestJson(COINM_REST + '/dapi/v1/aggTrades?' + firstParams.toString());
+      let fromId = null, doneChunk = false;
+      while (!doneChunk && pages < maxPages && tradesCount < maxTrades) {
+        if (!Array.isArray(rows)) throw new Error('Unexpected Binance aggregate-trade history response.');
+        pages++;
+        if (!rows.length) { doneChunk = true; break; }
+        let passedEnd = false;
+        for (const row of rows) {
+          const time = Number(row && row.T);
+          if (!Number.isFinite(time)) continue;
+          if (time > cursorEnd) { passedEnd = true; break; }
+          if (time < cursorStart) continue;
+          const id = Number(row.a);
+          if (Number.isFinite(id) && seen.has(id)) continue;
+          if (Number.isFinite(id)) seen.add(id);
+          const trade = normalizeAggTrade({ ...row, e: 'aggTrade' });
+          const minute = Math.floor(trade.time / 60000) * 60000;
+          let state = footprintHistory.get(minute);
+          if (!state) {
+            state = createMinuteFootprintState();
+            state.minute = minute;
+            state.source = 'Binance REST backfill';
+            footprintHistory.set(minute, state);
+          } else if (!String(state.source || '').includes('Binance REST')) {
+            state.source = 'live session + Binance REST backfill';
+          }
+          updateMinuteFootprint(state, trade, maxFootprintLevels, visibleFootprintLevels);
+          tradesCount++;
+          if (tradesCount >= maxTrades) break;
+        }
+        if (passedEnd || rows.length < limit || tradesCount >= maxTrades) { doneChunk = true; break; }
+        const lastId = Number(rows[rows.length - 1].a);
+        if (!Number.isFinite(lastId) || lastId < 0 || fromId !== null && lastId < fromId) {
+          throw new Error('Aggregate-trade pagination returned an invalid trade ID.');
+        }
+        fromId = lastId + 1;
+        const params = new URLSearchParams({ symbol, fromId: String(fromId), limit: String(limit) });
+        rows = await requestJson(COINM_REST + '/dapi/v1/aggTrades?' + params.toString());
+      }
+      if (!doneChunk) { truncated = true; break; }
+      cursorStart = cursorEnd + 1;
+    }
+    if (cursorStart <= endTime || tradesCount >= maxTrades) truncated = true;
+    while (footprintHistory.size > maxFootprintMinutes) {
+      const oldest = Math.min(...footprintHistory.keys());
+      footprintHistory.delete(oldest);
+    }
+    const minutes = getFootprintMinutes();
+    return {
+      startTime, endTime, pages, tradesCount, minutes,
+      footprints: minutes.map(minute => getFootprint(minute)),
+      truncated,
+      source: 'Binance COIN-M /dapi/v1/aggTrades'
+    };
   }
 
   async function loadOlderKlines(interval, beforeTime, limit = 1000) {
@@ -955,6 +1038,7 @@ export function createCoinMMarketFeed(options = {}) {
     setInterval,
     loadKlines,
     loadOlderKlines,
+    backfillFootprintHistory,
     getSessionCandles,
     getFootprint,
     getFootprintMinutes,
