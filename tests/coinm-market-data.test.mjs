@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normalizeAggTrade,parseCoinMKline,normalizeKlineEvent,aggregateTradesToCandles,
-  isDepthSnapshotBridge,isDepthUpdateContinuous,applyDepthEvent,createMinuteFootprintState,updateMinuteFootprint
+  isDepthSnapshotBridge,isDepthUpdateContinuous,applyDepthEvent,createMinuteFootprintState,updateMinuteFootprint,
+  mergeCandleSeries, COINM_CONTRACT_USD, MARKET_INTERVALS
 } from '../src/market/coinm-market-data.js';
 
 test('buyer maker flag maps aggressor and passive sides to mirrored quantities',()=>{
@@ -68,10 +69,61 @@ test('depth updates replace quantities and remove zero-quantity levels',()=>{
   const changes=applyDepthEvent(book,{U:11,u:12,pu:10,b:[['67000','7'],['66999','0']],a:[['67001','2'],['67002','3']]});
   assert.equal(book.lastUpdateId,12);assert.equal(book.bids.get('67000'),7);assert.equal(book.bids.has('66999'),false);
   assert.equal(book.asks.get('67001'),2);assert.equal(book.asks.get('67002'),3);
-  assert.deepEqual(changes,{bidAdded:2,bidReduced:4,askAdded:3,askReduced:4});
+  assert.deepEqual(changes,{
+    bidAdded:2,bidReduced:4,askAdded:3,askReduced:4,
+    bidChanges:{67000:2,66999:-4},askChanges:{67001:-4,67002:3}
+  });
 });
 
 test('invalid trade and malformed kline records are rejected',()=>{
   assert.throws(()=>normalizeAggTrade({a:1,p:'0',q:'1',T:1,m:false}),/invalid timestamp, price or quantity/i);
   assert.throws(()=>parseCoinMKline([1,2,3]),/12-field/i);
+  assert.throws(()=>normalizeAggTrade({a:1,p:'100',q:'1',T:1}),/buyer was maker/i);
+  assert.throws(()=>normalizeAggTrade({a:1,p:'100',q:'1',T:1,m:'false'}),/buyer was maker/i);
+  assert.throws(()=>parseCoinMKline([60000,'100','110','90','105','12',119999,'0.12',7,'13','0.08','0']),/taker-buy volume exceeds/i);
+  assert.throws(()=>parseCoinMKline([60000,'100','110','120','105','12',119999,'0.12',7,'8','0.08','0']),/OHLC values are inconsistent/i);
+  assert.throws(()=>parseCoinMKline([60000,'0','110','90','105','12',119999,'0.12',7,'8','0.08','0']),/invalid price/i);
+});
+
+test('market intervals keep exchange klines distinct from trade-built seconds',()=>{
+  const kline=MARKET_INTERVALS.filter(x=>x.source==='Binance COIN-M candles').map(x=>x.value);
+  const seconds=MARKET_INTERVALS.filter(x=>x.source==='Live trade-built').map(x=>x.value);
+  assert.deepEqual(seconds,['1s','5s','10s','15s','30s']);
+  assert.ok(kline.includes('1m')&&kline.includes('1M'));
+  assert.ok(!kline.some(value=>value.endsWith('s')));
+  assert.equal(COINM_CONTRACT_USD,100);
+});
+
+test('candle merges deduplicate timestamps, let live bars win and never fill gaps',()=>{
+  const rest=[{t:1000,c:10},{t:2000,c:20},{t:4000,c:40}];
+  const live=[{t:2000,c:25},{t:3000,c:30}];
+  const merged=mergeCandleSeries(rest,live);
+  assert.deepEqual(merged.map(c=>c.t),[1000,2000,3000,4000]);
+  assert.equal(merged[1].c,25);
+  assert.deepEqual(mergeCandleSeries(rest,live,2).map(c=>c.t),[3000,4000]);
+  assert.deepEqual(mergeCandleSeries([{t:'bad',c:1},{t:1000,c:2}],[],10).map(c=>c.t),[1000]);
+});
+
+test('footprint reports imbalance and truncates to the levels nearest the latest trade',()=>{
+  const state=createMinuteFootprintState();
+  let result;
+  for(let i=0;i<6;i++){
+    const price=67000+i;
+    result=updateMinuteFootprint(state,normalizeAggTrade({a:i+1,p:String(price),q:i<3?'2':'3',T:1000+i,m:i%2===1}),100,2);
+  }
+  assert.equal(result.levelsTotal,6);
+  assert.equal(result.levels.length,2);
+  assert.equal(result.truncated,true);
+  assert.deepEqual(result.levels.map(x=>x.price).sort((a,b)=>a-b),[67004,67005]);
+  assert.ok(result.imbalance<0&&result.imbalance>-1);
+  assert.equal(result.totalQty,15);
+  assert.deepEqual([result.totalBuy,result.totalSell],[7,8]);
+});
+
+test('depth snapshot bridge accepts the event that spans the snapshot id',()=>{
+  assert.equal(isDepthSnapshotBridge(100,{U:100,u:101}),true);
+  assert.equal(isDepthSnapshotBridge(100,{U:99,u:100}),true);
+  assert.equal(isDepthSnapshotBridge(100,{U:101,u:103}),false);
+  assert.equal(isDepthUpdateContinuous(10,{U:12,u:14,pu:9}),false);
+  assert.equal(isDepthUpdateContinuous(10,{U:11,u:14}),true);
 });
