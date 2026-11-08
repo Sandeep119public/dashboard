@@ -839,6 +839,25 @@ body{background:radial-gradient(ellipse at 50% -28%,rgba(35,76,92,.24),transpare
 .filter-drawer .drawer-settings-details #chartStudio .studio-topline{justify-content:flex-end;margin-bottom:8px}
 @media(max-width:650px){.filter-drawer .advanced-filter-grid{grid-template-columns:minmax(0,1fr)}}
 </style>
+
+<style id="mobile-metric-readability">
+/* Keep the three metric groups legible on narrow phones without stealing chart space. */
+@media(max-width:380px){
+  .metric-card{padding:6px 7px;gap:3px}
+  .metric-group-label{font-size:7px;letter-spacing:.12em}
+  .metric-primary>span{font-size:8px;line-height:1.2}
+  .metric-primary .value{font-size:clamp(12.5px,3.7vw,14px);line-height:1.15}
+  .metric-secondary{gap:4px;padding-top:4px}
+  .metric-secondary>span{font-size:7.5px;line-height:1.15}
+  .metric-secondary .value{font-size:9px;max-width:62%;line-height:1.15}
+}
+@media(max-width:340px){
+  .metric-card{padding:5px}
+  .metric-primary .value{font-size:12.5px}
+  .metric-secondary>span{font-size:7px}
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
