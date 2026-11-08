@@ -53,3 +53,21 @@ test('settings drawer keeps quick ranges visible and collapses secondary tools a
   assert.match(html, /id="chartStudio"/);
   assert.match(html, /id="panelVisibility"/);
 });
+
+
+test('settings drawer keeps advanced filters collapsed and preserves their control IDs', () => {
+  assert.ok(html.includes('<details class="advanced-filter-details">'));
+  assert.ok(html.includes('<summary>Advanced filters</summary>'));
+  for (const id of ['start', 'end', 'threshold', 'profileBin', 'smooth', 'flowLookback']) {
+    assert.ok(html.includes('id="' + id + '"'));
+  }
+  assert.ok(html.includes('.filter-drawer .import-control{position:absolute!important'));
+  assert.ok(html.includes('id="headerImport" type="button">Import</button>'));
+});
+
+test('settings drawer hides repeated section captions without removing layout actions', () => {
+  assert.ok(html.includes('.drawer-tools-details .toolbar-label{display:none}'));
+  assert.ok(html.includes('.studio-topline>div:first-child{display:none}'));
+  assert.ok(html.includes('id="saveViewPreset"'));
+  assert.ok(html.includes('id="resetStudio"'));
+});
