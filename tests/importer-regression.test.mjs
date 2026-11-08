@@ -85,6 +85,14 @@ test('live market desk is fitted inside the chart stage and labels contract unit
   assert.match(html, /\.md-root\{--md-line:#263a55;--md-panel:#0d1726;display:flex;[^}]*overflow:hidden/, 'desktop panels must keep internal scrolling');
   assert.match(html, /@media\(max-width:820px\)\{[^}]*\.md-root\{overflow-y:auto/, 'narrow screens must stack inside a scrollable desk');
   assert.match(deskSource, /1 contract = \$' \+ COINM_CONTRACT_USD/, 'desk must state the COIN-M contract face value');
+  assert.match(deskSource, /id="mdLoadOlder"/, 'exchange candle panel must expose older-history paging');
+  assert.match(deskSource, /id="mdFootprintMinute"/, 'per-price footprint must support selecting prior captured minutes');
+  assert.match(deskSource, /id="mdRecordDepth"/, 'depth capture must be opt-in');
+  assert.match(deskSource, /id="mdDepthReplay"/, 'captured depth snapshots must be replayable');
+  assert.match(deskSource, /id="mdDepthExport"/, 'captured depth snapshots must be exportable');
+  assert.match(marketSource, /loadOlderKlines/, 'market feed must page earlier exchange klines');
+  assert.match(marketSource, /getFootprintMinutes/, 'market feed must retain per-minute footprint history');
+  assert.match(marketSource, /getDepthSnapshot/, 'market feed must expose captured depth replay snapshots');
   assert.match(deskSource, /bidChanges/, 'order book must show per-price bid changes');
   assert.match(deskSource, /askChanges/, 'order book must show per-price ask changes');
   assert.match(deskSource, /tone = 'stale'/, 'desk must expose a stale-feed state');
@@ -1018,4 +1026,32 @@ test('lead-lag engine resolves pending work and rejects new work after dispose',
   engine.dispose();
   assert.deepEqual(await pending, computeLeadLag(bars, options));
   await assert.rejects(engine.compute(options), /data has not been loaded/);
+});
+
+
+test('imported daily bars preserve verified instrument identity for downstream unit guards', async () => {
+  const { parseCsvByDay } = await import('../src/ingestion/csv-parser.js');
+  const header = 'product_symbol,price,size,timestamp,buyer_role';
+  const coinM = parseCsvByDay([header, 'BTCUSD_PERP,60000,2,2026-08-01 00:00:00,taker'].join('\n'), {
+    acceptedSymbols: ['BTCUSD', 'BTCUSDT', 'BTCUSD_PERP']
+  }).get('2026-08-01');
+  assert.deepEqual(coinM.instrument, { symbol: 'BTCUSD_PERP', verified: true });
+  const usdM = parseCsvByDay([header, 'BTCUSDT,60000,2,2026-08-01 00:00:00,taker'].join('\n'), {
+    acceptedSymbols: ['BTCUSD', 'BTCUSDT', 'BTCUSD_PERP']
+  }).get('2026-08-01');
+  assert.deepEqual(usdM.instrument, { symbol: 'BTCUSDT', verified: true });
+  const legacy = parseCsvByDay('price,size,timestamp,buyer_role\n60000,2,2026-08-01 00:00:00,taker').get('2026-08-01');
+  assert.deepEqual(legacy.instrument, { symbol: 'BTCUSD', verified: false });
+  assert.throws(() => parseCsvByDay([
+    header,
+    'BTCUSD,60000,1,2026-08-01 00:00:00,taker',
+    'BTCUSDT,60001,1,2026-08-01 00:00:01,taker'
+  ].join('\n'), { acceptedSymbols: ['BTCUSD', 'BTCUSDT', 'BTCUSD_PERP'] }), /Mixed or different symbols/);
+});
+
+test('live COIN-M desk refuses imported 10-second bars without explicit compatible symbol metadata', () => {
+  assert.match(deskSource, /local\.incompatibleReason/);
+  assert.match(html, /day\.instrument&&day\.instrument\.verified/);
+  assert.match(html, /!\['BTCUSD','BTCUSD_PERP'\]\.includes/);
+  assert.match(html, /BTCUSDT, mixed symbols, and legacy workspaces/);
 });

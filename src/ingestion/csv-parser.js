@@ -188,9 +188,11 @@ function inferHeaderlessLayout(cells,acceptedSymbols){
 }
 function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_LABELS,expectedSymbol='BTCUSD',acceptedSymbols}={}){
  const symbols=normalizeSymbolList(acceptedSymbols||expectedSymbol);
- const result=new Map();let lineNo=0,header=null,idx=null,layoutReady=false,headerless=false,fastLayout=false,currentDate=null,rows=new PackedTradeRows(),rowCount=0,ordered=true,lastSec=-Infinity;
- const flush=()=>{if(currentDate!==null&&rows.length){result.set(currentDate,aggregateDay(currentDate,rows,ordered,barSteps,histLabels));rows=new PackedTradeRows();ordered=true;lastSec=-Infinity;}};
- const commit=(date,sec,price,size,role)=>{
+ const result=new Map();let lineNo=0,header=null,idx=null,layoutReady=false,headerless=false,fastLayout=false,currentDate=null,rows=new PackedTradeRows(),rowCount=0,ordered=true,lastSec=-Infinity,fileSymbol=null,fileSymbolVerified=false;
+ const flush=()=>{if(currentDate!==null&&rows.length){const day=aggregateDay(currentDate,rows,ordered,barSteps,histLabels);day.instrument={symbol:fileSymbol,verified:fileSymbolVerified};result.set(currentDate,day);rows=new PackedTradeRows();ordered=true;lastSec=-Infinity;}};
+ const commit=(date,sec,price,size,role,symbol,verified)=>{
+  if(fileSymbol===null){fileSymbol=symbol;fileSymbolVerified=verified;}
+  else if(fileSymbol!==symbol||fileSymbolVerified!==verified)throw new Error('Mixed or different symbols are not combined in one CSV file.');
   if(currentDate===null)currentDate=date;
   if(date!==currentDate){flush();if(result.has(date))throw new Error('Trades for '+date+' are not contiguous after timestamp normalization. Import CSV files with trades sorted chronologically.');currentDate=date;}
   if(sec<lastSec)ordered=false;lastSec=sec;rows.push(sec,price,size,role);rowCount++;
@@ -199,6 +201,7 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   const symbol=String(value===null||value===undefined?'':value).trim().toUpperCase();
   if(!symbol)throw new Error('Missing product symbol at CSV row '+rowNo+'. Explicit symbol columns must contain a supported BTC symbol.');
   if(!symbols.includes(symbol))throw new Error('This dashboard is for '+symbols.join(', ')+', but CSV row '+rowNo+' has product_symbol="'+symbol+'". Mixed or different symbols are not combined.');
+  return symbol;
  };
  // Keep the common uppercase symbol check allocation-free; normalize unusual casing
  // or whitespace only when the token does not match the configured symbol in place.
@@ -209,9 +212,9 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   if(start===stop){validateSymbol('',rowNo);return;}
   for(let i=0;i<symbols.length;i++){
    const symbol=symbols[i];
-   if(stop-start===symbol.length&&line.startsWith(symbol,start))return;
+   if(stop-start===symbol.length&&line.startsWith(symbol,start))return symbol;
   }
-  validateSymbol(line.slice(start,stop),rowNo);
+  return validateSymbol(line.slice(start,stop),rowNo);
  };
  const setHeader=cells=>{
   header=cells.map(normalizeCell);
@@ -230,8 +233,8 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   if(!Number.isFinite(price)||price<=0)throw new Error('Invalid price at CSV row '+lineNo+'. Prices must be positive numbers.');
   if(!Number.isFinite(size)||size<=0)throw new Error('Invalid size at CSV row '+lineNo+'. Sizes must be positive numbers.');
   if(role<0)throw new Error('Unknown buyer_role "'+String(a[idx.role]||'').trim().toLowerCase()+'" at CSV row '+lineNo+'. Expected maker or taker; the file was not imported to avoid silently misclassifying flow.');
-  if(idx.product>=0)validateSymbol(a[idx.product],lineNo);
-  commit(parsedDate,parsedSec,price,size,role);
+  const symbol=idx.product>=0?validateSymbol(a[idx.product],lineNo):String(expectedSymbol||symbols[0]).trim().toUpperCase();
+  commit(parsedDate,parsedSec,price,size,role,symbol,idx.product>=0);
  };
  const pushFastLine=line=>{
   const p1=line.indexOf(',');if(p1<0)return false;
@@ -247,8 +250,8 @@ function createCsvDayParser({barSteps=DEFAULT_BAR_STEPS,histLabels=DEFAULT_HIST_
   if(!Number.isFinite(size)||size<=0)throw new Error('Invalid size at CSV row '+lineNo+'. Sizes must be positive numbers.');
   const role=roleFromLine(line,p4+1);
   if(role<0){const roleText=String(line.slice(p4+1)||'').trim().toLowerCase();throw new Error('Unknown buyer_role "'+roleText+'" at CSV row '+lineNo+'. Expected maker or taker; the file was not imported to avoid silently misclassifying flow.');}
-  if(idx.product>=0)validateSymbolAt(line,p1,lineNo);
-  commit(parsedDate,parsedSec,price,size,role);
+  const symbol=idx.product>=0?validateSymbolAt(line,p1,lineNo):String(expectedSymbol||symbols[0]).trim().toUpperCase();
+  commit(parsedDate,parsedSec,price,size,role,symbol,idx.product>=0);
   return true;
  };
  const pushLine=rawLine=>{

@@ -307,3 +307,87 @@ test('changing to a seconds interval builds live candles without a kline request
   assert.equal(events.trades.at(-1).state.candle.sellTaker, 4);
   feed.disconnect();
 });
+
+
+test('session footprint history retains prior UTC minutes and exposes selectable summaries', async () => {
+  FakeSocket.reset();
+  const { feed, events } = createFeed();
+  await feed.connect('1m');
+  const socket = FakeSocket.all[0];
+  socket.open();
+  await flush();
+  const firstTime = 1700000001000;
+  const secondTime = firstTime + 60000;
+  socket.message({ e: 'aggTrade', a: 1, p: '100', q: '2', T: firstTime, m: false });
+  socket.message({ e: 'aggTrade', a: 2, p: '101', q: '3', T: secondTime, m: true });
+
+  const firstMinute = Math.floor(firstTime / 60000) * 60000;
+  const secondMinute = Math.floor(secondTime / 60000) * 60000;
+  assert.deepEqual(feed.getFootprintMinutes(), [firstMinute, secondMinute]);
+  assert.deepEqual(events.trades.at(-1).state.footprintMinutes, [firstMinute, secondMinute]);
+  const older = feed.getFootprint(firstMinute);
+  assert.equal(older.totalQty, 2);
+  assert.equal(older.totalBuy, 2);
+  assert.equal(older.totalSell, 0);
+  assert.equal(older.levels[0].price, 100);
+  assert.equal(feed.getLatestFootprint().minute, secondMinute);
+  feed.disconnect();
+});
+
+test('session footprint history is bounded by retained UTC minutes', async () => {
+  FakeSocket.reset();
+  const { feed } = createFeed({ options: { maxFootprintMinutes: 1 } });
+  await feed.connect('1m');
+  const socket = FakeSocket.all[0];
+  socket.message({ e: 'aggTrade', a: 1, p: '100', q: '2', T: 1700000001000, m: false });
+  socket.message({ e: 'aggTrade', a: 2, p: '101', q: '3', T: 1700000061000, m: true });
+  assert.deepEqual(feed.getFootprintMinutes(), [Math.floor(1700000061000 / 60000) * 60000]);
+  assert.equal(feed.getDepthHistoryInfo().count, 0);
+  feed.disconnect();
+});
+
+test('older exchange candles page strictly before the oldest retained candle', async () => {
+  FakeSocket.reset();
+  const fetchImpl = createFetch({
+    klines: {
+      '1m': url => {
+        const endTime = new URL(url).searchParams.get('endTime');
+        return response(endTime
+          ? [kline(1699999940000, 90), kline(1699999880000, 89)]
+          : [kline(1700000000000, 100)]);
+      }
+    }
+  });
+  const { feed } = createFeed({ fetchImpl });
+  await feed.connect('1m');
+  const older = await feed.loadOlderKlines('1m', 1700000000000, 1000);
+  assert.deepEqual(older.map(candle => candle.t), [1699999940000, 1699999880000]);
+  const request = fetchImpl.calls.klines.at(-1);
+  assert.equal(new URL(request).searchParams.get('endTime'), '1699999999999');
+  assert.equal(new URL(request).searchParams.get('limit'), '1000');
+  await assert.rejects(feed.loadOlderKlines('10s', 1700000000000), /only available for Binance kline intervals/i);
+  feed.disconnect();
+});
+
+test('depth recording is opt-in, bounded, replayable and stops capturing when disabled', async () => {
+  FakeSocket.reset();
+  const { feed } = createFeed({ options: { maxDepthSamples: 2 } });
+  await feed.connect('1m');
+  const socket = FakeSocket.all[0];
+  await syncBook(feed, socket, 1000);
+  assert.equal(feed.getDepthHistoryInfo().count, 0, 'depth must not be recorded by default');
+  assert.equal(feed.setDepthRecording(true), true);
+  assert.equal(feed.getDepthHistoryInfo().count, 1, 'starting capture records the current synchronized book');
+  socket.message({ e: 'depthUpdate', U: 1001, u: 1002, pu: 1000, b: [['100', '3']], a: [] });
+  socket.message({ e: 'depthUpdate', U: 1003, u: 1003, pu: 1002, b: [['100', '2']], a: [] });
+  assert.equal(feed.getDepthHistoryInfo().count, 2, 'history is capped at the configured sample count');
+  const newest = feed.getDepthSnapshot(1);
+  assert.equal(newest.bids[0].qty, 2);
+  newest.bids[0].qty = 999;
+  assert.equal(feed.getDepthSnapshot(1).bids[0].qty, 2, 'replay snapshots are defensive copies');
+  feed.setDepthRecording(false);
+  socket.message({ e: 'depthUpdate', U: 1004, u: 1004, pu: 1003, b: [['100', '1']], a: [] });
+  assert.equal(feed.getDepthHistoryInfo().count, 2, 'stopped capture must not retain further updates');
+  assert.equal(feed.getDepthHistoryInfo().recording, false);
+  feed.disconnect();
+});
