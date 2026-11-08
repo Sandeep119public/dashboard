@@ -726,8 +726,9 @@ export function createCoinMMarketFeed(options = {}) {
     while (depthHistory.length > maxDepthSamples) depthHistory.shift();
   }
 
-  function getDepthHistory() {
-    return depthHistory.map(copyDepthSample);
+  function getDepthHistory(limit = null) {
+    const count = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Math.floor(Number(limit)) : depthHistory.length;
+    return depthHistory.slice(-count).map(copyDepthSample);
   }
 
   function getDepthHistoryInfo() {
