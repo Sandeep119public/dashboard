@@ -1522,7 +1522,7 @@ if(window.visualViewport)window.visualViewport.addEventListener('resize',schedul
 
 marketDesk=mountCoinMMarketDesk({root:$('marketDeskRoot'),Plotly:window.Plotly,getImportedBars:tf=>{
  if(tf!=='10s'||!chartDataReady())return [];
- const x=ensureBars('10s');return x.t.map((t,i)=>({t:BASE+Number(t)*1000,o:x.o[i],h:x.h[i],l:x.l[i],c:x.c[i],v:x.v[i],trades:x.n[i],buyTaker:x.b[i],sellTaker:x.s[i],makerSell:x.b[i],makerBuy:x.s[i],delta:x.d[i]}));
+ const x=ensureBars('10s'),start=Math.max(0,x.t.length-5000),out=[];for(let i=start;i<x.t.length;i++)out.push({t:BASE+Number(x.t[i])*1000,o:x.o[i],h:x.h[i],l:x.l[i],c:x.c[i],v:x.v[i],trades:x.n[i],buyTaker:x.b[i],sellTaker:x.s[i],makerSell:x.b[i],makerBuy:x.s[i],delta:x.d[i]});return out;
 }});
 initWorkstation();updateDateBounds(true);rebuildCombined();initInteractiveStudio();initGuidedExperience();setQuickRange('all');refresh();
 })();
