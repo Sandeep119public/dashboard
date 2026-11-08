@@ -367,7 +367,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   function renderDepthHeatmap() {
     const host = $('mdDepthHeatmap');
     if (!host || !Plotly || typeof Plotly.react !== 'function') return;
-    const samples = feed.getDepthHistory().slice(-240);
+    const samples = feed.getDepthHistory(240);
     if (!samples.length) {
       setText('mdHeatmapMeta', 'No captured depth history yet');
       if (Plotly.purge) Plotly.purge(host);
@@ -447,7 +447,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     } else {
       setText('mdDepthReplayMeta', info.recording
         ? 'Recording · ' + integer(info.count) + '/' + integer(info.limit) + ' samples'
-        : info.count ? integer(info.count) + ' captured · session memory' : 'Not recording · session only');
+        : info.count ? integer(info.count) + ' captured · local archive' : 'Not recording · no saved samples');
     }
   }
   function queueTape(items) {
@@ -605,7 +605,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       updateStats(state.stats);
       queueTape(state.recentTrades);
       if (state.footprintMinutes) updateFootprintSelector(state.footprintMinutes);
-      if (selectedFootprintMinute === 'live') queueFootprint(feed.getFootprintWindow(state.footprint.minute, selectedFootprintInterval));
+      if (selectedFootprintMinute === 'live' && selectedReplayTime === null) queueFootprint(feed.getFootprintWindow(state.footprint.minute, selectedFootprintInterval));
       if (SECOND_INTERVALS.includes(interval) && state.candle) {
         lastCandlesInterval = interval;
         candles = mergeCandles(candles, [state.candle]);
@@ -755,7 +755,8 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       const history = feed.getDepthHistory();
       let nearest = -1, distance = Infinity;
       history.forEach((sample, index) => { const d = Math.abs(sample.time - selectedReplayTime); if (d < distance) { distance = d; nearest = index; } });
-      if (nearest >= 0) { $('mdDepthReplay').value = String(nearest); replayingDepth = true; const sample = feed.getDepthSnapshot(nearest); if (sample) renderBook({ ...sample, ready: true, recorded: true }); }
+      if (nearest >= 0 && distance <= 60000) { $('mdDepthReplay').value = String(nearest); replayingDepth = true; const sample = feed.getDepthSnapshot(nearest); if (sample) renderBook({ ...sample, ready: true, recorded: true }); }
+      updateDepthCaptureControls();
       scheduleDraw(); renderDepthHeatmap();
     } else { selectedReplayTime = null; scheduleDraw(); renderDepthHeatmap(); }
     if (selectedFootprintMinute === 'live') {
@@ -786,6 +787,11 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       selectedFootprintMinute = String(footprintMinute);
       $('mdFootprintMinute').value = selectedFootprintMinute;
       renderFootprint(feed.getFootprintWindow(footprintMinute, selectedFootprintInterval), true);
+    } else {
+      selectedFootprintMinute = 'live';
+      $('mdFootprintMinute').value = 'live';
+      renderFootprint(null, true);
+      setText('mdFootprintMeta', 'NO FOOTPRINT DATA · UTC ' + utcMinute(footprintMinute));
     }
     scheduleDraw();
     renderDepthHeatmap();
