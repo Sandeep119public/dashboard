@@ -351,7 +351,7 @@ export function summarizeDepthLiquidityMigration(samples, segment = undefined) {
   const comparable = samples.filter(sample => sample && sample.segment === targetSegment);
   if (comparable.length < 2) return null;
   const first = comparable[0];
-  const last = comparable[comparable.length - 1);
+  const last = comparable[comparable.length - 1];
   const summarizeSide = (beforeLevels, afterLevels) => {
     const before = new Map(beforeLevels.map(level => [Number(level.price), Number(level.qty)]));
     const after = new Map(afterLevels.map(level => [Number(level.price), Number(level.qty)]));
