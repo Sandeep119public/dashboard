@@ -605,7 +605,18 @@ export function createCoinMMarketFeed(options = {}) {
     }
     const levels = summary.levels.map(level => {
       const index = profile.findIndex(item => item.price === level.price);
-      return { ...level, isPoc: index === pocIndex, inValueArea: valueArea.has(index) };
+      const lower = index >= 0 && index < profile.length - 1 ? profile[index + 1] : null;
+      const upper = index > 0 ? profile[index - 1] : null;
+      const buyRatio = lower && lower.sellTaker > 0 ? level.buyTaker / lower.sellTaker : 0;
+      const sellRatio = upper && upper.buyTaker > 0 ? level.sellTaker / upper.buyTaker : 0;
+      const buyQualified = buyRatio >= 3 && level.buyTaker >= 1;
+      const sellQualified = sellRatio >= 3 && level.sellTaker >= 1;
+      const diagonalSide = buyQualified && (!sellQualified || buyRatio >= sellRatio) ? 'BUY'
+        : sellQualified ? 'SELL' : null;
+      return {
+        ...level, isPoc: index === pocIndex, inValueArea: valueArea.has(index),
+        diagonalSide, diagonalRatio: diagonalSide === 'BUY' ? buyRatio : diagonalSide === 'SELL' ? sellRatio : 0
+      };
     });
     const poc = pocIndex >= 0 ? profile[pocIndex] : null;
     const vaLevels = profile.filter((_, index) => valueArea.has(index));
