@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   normalizeAggTrade,parseCoinMKline,normalizeKlineEvent,aggregateTradesToCandles,
   isDepthSnapshotBridge,isDepthUpdateContinuous,applyDepthEvent,createMinuteFootprintState,updateMinuteFootprint,
-  mergeCandleSeries, COINM_CONTRACT_USD, MARKET_INTERVALS, createCoinMMarketFeed
+  mergeCandleSeries, COINM_CONTRACT_USD, MARKET_INTERVALS, createCoinMMarketFeed, summarizeDepthLiquidityMigration
 } from '../src/market/coinm-market-data.js';
 
 test('buyer maker flag maps aggressor and passive sides to mirrored quantities',()=>{
