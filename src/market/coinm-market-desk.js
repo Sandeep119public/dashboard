@@ -12,7 +12,7 @@ export function mountCoinMMarketDesk({root,Plotly=window.Plotly,getImportedBars=
         '<div class="md-title"><div class="md-kicker">BINANCE COIN-M · BTCUSD PERPETUAL</div><strong>Live candles + execution flow + order book</strong><small>Exchange OHLC · aggregate trades · synchronized public depth</small></div>',
         '<div class="md-controls"><label for="mdInterval">Candle timeframe<select id="mdInterval"></select></label><button class="btn primary" id="mdConnect" type="button">Connect live</button></div>',
       '</div>',
-      '<div class="md-statusline"><span id="mdState" class="md-state">DISCONNECTED</span><span id="mdDetail">Connect to load the latest 500 exchange candles and live market data.</span><span id="mdSource">No candle source</span></div>',
+      '<div class="md-statusline"><span id="mdState" class="md-state">DISCONNECTED</span><span id="mdDetail">Connect to load the latest 1,000 exchange candles and live market data.</span><span id="mdSource">No candle source</span></div>',
       '<div class="md-metrics">',
         '<div><span>Last trade</span><strong id="mdPrice">—</strong><small>COIN-M contract price</small></div>',
         '<div><span>BUY TAKER · SELL MAKER</span><strong id="mdBuyTaker">—</strong><small>Since live connection</small></div>',
