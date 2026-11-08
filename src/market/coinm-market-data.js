@@ -501,7 +501,7 @@ export function createCoinMMarketFeed(options = {}) {
       if (!doneChunk) { truncated = true; break; }
       cursorStart = cursorEnd + 1;
     }
-    if (cursorStart <= endTime || pages >= maxPages || tradesCount >= maxTrades) truncated = true;
+    if (cursorStart <= endTime || tradesCount >= maxTrades) truncated = true;
     while (footprintHistory.size > maxFootprintMinutes) {
       const oldest = Math.min(...footprintHistory.keys());
       footprintHistory.delete(oldest);
