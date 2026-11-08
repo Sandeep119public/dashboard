@@ -85,6 +85,14 @@ test('live market desk is fitted inside the chart stage and labels contract unit
   assert.match(html, /\.md-root\{--md-line:#263a55;--md-panel:#0d1726;display:flex;[^}]*overflow:hidden/, 'desktop panels must keep internal scrolling');
   assert.match(html, /@media\(max-width:820px\)\{[^}]*\.md-root\{overflow-y:auto/, 'narrow screens must stack inside a scrollable desk');
   assert.match(deskSource, /1 contract = \$' \+ COINM_CONTRACT_USD/, 'desk must state the COIN-M contract face value');
+  assert.match(deskSource, /id="mdLoadOlder"/, 'exchange candle panel must expose older-history paging');
+  assert.match(deskSource, /id="mdFootprintMinute"/, 'per-price footprint must support selecting prior captured minutes');
+  assert.match(deskSource, /id="mdRecordDepth"/, 'depth capture must be opt-in');
+  assert.match(deskSource, /id="mdDepthReplay"/, 'captured depth snapshots must be replayable');
+  assert.match(deskSource, /id="mdDepthExport"/, 'captured depth snapshots must be exportable');
+  assert.match(marketSource, /loadOlderKlines/, 'market feed must page earlier exchange klines');
+  assert.match(marketSource, /getFootprintMinutes/, 'market feed must retain per-minute footprint history');
+  assert.match(marketSource, /getDepthSnapshot/, 'market feed must expose captured depth replay snapshots');
   assert.match(deskSource, /bidChanges/, 'order book must show per-price bid changes');
   assert.match(deskSource, /askChanges/, 'order book must show per-price ask changes');
   assert.match(deskSource, /tone = 'stale'/, 'desk must expose a stale-feed state');
