@@ -532,6 +532,53 @@ export function createCoinMMarketFeed(options = {}) {
     return state ? summarizeMinuteFootprint(state, visibleFootprintLevels) : null;
   }
 
+  function getFootprintWindow(endMinute, timeframeMinutes = 1) {
+    const end = Math.floor(Number(endMinute) / 60000) * 60000;
+    const width = Math.max(1, Math.min(15, Math.floor(Number(timeframeMinutes) || 1)));
+    if (!Number.isFinite(end) || end <= 0) return null;
+    const start = end - (width - 1) * 60000;
+    const combined = createMinuteFootprintState();
+    combined.minute = end;
+    combined.startTime = start;
+    combined.endTime = end + 60000;
+    combined.timeframeMinutes = width;
+    combined.source = 'Binance aggregate trades · ' + width + 'm';
+    for (const [minute, state] of footprintHistory) {
+      if (minute < start || minute > end) continue;
+      combined.latestPrice = state.latestPrice;
+      combined.totalQty += state.totalQty;
+      combined.totalFills += state.totalFills;
+      combined.totalBuy += state.totalBuy;
+      combined.totalSell += state.totalSell;
+      combined.maxQty = Math.max(combined.maxQty, state.maxQty);
+      if (String(state.source || '').includes('REST')) combined.source = 'Binance REST backfill · ' + width + 'm';
+      else if (combined.source.startsWith('Binance REST')) combined.source = 'Live session + Binance REST backfill · ' + width + 'm';
+      for (const level of state.levels.values()) {
+        const key = String(level.price);
+        let target = combined.levels.get(key);
+        if (!target) {
+          target = { price: level.price, buyTaker: 0, sellTaker: 0, makerBuy: 0, makerSell: 0, trades: 0, fills: 0 };
+          combined.levels.set(key, target);
+        }
+        target.buyTaker += level.buyTaker;
+        target.sellTaker += level.sellTaker;
+        target.makerBuy += level.makerBuy;
+        target.makerSell += level.makerSell;
+        target.trades += level.trades;
+        target.fills += level.fills;
+      }
+    }
+    if (!combined.levels.size) return null;
+    while (combined.levels.size > maxFootprintLevels) combined.levels.delete(combined.levels.keys().next().value);
+    return {
+      ...summarizeMinuteFootprint(combined, visibleFootprintLevels),
+      startTime: start,
+      endTime: end + 60000,
+      timeframeMinutes: width,
+      source: combined.source
+    };
+  }
+
   function getLatestFootprint() {
     return latestFootprintMinute === null ? null : getFootprint(latestFootprintMinute);
   }
@@ -1076,6 +1123,7 @@ export function createCoinMMarketFeed(options = {}) {
     backfillFootprintHistory,
     getSessionCandles,
     getFootprint,
+    getFootprintWindow,
     getFootprintMinutes,
     getLatestFootprint,
     setDepthRecording,
