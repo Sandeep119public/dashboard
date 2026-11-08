@@ -307,3 +307,54 @@ test('changing to a seconds interval builds live candles without a kline request
   assert.equal(events.trades.at(-1).state.candle.sellTaker, 4);
   feed.disconnect();
 });
+
+
+test('loads older kline pages and paginates a bounded historical range', async () => {
+  FakeSocket.reset();
+  const fetchImpl = createFetch({
+    klines: {
+      '1m': url => {
+        const params = new URL(url).searchParams;
+        const start = Number(params.get('startTime') || 0);
+        const end = Number(params.get('endTime') || Number.MAX_SAFE_INTEGER);
+        const rows = [kline(1700000000000, 100), kline(1700000060000, 101), kline(1700000120000, 102)]
+          .filter(row => row[0] >= start && row[0] <= end);
+        return response(rows);
+      }
+    }
+  });
+  const { feed } = createFeed({ fetchImpl });
+  const older = await feed.loadOlderKlines('1m', 1700000120000, 2);
+  assert.deepEqual(older.map(candle => candle.t), [1700000000000, 1700000060000]);
+  const range = await feed.loadKlinesRange('1m', {
+    startTime: 1700000000000, endTime: 1700000120000, pageSize: 2, maxPages: 4
+  });
+  assert.deepEqual(range.candles.map(candle => candle.t), [1700000000000, 1700000060000, 1700000120000]);
+  assert.equal(range.pages, 2);
+  assert.equal(range.exhausted, true);
+});
+
+test('loads historical aggTrades in pages and aggregates a selected interval footprint', async () => {
+  FakeSocket.reset();
+  const calls = [];
+  const fetchImpl = async url => {
+    if (url.includes('/dapi/v1/aggTrades')) {
+      calls.push(url);
+      const params = new URL(url).searchParams;
+      if (params.has('startTime')) return response([
+        { a: 1, p: '100', q: '2', T: 1000, m: false, f: 1, l: 1 },
+        { a: 2, p: '100', q: '3', T: 61000, m: true, f: 2, l: 2 }
+      ]);
+      return response([{ a: 3, p: '101', q: '4', T: 121000, m: false, f: 3, l: 3 }]);
+    }
+    return createFetch()(url);
+  };
+  const { feed } = createFeed({ fetchImpl });
+  const footprint = await feed.loadHistoricalFootprint(0, 180000, { limit: 2, maxPages: 4 });
+  assert.equal(footprint.historical, true);
+  assert.equal(footprint.tradesCount, 3);
+  assert.equal(footprint.pages, 2);
+  assert.deepEqual([footprint.totalBuy, footprint.totalSell], [6, 3]);
+  assert.equal(calls.length, 2);
+  assert.match(calls[1], /fromId=3/);
+});
