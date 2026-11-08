@@ -24,6 +24,20 @@ The header actions, chart picker and drawer controls use touch-sized targets on 
 
 Chromium emulation was checked at 360×800, 390×844, 412×915, 768×1024, 1280×720, 1920×1080, and landscape 800×360, 844×390 and 915×412. Every viewport had `scrollWidth === innerWidth`, no clipped header actions, a visible Plotly canvas, and the replay footer inside the viewport. A physical Samsung Galaxy A35 run is still outstanding, so on-device performance and touch feel are not certified.
 
+## Live Market workspace (new)
+
+The **Live market** chart tab adds a separate public Binance COIN-M BTCUSD perpetual workspace. It does not replace or alter the imported-archive research panels.
+
+- **Historical and live exchange candles:** native COIN-M klines for 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w and 1M. The desk loads the latest 500 candles on connect and follows the selected live kline stream.
+- **Seconds candles:** 1s, 5s, 10s, 15s and 30s are trade-built from aggregate executions observed after connection. Binance's COIN-M kline endpoint starts at one minute; seconds history is not fabricated. Imported 10-second archive bars can be displayed when a compatible local archive has been loaded.
+- **Executed trades:** the public aggregate-trade stream identifies whether the buyer was maker. buyer is maker = false means BUY TAKER / SELL MAKER; buyer is maker = true means SELL TAKER / BUY MAKER. One execution quantity is mirrored to the two sides, not added twice. Live stats and the tape reset when the live connection starts.
+- **Volume bars:** the market desk shows buy-taker quantity above zero and sell-taker quantity below zero. COIN-M contract quantity is retained as reported by Binance; it is not relabelled as BTC or USD notional.
+- **Resting liquidity:** a REST depth snapshot is joined to buffered WebSocket depth diffs using the update sequence. The book is shown as synced only after the first event bridges the snapshot; subsequent pu discontinuities trigger a fresh snapshot. Best bid/ask, spread and the top 14 levels on each side are displayed.
+- **Depth caveats:** the public book is aggregated by price level, not individual maker order ID. A reduction in displayed quantity can be an execution or cancellation; the public depth diff alone does not label which. This live feed does not provide historical order-book replay or queue position.
+- **Source and privacy:** this feature connects the browser directly to Binance's public COIN-M REST and market WebSocket endpoints. It does not require an API key or upload your imported archive. Internet access is required while connected. Disconnect pauses live updates but leaves the latest candles visible.
+
+The live desk is intentionally a separate chart tab. The original CSV/ZIP importer, offline archive analysis, existing price/flow/CVD/profile/research charts, linked replay and workspace export/restore remain available. The service worker caches the two new market modules for the app shell; public market data itself is never cached as a substitute for a live connection.
+
 ## Import data
 
 Use **Import** (header or the empty state) to import data. The importer supports Binance-style BTCUSD, BTCUSDT and BTCUSD_PERP CSV files, including a monthly ZIP containing one chronologically sorted CSV across multiple dates, and multiple CSV/ZIP files in one selection.
