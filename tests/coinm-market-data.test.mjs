@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normalizeAggTrade,parseCoinMKline,normalizeKlineEvent,aggregateTradesToCandles,
-  isDepthSnapshotBridge,isDepthUpdateContinuous,applyDepthEvent
+  isDepthSnapshotBridge,isDepthUpdateContinuous,applyDepthEvent,createMinuteFootprintState,updateMinuteFootprint
 } from '../src/market/coinm-market-data.js';
 
 test('buyer maker flag maps aggressor and passive sides to mirrored quantities',()=>{
@@ -33,6 +33,24 @@ test('trade-built candles are ordered and preserve OHLC and maker/taker quantiti
   assert.deepEqual([bars[0].t,bars[0].o,bars[0].h,bars[0].l,bars[0].c,bars[0].v,bars[0].buyTaker,bars[0].sellTaker,bars[0].makerSell,bars[0].makerBuy,bars[0].delta],[0,100,101,100,101,4,4,0,4,0,4]);
   assert.deepEqual([bars[1].t,bars[1].o,bars[1].h,bars[1].l,bars[1].c,bars[1].v,bars[1].buyTaker,bars[1].sellTaker,bars[1].makerSell,bars[1].makerBuy,bars[1].delta],[10000,102,102,102,102,2,0,2,0,2,-2]);
   assert.deepEqual([bars[2].t,bars[2].o,bars[2].h,bars[2].l,bars[2].c,bars[2].v,bars[2].buyTaker,bars[2].sellTaker],[20000,99,99,99,99,4,4,0]);
+});
+
+test('live minute footprint aggregates executed quantity by price and resets on minute boundary',()=>{
+  const state=createMinuteFootprintState();
+  const buy=normalizeAggTrade({a:1,p:'67000',q:'2',T:1000,m:false});
+  const sell=normalizeAggTrade({a:2,p:'67000',q:'3',T:2000,m:true});
+  const nextPrice=normalizeAggTrade({a:3,p:'66999',q:'4',T:3000,m:true});
+  let result=updateMinuteFootprint(state,buy);
+  result=updateMinuteFootprint(state,sell);
+  result=updateMinuteFootprint(state,nextPrice);
+  assert.equal(result.levelsTotal,2);
+  const level=result.levels.find(x=>x.price===67000);
+  assert.deepEqual([level.buyTaker,level.sellTaker,level.makerSell,level.makerBuy,level.trades,level.delta],[2,3,2,3,2,-1]);
+  result=updateMinuteFootprint(state,normalizeAggTrade({a:4,p:'67001',q:'5',T:60000,m:false}));
+  assert.equal(result.minute,60000);
+  assert.equal(result.levelsTotal,1);
+  assert.equal(result.levels[0].price,67001);
+  assert.equal(result.levels[0].buyTaker,5);
 });
 
 test('depth synchronization requires a snapshot-bridging event and continuous pu sequence',()=>{
