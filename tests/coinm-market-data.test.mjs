@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   normalizeAggTrade,parseCoinMKline,normalizeKlineEvent,aggregateTradesToCandles,
   isDepthSnapshotBridge,isDepthUpdateContinuous,applyDepthEvent,createMinuteFootprintState,updateMinuteFootprint,
-  mergeCandleSeries, COINM_CONTRACT_USD, MARKET_INTERVALS, createCoinMMarketFeed
+  mergeCandleSeries, COINM_CONTRACT_USD, MARKET_INTERVALS, createCoinMMarketFeed, createMinuteFootprintState, updateMinuteFootprint
 } from '../src/market/coinm-market-data.js';
 
 test('buyer maker flag maps aggressor and passive sides to mirrored quantities',()=>{
@@ -84,6 +84,21 @@ test('depth replay imports validate, deduplicate and sort captured snapshots',()
   assert.equal(feed.getDepthSnapshot(1).lastUpdateId,2);
   assert.throws(()=>feed.restoreDepthHistory([sample(3000,3).bids]),/timestamp, sequence ID or book side/i);
   assert.throws(()=>feed.restoreDepthHistory([{...sample(3000,3),bids:[{price:100,qty:0}]}]),/invalid price level/i);
+});
+
+test('footprint windows aggregate executed price levels across 1m, 5m and 15m', async()=>{
+  const feed=createCoinMMarketFeed({fetchImpl:async()=>({ok:true,json:async()=>[]}),WebSocketImpl:null,now:()=>900000});
+  const add=(time,price,qty,buyerIsMaker)=>feed.addTrade({a:time,p:String(price),q:String(qty),T:time,m:buyerIsMaker});
+  add(60000,100,2,false);
+  add(120000,100,3,true);
+  add(360000,101,4,false);
+  const five=feed.getFootprintWindow(360000,5);
+  assert.equal(five.timeframeMinutes,5);
+  assert.equal(five.totalQty,7);
+  assert.equal(five.levels.find(level=>level.price===100).buyTaker,2);
+  assert.equal(five.levels.find(level=>level.price===100).sellTaker,3);
+  assert.equal(feed.getFootprintWindow(360000,15).totalQty,9);
+  assert.equal(feed.getFootprintWindow(360000,1).totalQty,4);
 });
 
 test('invalid trade and malformed kline records are rejected',()=>{
