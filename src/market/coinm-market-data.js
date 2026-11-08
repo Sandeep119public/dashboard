@@ -362,6 +362,7 @@ export function createCoinMMarketFeed(options = {}) {
   const depthLimit = Number.isFinite(Number(options.depthLimit)) ? Number(options.depthLimit) : 1000;
   const maxFootprintMinutes = Number.isFinite(Number(options.maxFootprintMinutes)) ? Math.max(1, Math.floor(Number(options.maxFootprintMinutes))) : 240;
   const maxDepthSamples = Number.isFinite(Number(options.maxDepthSamples)) ? Math.max(1, Math.floor(Number(options.maxDepthSamples))) : 1800;
+  const depthSampleIntervalMs = Number.isFinite(Number(options.depthSampleIntervalMs)) ? Math.max(0, Number(options.depthSampleIntervalMs)) : 100;
   const onStatus = options.onStatus || (() => {});
   const onCandles = options.onCandles || (() => {});
   const onKline = options.onKline || (() => {});
@@ -396,6 +397,7 @@ export function createCoinMMarketFeed(options = {}) {
   let depthRecording = false;
   const depthHistory = [];
   let depthSegment = 0;
+  let lastDepthSampleAt = null;
   const secondBars = new Map(SECOND_INTERVALS.map(tf => [tf, new Map()]));
   const liveKlines = new Map();
 
@@ -657,6 +659,7 @@ export function createCoinMMarketFeed(options = {}) {
     depthRecording = false;
     depthHistory.length = 0;
     depthSegment = 0;
+    lastDepthSampleAt = null;
     for (const map of secondBars.values()) map.clear();
     for (const map of liveKlines.values()) map.clear();
   }
@@ -772,7 +775,10 @@ export function createCoinMMarketFeed(options = {}) {
 
   function recordDepthSnapshot(changes = {}) {
     if (!depthRecording || !bookReady) return;
-    const view = bookView(book, true, changes, lastBookAt, lastUpdateId);
+    const sampleTime = Number(lastBookAt) || now();
+    if (lastDepthSampleAt !== null && sampleTime - lastDepthSampleAt < depthSampleIntervalMs) return;
+    lastDepthSampleAt = sampleTime;
+    const view = bookView(book, true, changes, sampleTime, lastUpdateId);
     depthHistory.push({
       time: Number(lastBookAt) || now(),
       updatedAt: view.updatedAt,
