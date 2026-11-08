@@ -798,6 +798,22 @@ export function createCoinMMarketFeed(options = {}) {
     return depthHistory.slice(-count).map(copyDepthSample);
   }
 
+  function getDepthHistoryAround(time, limit = 1000) {
+    const target = Number(time);
+    const count = Math.max(1, Math.min(depthHistory.length, Math.floor(Number(limit) || 1000)));
+    if (!depthHistory.length || !Number.isFinite(target)) return [];
+    let low = 0, high = depthHistory.length;
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (depthHistory[mid].time < target) low = mid + 1;
+      else high = mid;
+    }
+    let center = Math.min(depthHistory.length - 1, low);
+    if (center > 0 && Math.abs(depthHistory[center - 1].time - target) <= Math.abs(depthHistory[center].time - target)) center--;
+    const start = Math.max(0, Math.min(depthHistory.length - count, center - Math.floor(count / 2)));
+    return depthHistory.slice(start, start + count).map(copyDepthSample);
+  }
+
   function getDepthHistoryInfo() {
     return {
       count: depthHistory.length,
