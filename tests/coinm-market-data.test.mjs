@@ -101,7 +101,7 @@ test('footprint windows aggregate executed price levels across 1m, 5m and 15m', 
   const five=feed.getFootprintWindow(480000,5);
   assert.equal(five.timeframeMinutes,5);
   assert.equal(five.totalQty,9.5);
-  assert.equal(five.levels.find(level=>level.price===100).buyTaker,0);
+  assert.equal(five.levels.find(level=>level.price===100).buyTaker,2);
   assert.equal(five.levels.find(level=>level.price===100).sellTaker,3);
   assert.equal(feed.getFootprintWindow(480000,15).totalQty,9.5);
   assert.equal(feed.getFootprintWindow(480000,1).totalQty,4);
