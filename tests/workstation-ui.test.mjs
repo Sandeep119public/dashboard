@@ -27,3 +27,13 @@ test('mobile workstation layout keeps the chart stage flexible and controls touc
 test('service worker cache version advances with the visual shell update', () => {
   assert.match(sw, /btc-mechanics-shell-v34/);
 });
+
+
+test('declutter pass removes repeated header and empty-state actions while preserving the primary import and settings controls', () => {
+  assert.match(html, /id="workstation-declutter-pass"/);
+  assert.match(html, /\.brand \.eyebrow,[\\s\\S]*?\.empty-hint\{display:none!important\}/);
+  assert.match(html, /id="headerImport" type="button">Import<\\/button>/);
+  assert.match(html, /id="headerFilters" type="button"[^>]*>Settings<\\/button>/);
+  assert.match(html, /id="emptyImport"/);
+  assert.match(html, /id="filterDrawer"/);
+});
