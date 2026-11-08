@@ -542,7 +542,10 @@ export function createCoinMMarketFeed(options = {}) {
     }
     const footprint = updateMinuteFootprint(footprintState, trade, maxFootprintLevels, visibleFootprintLevels);
     latestFootprintMinute = minute;
-    while (footprintHistory.size > maxFootprintMinutes) footprintHistory.delete(footprintHistory.keys().next().value);
+    while (footprintHistory.size > maxFootprintMinutes) {
+      const oldestMinute = Math.min(...footprintHistory.keys());
+      footprintHistory.delete(oldestMinute);
+    }
     onTrade(trade, {
       recentTrades: recentTrades.slice(),
       stats: { ...stats, since: statsSince },
