@@ -1,4 +1,5 @@
-import { MARKET_INTERVALS, SECOND_INTERVALS, COINM_CONTRACT_USD, createCoinMMarketFeed } from './coinm-market-data.js';
+import { MARKET_INTERVALS, SECOND_INTERVALS, COINM_CONTRACT_USD, createCoinMMarketFeed, summarizeDepthLiquidityMigration } from './coinm-market-data.js';
+import { createDepthArchiveStore } from './coinm-depth-archive.js';
 
 const integer = value => Math.round(Number(value) || 0).toLocaleString('en-US');
 const number = (value, digits = 2) => Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
@@ -40,14 +41,15 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
           '<section class="md-panel md-flow-panel"><div class="md-panel-head"><div><strong>Executed volume by aggressor</strong><small>Green = BUY TAKER / SELL MAKER · Red = SELL TAKER / BUY MAKER</small></div><span class="md-unit">contracts</span></div><div class="md-flow-wrap"><div id="mdFlow" class="md-flow" aria-label="Executed volume by aggressor"></div></div></section>',
         '</div>',
         '<div class="md-col md-flow-column">',
-          '<section class="md-panel md-panel-grow md-footprint-panel"><div class="md-panel-head"><div><strong>Per-price footprint</strong><small id="mdFootprintMeta">Session history · waiting for executions</small></div><div style="display:flex;align-items:center;gap:6px"><button class="btn" id="mdBackfillFootprint" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Backfill 60m</button><select id="mdFootprintMinute" aria-label="Select recorded footprint minute" style="max-width:145px;min-width:0;font-size:10px"><option value="live">Follow live minute</option></select><span class="md-unit">contracts</span></div></div><div class="md-footprint-legend"><span>BUY TAKER / SELL MAKER</span><span>SELL TAKER / BUY MAKER</span><span>Delta = buy − sell</span></div><div class="md-table-wrap"><table class="md-footprint"><thead><tr><th>Price</th><th>Buy taker<br><small>Sell maker</small></th><th>Sell taker<br><small>Buy maker</small></th><th>Delta</th><th>Prints</th></tr></thead><tbody id="mdFootprintRows"><tr><td colspan="5" class="md-muted">Connect live to collect current-minute executions by price.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdFootprintFoot">Backfill up to four hours of Binance aggregate trades (48-hour API lookback) or inspect the live session. Binance REST trade history is limited to market aggregate trades.</div></section>',
+          '<section class="md-panel md-panel-grow md-footprint-panel"><div class="md-panel-head"><div><strong>Per-price footprint</strong><small id="mdFootprintMeta">Session history · waiting for executions</small></div><div style="display:flex;align-items:center;gap:6px"><select id="mdFootprintTf" aria-label="Footprint aggregation timeframe" style="max-width:62px;min-width:55px;font-size:10px"><option value="1">1m</option><option value="5">5m</option><option value="15">15m</option></select><select id="mdFootprintRange" aria-label="Historical footprint backfill range" style="max-width:76px;min-width:60px;font-size:10px"><option value="60">60m</option><option value="240">4h</option></select><button class="btn" id="mdBackfillFootprint" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Backfill 60m</button><select id="mdFootprintMinute" aria-label="Select recorded footprint minute" style="max-width:145px;min-width:0;font-size:10px"><option value="live">Follow live minute</option></select><span class="md-unit">contracts</span></div></div><div class="md-footprint-legend"><span>BUY TAKER / SELL MAKER</span><span>SELL TAKER / BUY MAKER</span><span>Delta = buy − sell</span></div><div class="md-table-wrap"><table class="md-footprint"><thead><tr><th>Price</th><th>Buy taker<br><small>Sell maker</small></th><th>Sell taker<br><small>Buy maker</small></th><th>Delta</th><th>Diagonal</th><th>Prints</th><th>Profile</th></tr></thead><tbody id="mdFootprintRows"><tr><td colspan="7" class="md-muted">Connect live to collect current-minute executions by price.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdFootprintFoot">Backfill 60 minutes or 4 hours of Binance aggregate trades (48-hour API lookback), or import/export recorded depth captures. Historical public order-book archives are not provided by this endpoint.</div></section>',
         '</div>',
         '<div class="md-col md-side-column">',
-          '<section class="md-panel md-panel-grow md-book-panel"><div class="md-panel-head"><div><strong>Order book</strong><small id="mdBookState">Not synchronized</small></div><span class="md-unit">contracts</span></div><div class="md-depth-controls" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 7px;border-bottom:1px solid #203047"><button class="btn" id="mdRecordDepth" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Record depth</button><input id="mdDepthReplay" type="range" min="0" max="0" value="0" step="1" disabled aria-label="Replay captured order-book samples" style="width:76px;min-width:48px;flex:1"><button class="btn" id="mdDepthLive" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Live</button><button class="btn" id="mdDepthExport" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Export</button><small id="mdDepthReplayMeta" style="font-size:9px;color:#91a3bb">Not recording · session only</small></div><div class="md-book-summary"><span>Bid <b id="mdBestBid">—</b></span><span>Spread <b id="mdBookSpread">—</b></span><span>Ask <b id="mdBestAsk">—</b></span></div><div class="md-table-wrap"><table class="md-book"><thead><tr><th>Bid qty</th><th>Bid price</th><th>Ask price</th><th>Ask qty</th></tr></thead><tbody id="mdBookRows"><tr><td colspan="4" class="md-muted">Connect to synchronize depth.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdBookFoot">Depth is aggregated by price level, not individual order IDs.</div></section>',
+          '<section class="md-panel md-panel-grow md-book-panel"><div class="md-panel-head"><div><strong>Order book</strong><small id="mdBookState">Not synchronized</small></div><span class="md-unit">contracts</span></div><div class="md-depth-controls" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 7px;border-bottom:1px solid #203047"><button class="btn" id="mdRecordDepth" type="button" style="min-height:25px;padding:2px 7px;font-size:10px">Record depth</button><input id="mdDepthReplay" type="range" min="0" max="0" value="0" step="1" disabled aria-label="Replay captured order-book samples" style="width:76px;min-width:48px;flex:1"><button class="btn" id="mdDepthLive" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Live</button><button class="btn" id="mdDepthExport" type="button" disabled style="min-height:25px;padding:2px 7px;font-size:10px">Export</button><label class="btn" for="mdDepthImport" style="min-height:25px;padding:2px 7px;font-size:10px;display:inline-flex;align-items:center;cursor:pointer">Import</label><input id="mdDepthImport" type="file" accept="application/json,.json" hidden><small id="mdDepthReplayMeta" style="font-size:9px;color:#91a3bb">Not recording · session only</small></div><div class="md-book-summary"><span>Bid <b id="mdBestBid">—</b></span><span>Spread <b id="mdBookSpread">—</b></span><span>Ask <b id="mdBestAsk">—</b></span></div><div class="md-table-wrap"><table class="md-book"><thead><tr><th>Bid qty</th><th>Bid price</th><th>Ask price</th><th>Ask qty</th></tr></thead><tbody id="mdBookRows"><tr><td colspan="4" class="md-muted">Connect to synchronize depth.</td></tr></tbody></table></div><div class="md-panel-foot" id="mdBookFoot">Depth is aggregated by price level, not individual order IDs.</div></section>',
+          '<section class="md-panel md-heatmap-panel"><div class="md-panel-head"><div><strong>Historical liquidity heatmap</strong><small id="mdHeatmapMeta">Record or import depth to build history</small></div><span class="md-unit">contracts</span></div><div id="mdDepthHeatmap" style="height:190px;min-height:150px;width:100%" aria-label="Historical bid and ask liquidity heatmap"></div></section>',
           '<section class="md-panel md-tape-panel"><div class="md-panel-head"><div><strong>Live trade tape</strong><small id="mdTapeMeta">Waiting for aggregate trades</small></div><span class="md-unit">contracts</span></div><div class="md-tape-head"><span>UTC</span><span>Price</span><span>Qty</span><span>Aggressor → passive</span></div><div id="mdTape" class="md-tape"><div class="md-empty">Waiting for aggregate trades…</div></div></section>',
         '</div>',
       '</div>',
-      '<details class="md-footnote"><summary>Data semantics and limits</summary><p><b>COIN-M contract units:</b> kline volume, aggregate-trade quantity and depth quantity are contracts. BTCUSD_PERP uses 100 USD face value per contract; the interface never relabels contracts as BTC or USD notional. Binance aggregate trades expose whether the buyer was maker: buyer maker = false is BUY TAKER / SELL MAKER, buyer maker = true is SELL TAKER / BUY MAKER. Both sides are mirrored views of one execution, never additional volume. Candles from 1m upward are exchange klines; seconds candles are built only from executions observed in this session and are not historical reconstructions. Public depth is aggregated at each price and does not expose maker identities or queue position. Optional recording keeps a bounded, browser-session-only series of top-25 bid/ask snapshots for replay and JSON export; it cannot backfill earlier depth or reconstruct unrecorded updates. Quantity reductions can be executions or cancellations and the public diff does not label which.</p></details>',
+      '<details class="md-footnote"><summary>Data semantics and limits</summary><p><b>COIN-M contract units:</b> kline volume, aggregate-trade quantity and depth quantity are contracts. BTCUSD_PERP uses 100 USD face value per contract; the interface never relabels contracts as BTC or USD notional. Binance aggregate trades expose whether the buyer was maker: buyer maker = false is BUY TAKER / SELL MAKER, buyer maker = true is SELL TAKER / BUY MAKER. Both sides are mirrored views of one execution, never additional volume. Candles from 1m upward are exchange klines; seconds candles are built only from executions observed in this session and are not historical reconstructions. Public depth is aggregated at each price and does not expose maker identities or queue position. Footprint diagonal imbalance compares the next observed traded price level, not a guaranteed one-tick neighbor. Optional recording keeps a bounded series of top-25 bid/ask snapshots. IndexedDB retains up to 50,000 samples locally across reloads; JSON export/import moves captures between devices. It cannot backfill earlier depth or reconstruct unrecorded updates. Quantity reductions can be executions or cancellations and the public diff does not label which.</p></details>',
     '</div>'
   ].join('');
 
@@ -82,9 +84,19 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
   let candleHistoryHasMore = false;
   let loadingOlderCandles = false;
   let selectedFootprintMinute = 'live';
+  let selectedFootprintInterval = 1;
   let footprintOptionKey = '';
   let latestBookView = null;
   let replayingDepth = false;
+  let selectedReplayTime = null;
+  let depthReplayMissing = false;
+  let depthHeatmapTimer = null;
+  const depthArchive = createDepthArchiveStore({ maxSamples: 10000 });
+  let lastArchivedDepthKey = '';
+  const pendingArchiveKeys = new Set();
+  let archiveWrite = Promise.resolve();
+  let pendingArchiveSamples = [];
+  let archiveFlushTimer = null;
 
   function imported(tf) {
     try {
@@ -159,6 +171,45 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     for (const candle of b || []) map.set(Number(candle.t), candle);
     return Array.from(map.values()).sort((x, y) => x.t - y.t).slice(-5000);
   }
+  function seekReplayToTimestamp(timestamp) {
+    const time = Number(timestamp);
+    if (!Number.isFinite(time) || time <= 0) return;
+    selectedReplayTime = time;
+    const minute = Math.floor(time / 60000) * 60000;
+    selectedFootprintMinute = String(minute);
+    updateFootprintSelector(feed.getFootprintMinutes());
+    $('mdFootprintMinute').value = selectedFootprintMinute;
+    const hasFootprint = feed.getFootprintMinutes().includes(minute);
+    renderFootprint(hasFootprint ? feed.getFootprintWindow(minute, selectedFootprintInterval) : null, true);
+    if (!hasFootprint) setText('mdFootprintMeta', 'NO FOOTPRINT DATA · UTC ' + utcMinute(minute));
+    const nearest = feed.getDepthSnapshotIndexAt(time, 60000);
+    depthReplayMissing = nearest < 0;
+    if (nearest >= 0) {
+      $('mdDepthReplay').value = String(nearest);
+      replayingDepth = true;
+      const sample = feed.getDepthSnapshot(nearest);
+      if (sample) renderBook({ ...sample, ready: true, recorded: true });
+    } else {
+      replayingDepth = true;
+      renderBook(null);
+      setText('mdBookState', 'NO DEPTH SNAPSHOT NEAR THIS TIME');
+      setText('mdBookFoot', 'No recorded order-book snapshot within 60 seconds of the selected timestamp. The live book is paused while replay is selected.');
+    }
+    updateDepthCaptureControls();
+    scheduleDraw();
+    renderDepthHeatmap();
+  }
+  function bindReplayClick(host) {
+    if (!host || typeof host.on !== 'function' || host.dataset.replayClickBound === 'true') return;
+    host.dataset.replayClickBound = 'true';
+    host.on('plotly_click', event => {
+      const point = event && Array.isArray(event.points) ? event.points[0] : null;
+      if (!point) return;
+      const raw = point.x;
+      const time = typeof raw === 'number' ? raw : new Date(raw).getTime();
+      seekReplayToTimestamp(time);
+    });
+  }
   function scheduleDraw() {
     pendingDraw = true;
     if (renderTimer !== null) return;
@@ -207,11 +258,13 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       margin: { l: 10, r: 54, t: 6, b: 30 }, showlegend: false, hovermode: 'x',
       uirevision: 'coinm-' + interval,
       xaxis: { type: 'date', gridcolor: '#203047', linecolor: '#203047', tickfont: { color: '#91a3bb' }, rangeslider: { visible: true, thickness: 0.06, bgcolor: '#091220', bordercolor: '#203047' } },
+      shapes: selectedReplayTime ? [{ type: 'line', x0: selectedReplayTime, x1: selectedReplayTime, y0: 0, y1: 1, yref: 'paper', line: { color: '#f3c969', width: 1, dash: 'dot' } }] : [],
       yaxis: { side: 'right', gridcolor: '#203047', linecolor: '#203047', tickfont: { color: '#91a3bb' }, fixedrange: false }
     };
     const config = { responsive: true, displaylogo: false, scrollZoom: true, modeBarButtonsToRemove: ['lasso2d', 'select2d'] };
     try {
       const pending = Plotly.react(candleEl, [candleTrace], baseLayout, config);
+      if (pending && typeof pending.then === 'function') pending.then(() => bindReplayClick(candleEl)); else bindReplayClick(candleEl);
       if (pending && typeof pending.catch === 'function') pending.catch(error => setText('mdCandleMeta', 'Candlestick render failed: ' + String(error)));
       const flowEl = $('mdFlow');
       if (flowEl && flowEl.getBoundingClientRect().width >= 60) {
@@ -353,6 +406,76 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       ? 'RECORDED SNAPSHOT · ' + new Date(view.time).toISOString().replace('T', ' ').slice(0, 23) + ' UTC · connection segment ' + integer(view.segment) + '. Top 25 levels only; snapshots between samples are not reconstructed. Depth is aggregated, and reductions may be executions or cancellations.'
       : 'Top 25 depth: bid ' + contractQty(view.bidDepth) + ' · ask ' + contractQty(view.askDepth) + ' contracts. Latest diff: bids +' + contractQty(changes.bidAdded) + ' / −' + contractQty(changes.bidReduced) + ' · asks +' + contractQty(changes.askAdded) + ' / −' + contractQty(changes.askReduced) + '. Reductions may be executions or cancellations; the feed does not distinguish them.');
   }
+  function renderDepthHeatmap() {
+    const host = $('mdDepthHeatmap');
+    if (!host || !Plotly || typeof Plotly.react !== 'function') return;
+    const samples = selectedReplayTime !== null && Number.isFinite(Number(selectedReplayTime))
+      ? feed.getDepthHistoryAround(selectedReplayTime, 1000)
+      : feed.getDepthHistory(1000);
+    if (!samples.length) {
+      setText('mdHeatmapMeta', 'No captured depth history yet');
+      if (Plotly.purge) Plotly.purge(host);
+      return;
+    }
+    const cursorSample = selectedReplayTime !== null
+      ? samples.reduce((best, sample) =>
+          !best || Math.abs(sample.time - selectedReplayTime) < Math.abs(best.time - selectedReplayTime) ? sample : best, null)
+      : null;
+    const reference = cursorSample || samples[samples.length - 1];
+    const midpoint = reference.bids.length && reference.asks.length
+      ? (reference.bids[0].price + reference.asks[0].price) / 2
+      : (reference.bids[0]?.price || reference.asks[0]?.price || 0);
+    const priceSet = new Set();
+    for (const sample of samples) {
+      for (const level of sample.bids) priceSet.add(Number(level.price));
+      for (const level of sample.asks) priceSet.add(Number(level.price));
+    }
+    const prices = Array.from(priceSet)
+      .sort((a, b) => Math.abs(a - midpoint) - Math.abs(b - midpoint))
+      .slice(0, 60)
+      .sort((a, b) => a - b);
+    const x = samples.map(sample => new Date(sample.time));
+    const z = prices.map(price => samples.map(sample => {
+      const bid = sample.bids.find(level => Number(level.price) === price);
+      const ask = sample.asks.find(level => Number(level.price) === price);
+      return bid ? Number(bid.qty) : ask ? -Number(ask.qty) : 0;
+    }));
+    const layout = {
+      height: Math.max(150, Math.round(host.getBoundingClientRect().height || 190)),
+      paper_bgcolor: '#0c1422', plot_bgcolor: '#0c1422',
+      font: { color: '#91a3bb', size: 8 },
+      margin: { l: 52, r: 12, t: 3, b: 25 },
+      showlegend: false,
+      xaxis: { type: 'date', gridcolor: '#203047', tickfont: { size: 8 }, rangeslider: { visible: false } },
+      yaxis: { title: 'Price', gridcolor: '#203047', tickfont: { size: 8 }, nticks: 7 },
+      shapes: selectedReplayTime !== null ? [{ type: 'line', x0: selectedReplayTime, x1: selectedReplayTime, y0: 0, y1: 1, yref: 'paper', line: { color: '#f3c969', width: 1, dash: 'dot' } }] : [],
+      uirevision: 'coinm-depth-heatmap'
+    };
+    const trace = {
+      type: 'heatmap', x, y: prices, z,
+      zmid: 0,
+      colorscale: [[0, '#ff7e87'], [0.5, '#111b2b'], [1, '#48d6ad']],
+      colorbar: { title: { text: 'Contracts', side: 'right' }, thickness: 8, tickfont: { size: 7 } },
+      hovertemplate: '%{x|%Y-%m-%d %H:%M:%S UTC}<br>Price %{y:,.1f}<br>Signed resting depth %{z:,.0f} contracts<extra></extra>'
+    };
+    const pending = Plotly.react(host, [trace], layout, { responsive: true, displaylogo: false, scrollZoom: false });
+    if (pending && typeof pending.then === 'function') pending.then(() => bindReplayClick(host)); else bindReplayClick(host);
+    if (pending && typeof pending.catch === 'function') pending.catch(() => {});
+    const migration = summarizeDepthLiquidityMigration(samples, reference.segment);
+    const migrationLabel = migration
+      ? ' · bids +' + contractQty(migration.bid.added) + '/-' + contractQty(migration.bid.reduced) +
+        ' · asks +' + contractQty(migration.ask.added) + '/-' + contractQty(migration.ask.reduced) +
+        (migration.midpointChange === null ? '' : ' · mid Δ ' + (migration.midpointChange > 0 ? '+' : '') + number(migration.midpointChange, 1))
+      : '';
+    setText('mdHeatmapMeta', integer(samples.length) + (selectedReplayTime !== null ? ' replay-window samples' : ' latest samples') + ' · green bids · red asks · top-25 levels · 100 ms sampling' + migrationLabel + ' · observed book changes, not executions');
+  }
+  function scheduleDepthHeatmap() {
+    if (depthHeatmapTimer !== null) return;
+    depthHeatmapTimer = setTimeout(() => {
+      depthHeatmapTimer = null;
+      renderDepthHeatmap();
+    }, 650);
+  }
   function levelDelta(delta) {
     const el = document.createElement('i');
     el.className = 'md-level-delta ' + (delta > 0 ? 'md-level-up' : 'md-level-down');
@@ -374,7 +497,9 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     }
     if (live) live.disabled = !replayingDepth;
     if (exportButton) exportButton.disabled = info.count === 0;
-    if (replayingDepth) {
+    if (replayingDepth && depthReplayMissing) {
+      setText('mdDepthReplayMeta', selectedReplayTime ? 'NO SNAPSHOT · ' + new Date(selectedReplayTime).toISOString().replace('T', ' ').slice(0, 23) + ' UTC' : 'No snapshot near selected time');
+    } else if (replayingDepth) {
       const sample = slider ? feed.getDepthSnapshot(Number(slider.value)) : null;
       setText('mdDepthReplayMeta', sample
         ? 'REPLAY · ' + new Date(sample.time).toISOString().replace('T', ' ').slice(0, 23) + ' UTC'
@@ -382,7 +507,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     } else {
       setText('mdDepthReplayMeta', info.recording
         ? 'Recording · ' + integer(info.count) + '/' + integer(info.limit) + ' samples'
-        : info.count ? integer(info.count) + ' captured · session memory' : 'Not recording · session only');
+        : info.count ? integer(info.count) + ' captured · local archive' : 'Not recording · no saved samples');
     }
   }
   function queueTape(items) {
@@ -414,7 +539,13 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       select.appendChild(option);
     }
     if (keep !== 'live' && minutes.includes(Number(keep))) select.value = keep;
-    else {
+    else if (keep !== 'live' && Number.isFinite(Number(keep))) {
+      const missing = document.createElement('option');
+      missing.value = keep;
+      missing.textContent = 'No footprint · ' + new Date(Number(keep)).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+      select.appendChild(missing);
+      select.value = keep;
+    } else {
       selectedFootprintMinute = 'live';
       select.value = 'live';
     }
@@ -424,19 +555,21 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     if (footprintTimer !== null) return;
     footprintTimer = setTimeout(() => {
       footprintTimer = null;
-      if (selectedFootprintMinute === 'live') renderFootprint(pendingFootprint, false);
+      if (selectedFootprintMinute === 'live' && selectedReplayTime === null) renderFootprint(pendingFootprint, false);
     }, 350);
   }
   function renderFootprint(footprint, historical = false) {
     const host = $('mdFootprintRows');
     if (!host) return;
     if (!footprint || !footprint.levels || !footprint.levels.length) {
-      host.innerHTML = '<tr><td colspan="5" class="md-muted">Waiting for current-minute executions…</td></tr>';
+      host.innerHTML = '<tr><td colspan="7" class="md-muted">Waiting for current-minute executions…</td></tr>';
       setText('mdFootprintMeta', historical ? 'Selected session minute · no retained executions' : 'Live session minute · waiting for executions');
       return;
     }
     const rows = footprint.levels;
-    setText('mdFootprintMeta', (historical ? 'RECORDED · ' : 'LIVE SESSION · ') + 'UTC ' + utcMinute(footprint.minute) + '–' + utcMinute(footprint.minute + 60000) + ' · ' + integer(footprint.levelsTotal) + ' levels · ' + contractQty(footprint.totalQty) + ' contracts · imbalance ' + percent(footprint.imbalance));
+    const from = Number(footprint.startTime ?? footprint.minute);
+    const to = Number(footprint.endTime ?? (footprint.minute + 60000));
+    setText('mdFootprintMeta', (historical ? 'HISTORICAL · ' : 'LIVE · ') + selectedFootprintInterval + 'm · UTC ' + utcMinute(from) + '–' + utcMinute(to) + ' · ' + integer(footprint.levelsTotal) + ' levels · ' + contractQty(footprint.totalQty) + ' contracts · imbalance ' + percent(footprint.imbalance) + (footprint.pocPrice !== null ? ' · POC ' + number(footprint.pocPrice, 1) + ' · VA ' + number(footprint.valueAreaLow, 1) + '–' + number(footprint.valueAreaHigh, 1) : ''));
     host.innerHTML = '';
     const fragment = document.createDocumentFragment();
     for (const level of rows) {
@@ -446,17 +579,33 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       const buy = cell(contractQty(level.buyTaker), 'md-footprint-buy');
       const sell = cell(contractQty(level.sellTaker), 'md-footprint-sell');
       const deltaCell = cell(signedContractQty(delta), 'md-footprint-delta ' + (delta > 0 ? 'md-positive' : delta < 0 ? 'md-negative' : ''));
+      const diagonal = cell(level.diagonalSide ? level.diagonalSide + ' ' + number(level.diagonalRatio, 1) + '×' : '—', level.diagonalSide === 'BUY' ? 'md-positive' : level.diagonalSide === 'SELL' ? 'md-negative' : 'md-muted');
+      diagonal.title = '3:1 or greater ratio against the next observed traded price level, not necessarily the immediately adjacent exchange tick. Minimum executed quantity: 1 contract.';
       const count = cell(integer(level.trades), 'md-tape-qty');
+      const profileTag = cell(level.isPoc ? 'POC' : level.inValueArea ? 'VA' : '', level.isPoc ? 'md-footprint-poc' : level.inValueArea ? 'md-footprint-va' : '');
+      if (level.isPoc || level.inValueArea) {
+        profileTag.style.fontSize = '9px';
+        profileTag.style.fontWeight = '700';
+        profileTag.style.letterSpacing = '.04em';
+        profileTag.style.textAlign = 'center';
+        profileTag.style.borderRadius = '3px';
+        profileTag.style.padding = '1px 4px';
+        profileTag.style.color = level.isPoc ? '#f3c969' : '#91a3bb';
+        profileTag.style.background = level.isPoc ? 'rgba(243,201,105,.12)' : 'rgba(145,163,187,.08)';
+        tr.style.background = level.isPoc ? 'rgba(243,201,105,.045)' : 'rgba(145,163,187,.025)';
+      }
       if (delta > 0) tr.className = 'md-footprint-positive';
       else if (delta < 0) tr.className = 'md-footprint-negative';
-      tr.append(price, buy, sell, deltaCell, count);
+      if (level.isPoc) tr.classList.add('md-footprint-poc-row');
+      else if (level.inValueArea) tr.classList.add('md-footprint-va-row');
+      tr.append(price, buy, sell, deltaCell, diagonal, count, profileTag);
       fragment.appendChild(tr);
     }
     host.appendChild(fragment);
     const provenance = (footprint.source || 'live session') + '. Passive maker quantities mirror taker executions.';
     setText('mdFootprintFoot', (historical ? 'Selected past session minute. ' : 'Following current session minute. ') + (footprint.truncated
       ? 'Showing ' + integer(rows.length) + ' nearest levels from ' + integer(footprint.levelsTotal) + '. '
-      : 'Showing all ' + integer(rows.length) + ' retained price levels. ') + 'Quantities are executed taker contracts. ' + provenance);
+      : 'Showing all ' + integer(rows.length) + ' retained price levels. ') + 'Quantities are executed taker contracts. POC is the highest-volume price; value area expands from POC to 70% of executed volume. Diagonal imbalance compares adjacent traded price levels at 3:1 or greater, not a fixed tick-size ladder. ' + provenance);
   }
   function renderTape(items) {
     recentTrades = items || [];
@@ -488,12 +637,41 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     }
     host.appendChild(fragment);
   }
+  function depthArchiveKey(sample) {
+    return Number(sample && sample.segment || 0) + ':' + Number(sample && sample.time || 0) + ':' + Number(sample && sample.lastUpdateId || 0);
+  }
+  function queueDepthArchiveSample(sample) {
+    const key = depthArchiveKey(sample);
+    if (key === lastArchivedDepthKey || pendingArchiveKeys.has(key)) return;
+    pendingArchiveKeys.add(key);
+    pendingArchiveSamples.push(sample);
+    if (archiveFlushTimer !== null) return;
+    archiveFlushTimer = setTimeout(() => {
+      archiveFlushTimer = null;
+      const batch = pendingArchiveSamples.splice(0);
+      if (!batch.length) return;
+      archiveWrite = archiveWrite.then(() => depthArchive.append(batch, 'BTCUSD_PERP'))
+        .then(() => {
+          for (const item of batch) pendingArchiveKeys.delete(depthArchiveKey(item));
+          lastArchivedDepthKey = depthArchiveKey(batch[batch.length - 1]);
+        })
+        .catch(error => {
+          for (const item of batch) pendingArchiveKeys.delete(depthArchiveKey(item));
+          setText('mdBookFoot', 'Local depth archive write failed: ' + String(error && error.message || error));
+        });
+    }, 750);
+  }
   const feed = createCoinMMarketFeed({
     symbol: 'BTCUSD_PERP',
+    maxDepthSamples: 10000,
+    depthSampleIntervalMs: 100,
     onStatus: event => {
       if (event.state === 'connecting') {
         replayingDepth = false;
+        depthReplayMissing = false;
+        selectedReplayTime = null;
         latestBookView = null;
+        restoreDepthArchive();
         selectedFootprintMinute = 'live';
         footprintOptionKey = null;
         updateFootprintSelector([]);
@@ -524,7 +702,7 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       updateStats(state.stats);
       queueTape(state.recentTrades);
       if (state.footprintMinutes) updateFootprintSelector(state.footprintMinutes);
-      if (selectedFootprintMinute === 'live') queueFootprint(state.footprint);
+      if (selectedFootprintMinute === 'live' && selectedReplayTime === null) queueFootprint(feed.getFootprintWindow(state.footprint.minute, selectedFootprintInterval));
       if (SECOND_INTERVALS.includes(interval) && state.candle) {
         lastCandlesInterval = interval;
         candles = mergeCandles(candles, [state.candle]);
@@ -538,8 +716,29 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       if (view && view.ready) lastMarketAt = Date.now();
       if (!replayingDepth) queueBook(view);
       updateDepthCaptureControls();
+      scheduleDepthHeatmap();
+      const info = feed.getDepthHistoryInfo();
+      if (info.recording && info.count) {
+        const sample = feed.getDepthSnapshot(info.count - 1);
+        if (sample) queueDepthArchiveSample(sample);
+      }
     }
   });
+  async function restoreDepthArchive() {
+    try {
+      const samples = await depthArchive.load({ symbol: 'BTCUSD_PERP', limit: 10000 });
+      if (!samples.length) return;
+      const info = feed.restoreDepthHistory(samples);
+      const latest = feed.getDepthSnapshot(info.count - 1);
+      if (latest) lastArchivedDepthKey = depthArchiveKey(latest);
+      updateDepthCaptureControls();
+      renderDepthHeatmap();
+      setText('mdBookFoot', 'Restored ' + integer(info.count) + ' historical depth snapshots from this browser. Start replay with the slider. Archive is local to this device.');
+    } catch (error) {
+      setText('mdBookFoot', 'Could not restore local depth archive: ' + String(error && error.message || error));
+    }
+  }
+  restoreDepthArchive();
   function showImportedInterval(tf) {
     const local = tf === '10s' ? imported('10s') : [];
     if (tf === '10s' && local.length) setCandleData(local, 'Imported historical COIN-M archive · 10-second candles');
@@ -619,14 +818,16 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
     const previousSelection = selectedFootprintMinute;
     button.disabled = true;
     button.textContent = 'Backfilling…';
-    setText('mdFootprintFoot', 'Fetching Binance COIN-M aggregate trades for the previous 60 minutes. This uses bounded REST pagination.');
+    const minutes = Math.min(240, Math.max(60, Number($('mdFootprintRange').value) || 60));
+    button.textContent = 'Backfilling…';
+    setText('mdFootprintFoot', 'Fetching Binance COIN-M aggregate trades for the previous ' + minutes + ' minutes. The request is bounded by 100 pages and 100,000 trades.');
     try {
-      const result = await feed.backfillFootprintHistory({ minutes: 60, maxPages: 20, maxTrades: 20000 });
+      const result = await feed.backfillFootprintHistory({ minutes, maxMinutes: 240, maxPages: 100, maxTrades: 100000 });
       updateFootprintSelector(result.minutes);
       if (result.minutes.length) {
         selectedFootprintMinute = String(result.minutes[result.minutes.length - 1]);
         $('mdFootprintMinute').value = selectedFootprintMinute;
-        renderFootprint(feed.getFootprint(Number(selectedFootprintMinute)), true);
+        renderFootprint(feed.getFootprintWindow(Number(selectedFootprintMinute), selectedFootprintInterval), true);
       }
       setText('mdFootprintFoot', 'Binance REST backfill · ' + integer(result.tradesCount) + ' aggregate trades across ' + integer(result.pages) + ' requests and ' + integer(result.minutes.length) + ' UTC minutes. ' + (result.truncated ? 'Result is incomplete because the safety cap was reached. ' : 'Requested interval was retrieved. ') + 'Only Binance-reported market aggregate trades are included; passive maker quantities mirror taker executions.');
     } catch (error) {
@@ -634,30 +835,126 @@ export function mountCoinMMarketDesk({ root, Plotly = window.Plotly, getImported
       setText('mdFootprintFoot', 'Historical backfill failed: ' + String(error && error.message || error));
     } finally {
       button.disabled = false;
-      button.textContent = 'Backfill 60m';
+      button.textContent = 'Backfill';
     }
+  });
+  $('mdFootprintTf').addEventListener('change', () => {
+    selectedFootprintInterval = Math.max(1, Math.min(15, Number($('mdFootprintTf').value) || 1));
+    const end = selectedFootprintMinute === 'live' ? feed.getLatestFootprint()?.minute : Number(selectedFootprintMinute);
+    renderFootprint(end ? feed.getFootprintWindow(end, selectedFootprintInterval) : null, selectedFootprintMinute !== 'live');
   });
   $('mdFootprintMinute').addEventListener('change', () => {
     selectedFootprintMinute = $('mdFootprintMinute').value;
-    if (selectedFootprintMinute === 'live') renderFootprint(feed.getLatestFootprint(), false);
-    else renderFootprint(feed.getFootprint(Number(selectedFootprintMinute)), true);
+    if (selectedFootprintMinute !== 'live') {
+      selectedReplayTime = Number(selectedFootprintMinute);
+      const nearest = feed.getDepthSnapshotIndexAt(selectedReplayTime, 60000);
+      if (nearest >= 0) {
+        $('mdDepthReplay').value = String(nearest);
+        replayingDepth = true;
+        depthReplayMissing = false;
+        const sample = feed.getDepthSnapshot(nearest);
+        if (sample) renderBook({ ...sample, ready: true, recorded: true });
+      } else {
+        replayingDepth = true;
+        depthReplayMissing = true;
+        renderBook(null);
+        setText('mdBookState', 'NO DEPTH SNAPSHOT NEAR THIS TIME');
+        setText('mdBookFoot', 'No recorded order-book snapshot within 60 seconds of the selected footprint minute.');
+      }
+      updateDepthCaptureControls();
+      scheduleDraw(); renderDepthHeatmap();
+    } else {
+      selectedReplayTime = null;
+      replayingDepth = false;
+      if (latestBookView) renderBook(latestBookView);
+      updateDepthCaptureControls();
+      scheduleDraw(); renderDepthHeatmap();
+    }
+    if (selectedFootprintMinute === 'live') {
+      const latest = feed.getLatestFootprint();
+      renderFootprint(latest ? feed.getFootprintWindow(latest.minute, selectedFootprintInterval) : null, false);
+    } else renderFootprint(feed.getFootprintWindow(Number(selectedFootprintMinute), selectedFootprintInterval), true);
   });
   $('mdRecordDepth').addEventListener('click', () => {
     feed.setDepthRecording(!feed.getDepthRecording());
+    const info = feed.getDepthHistoryInfo();
+    if (info.recording && info.count) {
+      const sample = feed.getDepthSnapshot(info.count - 1);
+      if (sample) queueDepthArchiveSample(sample);
+    }
     updateDepthCaptureControls();
   });
   $('mdDepthReplay').addEventListener('input', () => {
     const sample = feed.getDepthSnapshot(Number($('mdDepthReplay').value));
     if (!sample) return;
     replayingDepth = true;
+    depthReplayMissing = false;
+    selectedReplayTime = sample.time;
     renderBook({ ...sample, ready: true, recorded: true });
+    const footprintMinute = Math.floor(sample.time / 60000) * 60000;
+    if (feed.getFootprintMinutes().includes(footprintMinute)) {
+      selectedFootprintMinute = String(footprintMinute);
+      $('mdFootprintMinute').value = selectedFootprintMinute;
+      renderFootprint(feed.getFootprintWindow(footprintMinute, selectedFootprintInterval), true);
+    } else {
+      selectedFootprintMinute = 'live';
+      $('mdFootprintMinute').value = 'live';
+      renderFootprint(null, true);
+      setText('mdFootprintMeta', 'NO FOOTPRINT DATA · UTC ' + utcMinute(footprintMinute));
+    }
+    scheduleDraw();
+    renderDepthHeatmap();
     setText('mdDepthReplayMeta', 'REPLAY · ' + new Date(sample.time).toISOString().replace('T', ' ').slice(0, 23) + ' UTC · segment ' + integer(sample.segment));
     updateDepthCaptureControls();
   });
   $('mdDepthLive').addEventListener('click', () => {
     replayingDepth = false;
+    depthReplayMissing = false;
+    selectedReplayTime = null;
+    selectedFootprintMinute = 'live';
+    $('mdFootprintMinute').value = 'live';
+    const latestFootprint = feed.getLatestFootprint();
+    if (latestFootprint) renderFootprint(feed.getFootprintWindow(latestFootprint.minute, selectedFootprintInterval), false);
     if (latestBookView) renderBook(latestBookView);
+    scheduleDraw();
+    renderDepthHeatmap();
     updateDepthCaptureControls();
+  });
+  $('mdDepthImport').addEventListener('change', async event => {
+    const input = event.currentTarget;
+    const file = input.files && input.files[0];
+    if (!file) return;
+    try {
+      if (file.size > 20 * 1024 * 1024) throw new RangeError('Depth capture import is limited to 20 MB.');
+      const payload = JSON.parse(await file.text());
+      if (!payload || payload.schema !== 'BTCUSD-Market-Mechanics-Lab-COINM-depth-v1' ||
+          payload.symbol !== 'BTCUSD_PERP' || payload.quantityUnit !== 'contracts' ||
+          !Array.isArray(payload.samples)) {
+        throw new TypeError('Unsupported capture. Import a BTCUSD_PERP COIN-M depth JSON exported by this workstation.');
+      }
+      const info = feed.restoreDepthHistory(payload.samples);
+      await depthArchive.append(payload.samples, 'BTCUSD_PERP');
+      const latestImported = feed.getDepthSnapshot(info.count - 1);
+      if (latestImported) lastArchivedDepthKey = depthArchiveKey(latestImported);
+      replayingDepth = false;
+      updateDepthCaptureControls();
+      if (info.count) {
+        const slider = $('mdDepthReplay');
+        slider.value = String(info.count - 1);
+        const sample = feed.getDepthSnapshot(info.count - 1);
+        replayingDepth = true;
+        depthReplayMissing = false;
+        renderBook({ ...sample, ready: true, recorded: true });
+        selectedReplayTime = sample.time;
+        renderDepthHeatmap();
+        updateDepthCaptureControls();
+      }
+      setText('mdBookFoot', 'Imported ' + integer(payload.samples.length) + ' recorded snapshots. Replay uses captured top-25 price levels only; gaps between samples are not reconstructed.');
+    } catch (error) {
+      setText('mdBookFoot', 'Depth import failed: ' + String(error && error.message || error));
+    } finally {
+      input.value = '';
+    }
   });
   $('mdDepthExport').addEventListener('click', () => {
     const samples = feed.getDepthHistory();

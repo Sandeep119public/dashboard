@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   normalizeAggTrade,parseCoinMKline,normalizeKlineEvent,aggregateTradesToCandles,
   isDepthSnapshotBridge,isDepthUpdateContinuous,applyDepthEvent,createMinuteFootprintState,updateMinuteFootprint,
-  mergeCandleSeries, COINM_CONTRACT_USD, MARKET_INTERVALS
+  mergeCandleSeries, COINM_CONTRACT_USD, MARKET_INTERVALS, createCoinMMarketFeed, summarizeDepthLiquidityMigration
 } from '../src/market/coinm-market-data.js';
 
 test('buyer maker flag maps aggressor and passive sides to mirrored quantities',()=>{
@@ -73,6 +73,111 @@ test('depth updates replace quantities and remove zero-quantity levels',()=>{
     bidAdded:2,bidReduced:4,askAdded:3,askReduced:4,
     bidChanges:{67000:2,66999:-4},askChanges:{67001:-4,67002:3}
   });
+});
+
+test('depth replay imports validate, deduplicate and sort captured snapshots',()=>{
+  const feed=createCoinMMarketFeed({fetchImpl:async()=>({ok:true,json:async()=>[]}),WebSocketImpl:null});
+  const sample=(time,id)=>({time,updatedAt:time,lastUpdateId:id,segment:1,bids:[{price:100,qty:2}],asks:[{price:101,qty:3}]});
+  const info=feed.restoreDepthHistory([sample(2000,2),sample(1000,1),sample(2000,2)]);
+  assert.equal(info.count,2);
+  assert.equal(feed.getDepthSnapshot(0).time,1000);
+  assert.equal(feed.getDepthSnapshot(1).lastUpdateId,2);
+  assert.equal(feed.getDepthHistory(1).length,1);
+  assert.equal(feed.getDepthSnapshotIndexAt(1900),1);
+  assert.equal(feed.getDepthSnapshotIndexAt(4000,500),-1);
+  assert.throws(()=>feed.restoreDepthHistory([sample(3000,3).bids]),/timestamp, sequence ID or book side/i);
+  assert.throws(()=>feed.restoreDepthHistory([{...sample(3000,3),bids:[{price:100,qty:0}]}]),/invalid price level/i);
+});
+
+test('historical depth heatmap window centers around replay time, including old archive samples',()=>{
+  const feed=createCoinMMarketFeed({fetchImpl:async()=>({ok:true,json:async()=>[]}),WebSocketImpl:null});
+  const samples=Array.from({length:3000},(_,index)=>({
+    time:100000+index*100,updatedAt:100000+index*100,lastUpdateId:index+1,segment:1,
+    bids:[{price:100,qty:2}],asks:[{price:101,qty:3}]
+  }));
+  feed.restoreDepthHistory(samples);
+  const window=feed.getDepthHistoryAround(110000,1000);
+  assert.equal(window.length,1000);
+  assert.ok(window[0].time <= 110000);
+  assert.ok(window[window.length-1].time >= 110000);
+  assert.equal(window[0].time,100000);
+  assert.equal(window[window.length-1].time,199900);
+  const late=feed.getDepthHistoryAround(399900,1000);
+  assert.equal(late[late.length-1].time,399900);
+  assert.equal(late[0].time,300000);
+  assert.equal(feed.getDepthHistoryAround(1,1000)[0].time,100000);
+});
+
+test('depth liquidity migration compares observed top-25 bid and ask levels across replay window',()=>{
+  const first={
+    time:1000,
+    bids:[{price:100,qty:5},{price:99,qty:4}],
+    asks:[{price:101,qty:6}]
+  };
+  const last={
+    time:2000,
+    bids:[{price:100,qty:7},{price:99,qty:2}],
+    asks:[{price:101,qty:4},{price:102,qty:3}]
+  };
+  const summary=summarizeDepthLiquidityMigration([first,last]);
+  assert.deepEqual(
+    [summary.bid.added,summary.bid.reduced,summary.bid.net],
+    [2,2,0]
+  );
+  assert.deepEqual(
+    [summary.ask.added,summary.ask.reduced,summary.ask.net],
+    [3,2,1]
+  );
+  assert.equal(summary.midpointChange,0);
+  assert.equal(summarizeDepthLiquidityMigration([first]),null);
+  assert.equal(summarizeDepthLiquidityMigration([
+    {...first,segment:1},{...last,segment:2}
+  ]),null);
+  const sameSegment=summarizeDepthLiquidityMigration([
+    {...first,segment:1},{...last,segment:1},{...last,time:3000,segment:2}
+  ],1);
+  assert.equal(sameSegment.toTime,2000);
+});
+
+test('depth archive restore retains the full 10,000-snapshot replay window',()=>{
+  const feed=createCoinMMarketFeed({fetchImpl:async()=>({ok:true,json:async()=>[]}),WebSocketImpl:null});
+  const samples=Array.from({length:2000},(_,index)=>({
+    time:100000+index*100,updatedAt:100000+index*100,lastUpdateId:index+1,segment:1,
+    bids:[{price:100,qty:2}],asks:[{price:101,qty:3}]
+  }));
+  const info=feed.restoreDepthHistory(samples);
+  assert.equal(info.count,2000);
+  assert.equal(info.limit,10000);
+  assert.equal(feed.getDepthSnapshot(0).time,100000);
+  assert.equal(feed.getDepthSnapshotIndexAt(100000),0);
+  assert.equal(feed.getDepthSnapshotIndexAt(299900),1999);
+});
+
+test('footprint windows aggregate executed price levels across 1m, 5m and 15m', async()=>{
+  const rows=[
+    {a:1,p:'100',q:'2',T:360000,m:false,f:1,l:1},
+    {a:2,p:'100',q:'3',T:420000,m:true,f:2,l:2},
+    {a:3,p:'101',q:'4',T:480000,m:false,f:3,l:3},
+    {a:4,p:'99',q:'0.5',T:390000,m:true,f:4,l:4}
+  ];
+  const feed=createCoinMMarketFeed({fetchImpl:async()=>({ok:true,json:async()=>rows}),WebSocketImpl:null,now:()=>900000});
+  await feed.backfillFootprintHistory({startTime:360000,endTime:900000,maxMinutes:15,maxPages:10,maxTrades:100});
+  const five=feed.getFootprintWindow(480000,5);
+  assert.equal(five.timeframeMinutes,5);
+  assert.equal(five.totalQty,9.5);
+  assert.equal(five.levels.find(level=>level.price===100).buyTaker,2);
+  assert.equal(five.levels.find(level=>level.price===100).sellTaker,3);
+  assert.equal(feed.getFootprintWindow(480000,15).totalQty,9.5);
+  assert.equal(feed.getFootprintWindow(480000,1).totalQty,4);
+  const profile=feed.getFootprintWindow(480000,15);
+  assert.equal(profile.pocPrice,100);
+  assert.equal(profile.levels.find(level=>level.price===100).diagonalSide,'BUY');
+  assert.equal(profile.valueAreaLow,100);
+  assert.equal(profile.valueAreaHigh,101);
+  assert.ok(profile.valueAreaPercent >= 0.70);
+  const repeated=await feed.backfillFootprintHistory({startTime:60000,endTime:900000,maxMinutes:15,maxPages:10,maxTrades:100});
+  assert.equal(repeated.tradesCount,0);
+  assert.equal(feed.getFootprintWindow(480000,15).totalQty,9.5);
 });
 
 test('invalid trade and malformed kline records are rejected',()=>{

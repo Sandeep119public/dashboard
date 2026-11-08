@@ -345,6 +345,47 @@ function bookView(book, ready, changes = {}, updatedAt = null, lastUpdateId = nu
   };
 }
 
+export function summarizeDepthLiquidityMigration(samples, segment = undefined) {
+  if (!Array.isArray(samples) || samples.length < 2) return null;
+  const targetSegment = segment === undefined ? samples[samples.length - 1]?.segment : segment;
+  const comparable = samples.filter(sample => sample && sample.segment === targetSegment);
+  if (comparable.length < 2) return null;
+  const first = comparable[0];
+  const last = comparable[comparable.length - 1];
+  const summarizeSide = (beforeLevels, afterLevels) => {
+    const before = new Map(beforeLevels.map(level => [Number(level.price), Number(level.qty)]));
+    const after = new Map(afterLevels.map(level => [Number(level.price), Number(level.qty)]));
+    let added = 0;
+    let reduced = 0;
+    let beforeTotal = 0;
+    let afterTotal = 0;
+    for (const qty of before.values()) beforeTotal += qty;
+    for (const qty of after.values()) afterTotal += qty;
+    for (const price of new Set([...before.keys(), ...after.keys()])) {
+      const delta = (after.get(price) || 0) - (before.get(price) || 0);
+      if (delta > 0) added += delta;
+      else reduced += -delta;
+    }
+    return { added, reduced, net: afterTotal - beforeTotal, beforeTotal, afterTotal };
+  };
+  const midpoint = sample => {
+    const bid = Number(sample.bids[0]?.price);
+    const ask = Number(sample.asks[0]?.price);
+    return Number.isFinite(bid) && Number.isFinite(ask) ? (bid + ask) / 2 : null;
+  };
+  const startMidpoint = midpoint(first);
+  const endMidpoint = midpoint(last);
+  return {
+    fromTime: Number(first.time),
+    toTime: Number(last.time),
+    bid: summarizeSide(first.bids, last.bids),
+    ask: summarizeSide(first.asks, last.asks),
+    startMidpoint,
+    endMidpoint,
+    midpointChange: startMidpoint !== null && endMidpoint !== null ? endMidpoint - startMidpoint : null
+  };
+}
+
 export function createCoinMMarketFeed(options = {}) {
   const symbol = String(options.symbol || COINM_SYMBOL).trim().toUpperCase();
   const fetchImpl = options.fetchImpl || ((...args) => fetch(...args));
@@ -361,7 +402,8 @@ export function createCoinMMarketFeed(options = {}) {
   const visibleFootprintLevels = Number.isFinite(Number(options.visibleFootprintLevels)) ? Number(options.visibleFootprintLevels) : 80;
   const depthLimit = Number.isFinite(Number(options.depthLimit)) ? Number(options.depthLimit) : 1000;
   const maxFootprintMinutes = Number.isFinite(Number(options.maxFootprintMinutes)) ? Math.max(1, Math.floor(Number(options.maxFootprintMinutes))) : 240;
-  const maxDepthSamples = Number.isFinite(Number(options.maxDepthSamples)) ? Math.max(1, Math.floor(Number(options.maxDepthSamples))) : 1800;
+  const maxDepthSamples = Number.isFinite(Number(options.maxDepthSamples)) ? Math.max(1, Math.floor(Number(options.maxDepthSamples))) : 10000;
+  const depthSampleIntervalMs = Number.isFinite(Number(options.depthSampleIntervalMs)) ? Math.max(0, Number(options.depthSampleIntervalMs)) : 100;
   const onStatus = options.onStatus || (() => {});
   const onCandles = options.onCandles || (() => {});
   const onKline = options.onKline || (() => {});
@@ -391,10 +433,12 @@ export function createCoinMMarketFeed(options = {}) {
   let lastTradeAt = null;
   let lastBookAt = null;
   const footprintHistory = new Map();
+  const footprintTradeIds = new Set();
   let latestFootprintMinute = null;
   let depthRecording = false;
   const depthHistory = [];
   let depthSegment = 0;
+  let lastDepthSampleAt = null;
   const secondBars = new Map(SECOND_INTERVALS.map(tf => [tf, new Map()]));
   const liveKlines = new Map();
 
@@ -472,8 +516,12 @@ export function createCoinMMarketFeed(options = {}) {
           if (time > cursorEnd) { passedEnd = true; break; }
           if (time < cursorStart) continue;
           const id = Number(row.a);
-          if (Number.isFinite(id) && seen.has(id)) continue;
-          if (Number.isFinite(id)) seen.add(id);
+          if (Number.isFinite(id) && (seen.has(id) || footprintTradeIds.has(id))) continue;
+          if (Number.isFinite(id)) {
+            seen.add(id);
+            footprintTradeIds.add(id);
+            if (footprintTradeIds.size > 200000) footprintTradeIds.delete(footprintTradeIds.values().next().value);
+          }
           const trade = normalizeAggTrade({ ...row, e: 'aggTrade' });
           const minute = Math.floor(trade.time / 60000) * 60000;
           let state = footprintHistory.get(minute);
@@ -532,6 +580,104 @@ export function createCoinMMarketFeed(options = {}) {
     return state ? summarizeMinuteFootprint(state, visibleFootprintLevels) : null;
   }
 
+  function getFootprintWindow(endMinute, timeframeMinutes = 1) {
+    const selectedMinute = Math.floor(Number(endMinute) / 60000) * 60000;
+    const width = Math.max(1, Math.min(15, Math.floor(Number(timeframeMinutes) || 1)));
+    if (!Number.isFinite(selectedMinute) || selectedMinute <= 0) return null;
+    const start = Math.floor(selectedMinute / (width * 60000)) * width * 60000;
+    const end = start + (width - 1) * 60000;
+    const combined = createMinuteFootprintState();
+    combined.minute = end;
+    combined.startTime = start;
+    combined.endTime = end + 60000;
+    combined.timeframeMinutes = width;
+    combined.source = 'Binance aggregate trades · ' + width + 'm';
+    for (const [minute, state] of footprintHistory) {
+      if (minute < start || minute > end) continue;
+      combined.latestPrice = state.latestPrice;
+      combined.totalQty += state.totalQty;
+      combined.totalFills += state.totalFills;
+      combined.totalBuy += state.totalBuy;
+      combined.totalSell += state.totalSell;
+      combined.maxQty = Math.max(combined.maxQty, state.maxQty);
+      if (String(state.source || '').includes('REST')) combined.source = 'Binance REST backfill · ' + width + 'm';
+      else if (combined.source.startsWith('Binance REST')) combined.source = 'Live session + Binance REST backfill · ' + width + 'm';
+      for (const level of state.levels.values()) {
+        const key = String(level.price);
+        let target = combined.levels.get(key);
+        if (!target) {
+          target = { price: level.price, buyTaker: 0, sellTaker: 0, makerBuy: 0, makerSell: 0, trades: 0, fills: 0 };
+          combined.levels.set(key, target);
+        }
+        target.buyTaker += level.buyTaker;
+        target.sellTaker += level.sellTaker;
+        target.makerBuy += level.makerBuy;
+        target.makerSell += level.makerSell;
+        target.trades += level.trades;
+        target.fills += level.fills;
+      }
+    }
+    if (!combined.levels.size) return null;
+    while (combined.levels.size > maxFootprintLevels) combined.levels.delete(combined.levels.keys().next().value);
+    const summary = summarizeMinuteFootprint(combined, visibleFootprintLevels);
+    const profile = Array.from(combined.levels.values()).sort((a, b) => b.price - a.price);
+    const totalVolume = profile.reduce((sum, level) => sum + level.buyTaker + level.sellTaker, 0);
+    let pocIndex = -1;
+    for (let i = 0; i < profile.length; i++) {
+      if (pocIndex < 0 || profile[i].buyTaker + profile[i].sellTaker >
+          profile[pocIndex].buyTaker + profile[pocIndex].sellTaker) pocIndex = i;
+    }
+    const valueArea = new Set();
+    if (pocIndex >= 0 && totalVolume > 0) {
+      let included = profile[pocIndex].buyTaker + profile[pocIndex].sellTaker;
+      let low = pocIndex, high = pocIndex;
+      valueArea.add(pocIndex);
+      while (included < totalVolume * 0.70 && (low > 0 || high < profile.length - 1)) {
+        const above = low > 0 ? profile[low - 1].buyTaker + profile[low - 1].sellTaker : -1;
+        const below = high < profile.length - 1 ? profile[high + 1].buyTaker + profile[high + 1].sellTaker : -1;
+        if (above >= below && low > 0) {
+          low--;
+          included += above;
+          valueArea.add(low);
+        } else if (high < profile.length - 1) {
+          high++;
+          included += below;
+          valueArea.add(high);
+        } else break;
+      }
+    }
+    const levels = summary.levels.map(level => {
+      const index = profile.findIndex(item => item.price === level.price);
+      const lower = index >= 0 && index < profile.length - 1 ? profile[index + 1] : null;
+      const upper = index > 0 ? profile[index - 1] : null;
+      const buyRatio = lower && lower.sellTaker > 0 ? level.buyTaker / lower.sellTaker : 0;
+      const sellRatio = upper && upper.buyTaker > 0 ? level.sellTaker / upper.buyTaker : 0;
+      const buyQualified = buyRatio >= 3 && level.buyTaker >= 1;
+      const sellQualified = sellRatio >= 3 && level.sellTaker >= 1;
+      const diagonalSide = buyQualified && (!sellQualified || buyRatio >= sellRatio) ? 'BUY'
+        : sellQualified ? 'SELL' : null;
+      return {
+        ...level, isPoc: index === pocIndex, inValueArea: valueArea.has(index),
+        diagonalSide, diagonalRatio: diagonalSide === 'BUY' ? buyRatio : diagonalSide === 'SELL' ? sellRatio : 0
+      };
+    });
+    const poc = pocIndex >= 0 ? profile[pocIndex] : null;
+    const vaLevels = profile.filter((_, index) => valueArea.has(index));
+    const valueAreaVolume = vaLevels.reduce((sum, level) => sum + level.buyTaker + level.sellTaker, 0);
+    return {
+      ...summary, levels,
+      pocPrice: poc ? poc.price : null,
+      valueAreaLow: vaLevels.length ? Math.min(...vaLevels.map(level => level.price)) : null,
+      valueAreaHigh: vaLevels.length ? Math.max(...vaLevels.map(level => level.price)) : null,
+      valueAreaVolume,
+      valueAreaPercent: totalVolume > 0 ? valueAreaVolume / totalVolume : 0,
+      startTime: start,
+      endTime: end + 60000,
+      timeframeMinutes: width,
+      source: combined.source
+    };
+  }
+
   function getLatestFootprint() {
     return latestFootprintMinute === null ? null : getFootprint(latestFootprintMinute);
   }
@@ -546,6 +692,7 @@ export function createCoinMMarketFeed(options = {}) {
     stats = emptyStats();
     statsSince = now();
     lastTradeId = null;
+    footprintTradeIds.clear();
     lastEventAt = null;
     lastTradeAt = null;
     footprintHistory.clear();
@@ -553,6 +700,7 @@ export function createCoinMMarketFeed(options = {}) {
     depthRecording = false;
     depthHistory.length = 0;
     depthSegment = 0;
+    lastDepthSampleAt = null;
     for (const map of secondBars.values()) map.clear();
     for (const map of liveKlines.values()) map.clear();
   }
@@ -623,6 +771,10 @@ export function createCoinMMarketFeed(options = {}) {
       footprintState.minute = minute;
       footprintHistory.set(minute, footprintState);
     }
+    if (Number.isFinite(trade.id)) {
+      footprintTradeIds.add(trade.id);
+      if (footprintTradeIds.size > 200000) footprintTradeIds.delete(footprintTradeIds.values().next().value);
+    }
     const footprint = updateMinuteFootprint(footprintState, trade, maxFootprintLevels, visibleFootprintLevels);
     latestFootprintMinute = minute;
     while (footprintHistory.size > maxFootprintMinutes) {
@@ -664,7 +816,10 @@ export function createCoinMMarketFeed(options = {}) {
 
   function recordDepthSnapshot(changes = {}) {
     if (!depthRecording || !bookReady) return;
-    const view = bookView(book, true, changes, lastBookAt, lastUpdateId);
+    const sampleTime = Number(lastBookAt) || now();
+    if (lastDepthSampleAt !== null && sampleTime - lastDepthSampleAt < depthSampleIntervalMs) return;
+    lastDepthSampleAt = sampleTime;
+    const view = bookView(book, true, changes, sampleTime, lastUpdateId);
     depthHistory.push({
       time: Number(lastBookAt) || now(),
       updatedAt: view.updatedAt,
@@ -679,8 +834,25 @@ export function createCoinMMarketFeed(options = {}) {
     while (depthHistory.length > maxDepthSamples) depthHistory.shift();
   }
 
-  function getDepthHistory() {
-    return depthHistory.map(copyDepthSample);
+  function getDepthHistory(limit = null) {
+    const count = Number.isFinite(Number(limit)) && Number(limit) > 0 ? Math.floor(Number(limit)) : depthHistory.length;
+    return depthHistory.slice(-count).map(copyDepthSample);
+  }
+
+  function getDepthHistoryAround(time, limit = 1000) {
+    const target = Number(time);
+    const count = Math.max(1, Math.min(depthHistory.length, Math.floor(Number(limit) || 1000)));
+    if (!depthHistory.length || !Number.isFinite(target)) return [];
+    let low = 0, high = depthHistory.length;
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (depthHistory[mid].time < target) low = mid + 1;
+      else high = mid;
+    }
+    let center = Math.min(depthHistory.length - 1, low);
+    if (center > 0 && Math.abs(depthHistory[center - 1].time - target) <= Math.abs(depthHistory[center].time - target)) center--;
+    const start = Math.max(0, Math.min(depthHistory.length - count, center - Math.floor(count / 2)));
+    return depthHistory.slice(start, start + count).map(copyDepthSample);
   }
 
   function getDepthHistoryInfo() {
@@ -693,9 +865,58 @@ export function createCoinMMarketFeed(options = {}) {
     };
   }
 
+  function getDepthSnapshotIndexAt(time, maxDistance = Infinity) {
+    const target = Number(time);
+    if (!Number.isFinite(target) || !depthHistory.length) return -1;
+    let low = 0, high = depthHistory.length - 1;
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (depthHistory[mid].time < target) low = mid + 1;
+      else high = mid;
+    }
+    let best = low;
+    if (low > 0 && Math.abs(depthHistory[low - 1].time - target) <= Math.abs(depthHistory[low].time - target)) best = low - 1;
+    return Math.abs(depthHistory[best].time - target) <= Number(maxDistance) ? best : -1;
+  }
+
   function getDepthSnapshot(index) {
     const i = Math.floor(Number(index));
     return Number.isInteger(i) && i >= 0 && i < depthHistory.length ? copyDepthSample(depthHistory[i]) : null;
+  }
+
+  function restoreDepthHistory(samples) {
+    if (!Array.isArray(samples)) throw new TypeError('Depth replay import must contain a samples array.');
+    const restored = [];
+    for (const sample of samples) {
+      if (!sample || !Number.isFinite(Number(sample.time)) || Number(sample.time) <= 0 ||
+          !Number.isFinite(Number(sample.lastUpdateId)) || !Array.isArray(sample.bids) ||
+          !Array.isArray(sample.asks) || sample.bids.length > 25 || sample.asks.length > 25) {
+        throw new TypeError('Depth replay contains an invalid timestamp, sequence ID or book side.');
+      }
+      const normalizeSide = side => side.map(level => {
+        const price = Number(level && level.price), qty = Number(level && level.qty);
+        if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(qty) || qty <= 0) {
+          throw new TypeError('Depth replay contains an invalid price level.');
+        }
+        return { price, qty };
+      });
+      restored.push({
+        time: Number(sample.time), updatedAt: Number.isFinite(Number(sample.updatedAt)) ? Number(sample.updatedAt) : Number(sample.time),
+        lastUpdateId: Number(sample.lastUpdateId), segment: Math.max(0, Math.floor(Number(sample.segment) || 0)),
+        bids: normalizeSide(sample.bids), asks: normalizeSide(sample.asks),
+        bidDepth: normalizeSide(sample.bids).reduce((sum, level) => sum + level.qty, 0),
+        askDepth: normalizeSide(sample.asks).reduce((sum, level) => sum + level.qty, 0),
+        changes: sample.changes && typeof sample.changes === 'object' ? sample.changes : {}
+      });
+    }
+    const unique = new Map();
+    for (const sample of [...depthHistory, ...restored]) {
+      const key = sample.segment + ':' + sample.lastUpdateId + ':' + sample.time;
+      unique.set(key, sample);
+    }
+    depthHistory.splice(0, depthHistory.length, ...Array.from(unique.values())
+      .sort((a, b) => a.time - b.time || a.lastUpdateId - b.lastUpdateId).slice(-maxDepthSamples));
+    return getDepthHistoryInfo();
   }
 
   function setDepthRecording(enabled) {
@@ -712,8 +933,8 @@ export function createCoinMMarketFeed(options = {}) {
     bookReady = true;
     lastBookAt = now();
     lastEventAt = lastBookAt;
-    notifyBook(changes);
     recordDepthSnapshot(changes);
+    notifyBook(changes);
     if (!wasReady) status('connected', 'Live COIN-M trades, candles and synchronized public depth are updating.');
   }
 
@@ -1041,13 +1262,17 @@ export function createCoinMMarketFeed(options = {}) {
     backfillFootprintHistory,
     getSessionCandles,
     getFootprint,
+    getFootprintWindow,
     getFootprintMinutes,
     getLatestFootprint,
     setDepthRecording,
     getDepthRecording: () => depthRecording,
     getDepthHistory,
+    getDepthHistoryAround,
     getDepthHistoryInfo,
     getDepthSnapshot,
+    getDepthSnapshotIndexAt,
+    restoreDepthHistory,
     getStatus: () => ({
       connected: !stopped,
       interval: activeInterval,
