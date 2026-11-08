@@ -82,6 +82,7 @@ test('depth replay imports validate, deduplicate and sort captured snapshots',()
   assert.equal(info.count,2);
   assert.equal(feed.getDepthSnapshot(0).time,1000);
   assert.equal(feed.getDepthSnapshot(1).lastUpdateId,2);
+  assert.equal(feed.getDepthHistory(1).length,1);
   assert.throws(()=>feed.restoreDepthHistory([sample(3000,3).bids]),/timestamp, sequence ID or book side/i);
   assert.throws(()=>feed.restoreDepthHistory([{...sample(3000,3),bids:[{price:100,qty:0}]}]),/invalid price level/i);
 });
