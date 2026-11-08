@@ -805,8 +805,8 @@ export function createCoinMMarketFeed(options = {}) {
     bookReady = true;
     lastBookAt = now();
     lastEventAt = lastBookAt;
-    notifyBook(changes);
     recordDepthSnapshot(changes);
+    notifyBook(changes);
     if (!wasReady) status('connected', 'Live COIN-M trades, candles and synchronized public depth are updating.');
   }
 
