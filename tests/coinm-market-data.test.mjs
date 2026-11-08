@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   normalizeAggTrade,parseCoinMKline,normalizeKlineEvent,aggregateTradesToCandles,
   isDepthSnapshotBridge,isDepthUpdateContinuous,applyDepthEvent,createMinuteFootprintState,updateMinuteFootprint,
-  mergeCandleSeries, COINM_CONTRACT_USD, MARKET_INTERVALS
+  mergeCandleSeries, aggregateTradesToFootprint, replayDepthRecording, COINM_CONTRACT_USD, MARKET_INTERVALS
 } from '../src/market/coinm-market-data.js';
 
 test('buyer maker flag maps aggressor and passive sides to mirrored quantities',()=>{
@@ -126,4 +126,44 @@ test('depth snapshot bridge accepts the event that spans the snapshot id',()=>{
   assert.equal(isDepthSnapshotBridge(100,{U:101,u:103}),false);
   assert.equal(isDepthUpdateContinuous(10,{U:12,u:14,pu:9}),false);
   assert.equal(isDepthUpdateContinuous(10,{U:11,u:14}),true);
+});
+
+
+test('historical footprint aggregates multiple minutes by price without resetting', () => {
+  const trades = [
+    normalizeAggTrade({ a: 1, p: '100', q: '2', T: 1000, m: false }),
+    normalizeAggTrade({ a: 2, p: '100', q: '3', T: 61000, m: true }),
+    normalizeAggTrade({ a: 3, p: '101', q: '4', T: 121000, m: false })
+  ];
+  const result = aggregateTradesToFootprint(trades);
+  assert.equal(result.historical, true);
+  assert.equal(result.minute, null);
+  assert.equal(result.levelsTotal, 2);
+  const at100 = result.levels.find(level => level.price === 100);
+  assert.deepEqual([at100.buyTaker, at100.sellTaker, at100.makerSell, at100.makerBuy, at100.trades, at100.delta], [2, 3, 2, 3, 2, -1]);
+  assert.deepEqual([result.totalQty, result.totalBuy, result.totalSell], [9, 6, 3]);
+});
+
+test('depth recording replay starts at latest preceding snapshot and preserves sequence', () => {
+  const recording = {
+    symbol: 'BTCUSD_PERP',
+    snapshots: [
+      { capturedAt: 100, lastUpdateId: 10, bids: [['100', 2]], asks: [['101', 3]] },
+      { capturedAt: 300, lastUpdateId: 20, bids: [['100', 4]], asks: [['101', 1]] }
+    ],
+    events: [
+      { capturedAt: 200, U: 11, u: 11, pu: 10, b: [['100', 5]], a: [] },
+      { capturedAt: 400, U: 21, u: 21, pu: 20, b: [['100', 6]], a: [] }
+    ]
+  };
+  const replay = replayDepthRecording(recording, 250);
+  assert.equal(replay.ready, true);
+  assert.equal(replay.lastUpdateId, 11);
+  assert.equal(replay.bids[0].qty, 5);
+  const afterSnapshot = replayDepthRecording(recording, 450);
+  assert.equal(afterSnapshot.lastUpdateId, 21);
+  assert.equal(afterSnapshot.bids[0].qty, 6);
+  const gap = replayDepthRecording({ ...recording, events: [{ ...recording.events[0], pu: 8 }] }, 250);
+  assert.equal(gap.ready, false);
+  assert.match(gap.reason, /sequence has a gap/);
 });
