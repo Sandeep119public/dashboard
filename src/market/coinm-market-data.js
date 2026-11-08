@@ -22,7 +22,7 @@ export function normalizeAggTrade(raw) {
 }
 
 export function parseCoinMKline(row) {
-  if(!Array.isArray(row)||row.length<11)throw new TypeError('Expected a 12-field Binance COIN-M kline row.');
+  if(!Array.isArray(row)||row.length<12)throw new TypeError('Expected a 12-field Binance COIN-M kline row.');
   const c={t:Number(row[0]),o:Number(row[1]),h:Number(row[2]),l:Number(row[3]),c:Number(row[4]),v:Number(row[5]),
     closeTime:Number(row[6]),trades:Number(row[8]),buyTaker:Number(row[9]),buyTakerBase:Number(row[10])};
   if(!Number.isFinite(c.t)||![c.o,c.h,c.l,c.c,c.v,c.buyTaker].every(Number.isFinite))throw new TypeError('Kline contains invalid numeric fields.');
@@ -114,7 +114,13 @@ export function createCoinMMarketFeed(options={}) {
       c.buyTaker+=trade.buyTakerQty;c.sellTaker+=trade.sellTakerQty;c.makerBuy+=trade.makerBuyQty;c.makerSell+=trade.makerSellQty;c.delta=c.buyTaker-c.sellTaker;
       while(map.size>5000)map.delete(map.keys().next().value);
     }
-    onTrade(trade,{recentTrades:recentTrades.slice(),stats:{...stats,since:statsSince},candles:SECOND_SET.has(activeInterval)?getSessionCandles(activeInterval):null});
+    let candle=null;
+    if(SECOND_SET.has(activeInterval)){
+      const intervalMs=INTERVAL_MS[activeInterval],bucket=Math.floor(trade.time/intervalMs)*intervalMs;
+      const current=secondBars.get(activeInterval).get(bucket);
+      if(current)candle={...current};
+    }
+    onTrade(trade,{recentTrades:recentTrades.slice(),stats:{...stats,since:statsSince},candle});
   }
   function notifyBook(changes){onBook(bookView(book,bookReady,changes));}
   function applyAndNotify(event){
